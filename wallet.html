@@ -428,30 +428,30 @@
 
         // ===================== TON CONNECT =====================
         function initTonConnect() {
-            // Handle both possible global names across SDK builds
             const TonConnectUIClass =
                 window.TON_CONNECT_UI?.TonConnectUI ||
                 window.TonConnectUI ||
                 null;
 
             if (!TonConnectUIClass) {
-                console.warn('TON Connect: SDK not found. Available globals:', Object.keys(window).filter(k => k.toLowerCase().includes('ton')));
                 showToast('Wallet SDK failed to load — try refreshing.', 'exclamation');
                 return;
             }
 
             try {
-                state.connector = new TonConnectUIClass({ 
-                    manifestUrl: CONFIG.tonconnect.manifestUrl, 
-                    buttonRootId: null 
+                state.connector = new TonConnectUIClass({
+                    manifestUrl: CONFIG.tonconnect.manifestUrl,
+                    buttonRootId: null
                 });
 
-                state.connector.onStatusChange(wallet => {
+                state.connector.onStatusChange(async wallet => {
                     if (wallet) {
                         state.address = wallet.account.address;
                         state.wallet = wallet;
                         state.connected = true;
-                        fetchBalance();
+                        
+                        // Fetch balance from TON
+                        await fetchBalance();
                         updateUI();
                     } else {
                         state.address = null;
@@ -461,7 +461,7 @@
                     }
                 });
             } catch (error) {
-                console.error('TON Connect init failed:', error);
+                console.warn('TON Connect init failed:', error);
                 showToast('Wallet init failed.', 'exclamation');
             }
         }
