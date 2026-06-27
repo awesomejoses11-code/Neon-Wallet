@@ -1,5 +1,8 @@
 {
-  "url": "https://neon-crypto-wallet.vercel.app/",
+  "url": "https://neon-crypto-wallet.vercel.app",
   "name": "Neon Wallet",
-  "iconUrl": "https://neon-crypto-wallet.vercel.app/"
+  "description": "Premium TON blockchain wallet with integrated swaps and QR scanning",
+  "iconUrl": "https://neon-crypto-wallet.vercel.app/neon.png",
+  "termsOfUseUrl": "https://neon-crypto-wallet.vercel.app/terms",
+  "privacyPolicyUrl": "https://neon-crypto-wallet.vercel.app/privacy"
 }
