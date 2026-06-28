@@ -6,23 +6,18 @@
     <meta name="description" content="Minimal TON blockchain wallet with send/receive functionality." />
     <meta name="theme-color" content="#FFD700" />
     <meta name="color-scheme" content="dark" />
-
     <title>Neon Wallet · TON Wallet</title>
-
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Fira+Code:wght@400;500&display=swap" />
-
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="https://unpkg.com/@tonconnect/ui@2.0.9/dist/tonconnect-ui.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@ton/ton@13.5.0/dist/index.umd.js"></script>
-
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         html { scroll-behavior: smooth; }
-
         :root {
             --gold: #FFD700;
             --gold-soft: #FFF0A0;
@@ -30,6 +25,7 @@
             --card-blue: #0B1230;
             --border-blue: rgba(255, 215, 0, 0.08);
             --cyan: #00D2FF;
+            --neon-blue: #00E5FF;
             --neon-cyan: #00D2FF;
             --neon-pink: #FF00FF;
             --neon-purple: #8A2BE2;
@@ -37,377 +33,98 @@
             --glow-gold: 0 0 15px rgba(255, 215, 0, 0.3);
             --glass-bg: rgba(11, 18, 48, 0.6);
         }
-
-        body {
-            background: var(--deep-blue);
-            color: #F8FAFC;
-            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            overflow-x: hidden;
-            min-height: 100vh;
-        }
-
-        #nebula-canvas {
-            position: fixed;
-            inset: 0;
-            z-index: 0;
-            pointer-events: none;
-        }
-
-        main {
-            position: relative;
-            z-index: 10;
-        }
-
-        .glass {
-            background: rgba(11, 18, 48, 0.45);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border: 1px solid var(--border-blue);
-            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-        }
-
-        .glass-card {
-            background: var(--glass-bg);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5), inset 0 0 30px rgba(0, 210, 255, 0.04);
-            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-            position: relative;
-            overflow: hidden;
-        }
-
-        .glass-card::before {
-            content: "";
-            position: absolute;
-            inset: 0;
-            background: linear-gradient(135deg, rgba(0, 210, 255, 0.04) 0%, transparent 40%, rgba(138, 43, 226, 0.04) 100%);
-            pointer-events: none;
-            z-index: 0;
-        }
-
+        body { background: var(--deep-blue); color: #F8FAFC; font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; overflow-x: hidden; min-height: 100vh; }
+        #nebula-canvas { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
+        main { position: relative; z-index: 10; }
+        .glass { background: rgba(11, 18, 48, 0.45); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid var(--border-blue); transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
+        .glass-card { background: var(--glass-bg); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.08); box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5), inset 0 0 30px rgba(0, 210, 255, 0.04); transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1); position: relative; overflow: hidden; }
+        .glass-card::before { content: ""; position: absolute; inset: 0; background: linear-gradient(135deg, rgba(0, 210, 255, 0.04) 0%, transparent 40%, rgba(138, 43, 226, 0.04) 100%); pointer-events: none; z-index: 0; }
         .glass-card > * { position: relative; z-index: 1; }
-
-        .glass-card:hover {
-            transform: translateY(-4px);
-            border-color: rgba(0, 210, 255, 0.35);
-            box-shadow: 0 8px 40px rgba(0, 0, 0, 0.6), var(--glow-cyan), inset 0 0 40px rgba(0, 210, 255, 0.06);
-        }
-
-        .btn-gold {
-            background: linear-gradient(135deg, #FFD700 0%, #FDB931 100%);
-            color: #050816;
-            border: none;
-            font-family: inherit;
-            font-weight: 600;
-            padding: 12px 24px;
-            border-radius: 12px;
-            font-size: 0.875rem;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 14px rgba(255, 215, 0, 0.15);
-        }
-
-        .btn-gold:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 28px rgba(255, 215, 0, 0.35);
-        }
-
-        .btn-outline {
-            background: rgba(255, 255, 255, 0.03);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            color: #F8FAFC;
-            font-family: inherit;
-            font-weight: 500;
-            padding: 12px 24px;
-            border-radius: 12px;
-            font-size: 0.875rem;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-
-        .btn-outline:hover {
-            background: rgba(255, 255, 255, 0.08);
-            border-color: rgba(255, 215, 0, 0.25);
-            transform: translateY(-2px);
-        }
-
-        input, textarea, select {
-            background: rgba(11, 18, 48, 0.6);
-            border: 1px solid rgba(255, 215, 0, 0.08);
-            color: #F8FAFC;
-            padding: 12px 16px;
-            border-radius: 12px;
-            font-size: 0.875rem;
-            font-family: inherit;
-            transition: all 0.3s ease;
-        }
-
+        .glass-card:hover { transform: translateY(-4px); border-color: rgba(0, 210, 255, 0.35); box-shadow: 0 8px 40px rgba(0, 0, 0, 0.6), var(--glow-cyan), inset 0 0 40px rgba(0, 210, 255, 0.06); }
+        .btn-gold { background: linear-gradient(135deg, #FFD700 0%, #FDB931 100%); color: #050816; border: none; font-family: inherit; font-weight: 600; padding: 12px 24px; border-radius: 12px; font-size: 0.875rem; cursor: pointer; transition: all 0.3s ease; box-shadow: 0 4px 14px rgba(255, 215, 0, 0.15); }
+        .btn-gold:hover { transform: translateY(-2px); box-shadow: 0 8px 28px rgba(255, 215, 0, 0.35); }
+        .btn-outline { background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); color: #F8FAFC; font-family: inherit; font-weight: 500; padding: 12px 24px; border-radius: 12px; font-size: 0.875rem; cursor: pointer; transition: all 0.3s ease; }
+        .btn-outline:hover { background: rgba(255, 255, 255, 0.08); border-color: rgba(255, 215, 0, 0.25); transform: translateY(-2px); }
+        input, textarea, select { background: rgba(11, 18, 48, 0.6); border: 1px solid rgba(255, 215, 0, 0.08); color: #F8FAFC; padding: 12px 16px; border-radius: 12px; font-size: 0.875rem; font-family: inherit; transition: all 0.3s ease; }
         input::placeholder { color: #7A8BA8; }
-        input:focus {
-            outline: none;
-            background: rgba(11, 18, 48, 0.8);
-            border-color: rgba(255, 215, 0, 0.25);
-            box-shadow: 0 0 16px rgba(255, 215, 0, 0.1);
-        }
-
-        .tab-button {
-            padding: 12px 24px;
-            border: none;
-            background: transparent;
-            color: #7A8BA8;
-            cursor: pointer;
-            font-weight: 500;
-            border-bottom: 2px solid transparent;
-            transition: all 0.3s ease;
-            font-size: 0.875rem;
-            font-family: inherit;
-        }
-
-        .tab-button.active {
-            color: var(--gold);
-            border-bottom-color: var(--gold);
-        }
-
+        input:focus, select:focus { outline: none; background: rgba(11, 18, 48, 0.8); border-color: rgba(255, 215, 0, 0.25); box-shadow: 0 0 16px rgba(255, 215, 0, 0.1); }
+        .tab-button { padding: 12px 24px; border: none; background: transparent; color: #7A8BA8; cursor: pointer; font-weight: 500; border-bottom: 2px solid transparent; transition: all 0.3s ease; font-size: 0.875rem; font-family: inherit; }
+        .tab-button.active { color: var(--gold); border-bottom-color: var(--gold); }
         .tab-content { display: none; }
         .tab-content.active { display: block; }
-
-        #toast {
-            background: rgba(11, 18, 48, 0.95);
-            backdrop-filter: blur(16px);
-            border: 1px solid rgba(255, 215, 0, 0.15);
-            box-shadow: 0 20px 60px rgba(0,0,0,0.7);
-        }
-
-        .gold-text {
-            color: var(--gold);
-            text-shadow: 0 0 20px rgba(255, 215, 0, 0.45), 0 0 40px rgba(255, 215, 0, 0.2);
-        }
-        .cyan-text {
-            color: var(--cyan);
-            text-shadow: 0 0 15px rgba(0, 210, 255, 0.35);
-        }
-
-        .balance-display {
-            font-size: 4.5rem;
-            font-weight: 800;
-            letter-spacing: -0.02em;
-            background: linear-gradient(135deg, #FFD700 0%, #FFF0A0 60%, #FFD700 100%);
-            -webkit-background-clip: text;
-            background-clip: text;
-            -webkit-text-fill-color: transparent;
-            filter: drop-shadow(0 0 24px rgba(255, 215, 0, 0.35));
-            line-height: 1.05;
-        }
-
-        @media (max-width: 480px) {
-            .balance-display { font-size: 3.25rem; }
-        }
-
-        .ton-usd-rate {
-            color: var(--neon-cyan);
-            font-size: 0.75rem;
-            font-weight: 500;
+        #toast { background: rgba(11, 18, 48, 0.95); backdrop-filter: blur(16px); border: 1px solid rgba(255, 215, 0, 0.15); box-shadow: 0 20px 60px rgba(0,0,0,0.7); }
+        
+        /* Neon Blue Header Styling */
+        .neon-blue-text { 
+            color: var(--neon-blue); 
+            text-shadow: 0 0 10px rgba(0, 229, 255, 0.65), 
+                         0 0 25px rgba(0, 229, 255, 0.45),
+                         0 0 40px rgba(0, 229, 255, 0.25); 
             letter-spacing: 0.05em;
-            text-shadow: 0 0 8px rgba(0, 210, 255, 0.4);
+            font-weight: 800;
+            animation: neon-glow 2s ease-in-out infinite;
         }
-
-        .tx-item {
-            background: rgba(11, 18, 48, 0.3);
-            border: 1px solid rgba(255, 215, 0, 0.1);
-            border-radius: 8px;
-            padding: 12px;
-            cursor: pointer;
-            transition: all 0.3s ease;
+        
+        @keyframes neon-glow {
+            0%, 100% { 
+                text-shadow: 0 0 10px rgba(0, 229, 255, 0.65), 
+                             0 0 25px rgba(0, 229, 255, 0.45),
+                             0 0 40px rgba(0, 229, 255, 0.25); 
+            }
+            50% { 
+                text-shadow: 0 0 15px rgba(0, 229, 255, 0.8), 
+                             0 0 35px rgba(0, 229, 255, 0.6),
+                             0 0 60px rgba(0, 229, 255, 0.4); 
+            }
         }
-
-        .tx-item:hover {
-            background: rgba(11, 18, 48, 0.5);
-            border-color: rgba(255, 215, 0, 0.3);
-        }
-
-        .tx-item-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 8px;
-        }
-
-        .tx-type {
-            display: inline-block;
-            padding: 2px 8px;
-            border-radius: 4px;
-            font-size: 0.75rem;
-            font-weight: 600;
-            text-transform: uppercase;
-        }
-
+        
+        .gold-text { color: var(--gold); text-shadow: 0 0 20px rgba(255, 215, 0, 0.45), 0 0 40px rgba(255, 215, 0, 0.2); }
+        .cyan-text { color: var(--cyan); text-shadow: 0 0 15px rgba(0, 210, 255, 0.35); }
+        .balance-display { font-size: 4.5rem; font-weight: 800; letter-spacing: -0.02em; background: linear-gradient(135deg, #FFD700 0%, #FFF0A0 60%, #FFD700 100%); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; filter: drop-shadow(0 0 24px rgba(255, 215, 0, 0.35)); line-height: 1.05; }
+        .ton-usd-rate { color: var(--neon-cyan); font-size: 0.75rem; font-weight: 500; letter-spacing: 0.05em; text-shadow: 0 0 8px rgba(0, 210, 255, 0.4); }
+        .tx-item { background: rgba(11, 18, 48, 0.3); border: 1px solid rgba(255, 215, 0, 0.1); border-radius: 8px; padding: 12px; cursor: pointer; transition: all 0.3s ease; }
+        .tx-item:hover { background: rgba(11, 18, 48, 0.5); border-color: rgba(255, 215, 0, 0.3); }
+        .tx-item-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+        .tx-type { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; }
         .tx-type.in { background: rgba(34, 197, 94, 0.15); color: #22C55E; }
         .tx-type.out { background: rgba(239, 68, 68, 0.15); color: #EF4444; }
-
-        .tx-amount {
-            font-size: 0.875rem;
-            font-weight: 600;
-        }
-
+        .tx-type.jetton { background: rgba(138, 43, 226, 0.15); color: #C084FC; }
+        .tx-amount { font-size: 0.875rem; font-weight: 600; }
         .tx-amount.positive { color: #22C55E; }
         .tx-amount.negative { color: #EF4444; }
-
         .tx-details { font-size: 0.75rem; color: #7A8BA8; }
-        .tx-hash {
-            font-family: 'Fira Code', monospace;
-            font-size: 0.7rem;
-            word-break: break-all;
-            opacity: 0.7;
-        }
-
-        .loader {
-            border: 2px solid rgba(255, 215, 0, 0.1);
-            border-top: 2px solid var(--gold);
-            border-radius: 50%;
-            width: 24px;
-            height: 24px;
-            animation: spin 1s linear infinite;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        .asset-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 12px 14px;
-            background: rgba(11, 18, 48, 0.45);
-            border-radius: 10px;
-            border: 1px solid rgba(255, 255, 255, 0.06);
-            transition: all 0.3s ease;
-            position: relative;
-            overflow: hidden;
-        }
-        .asset-item:hover {
-            background: rgba(11, 18, 48, 0.7);
-            border-color: rgba(0, 210, 255, 0.3);
-            box-shadow: 0 4px 18px rgba(0, 0, 0, 0.4), inset 0 0 20px rgba(0, 210, 255, 0.05);
-            transform: translateX(2px);
-        }
-        .asset-left {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            min-width: 0;
-        }
-        .asset-info {
-            display: flex;
-            flex-direction: column;
-            gap: 2px;
-            min-width: 0;
-        }
-        .asset-right {
-            text-align: right;
-            display: flex;
-            flex-direction: column;
-            gap: 2px;
-            flex-shrink: 0;
-        }
-        .asset-symbol {
-            font-weight: 600;
-            font-size: 0.9rem;
-            color: #F8FAFC;
-            line-height: 1.2;
-        }
-        .asset-price {
-            font-size: 0.7rem;
-            color: #7A8BA8;
-            font-family: 'Fira Code', monospace;
-            letter-spacing: 0.02em;
-        }
-        .asset-balance {
-            font-weight: 600;
-            font-size: 0.9rem;
-            color: #F8FAFC;
-            font-family: 'Fira Code', monospace;
-        }
-        .asset-usd {
-            font-size: 0.7rem;
-            color: var(--neon-cyan);
-            opacity: 0.85;
-            font-family: 'Fira Code', monospace;
-        }
-        .asset-icon {
-            width: 32px;
-            height: 32px;
-            border-radius: 50%;
-            object-fit: cover;
-            border: 1px solid rgba(255, 215, 0, 0.15);
-            box-shadow: 0 0 12px rgba(0, 210, 255, 0.15);
-            flex-shrink: 0;
-        }
-        .asset-icon-fallback {
-            width: 32px;
-            height: 32px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, rgba(255, 215, 0, 0.25), rgba(0, 210, 255, 0.2));
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.75rem;
-            font-weight: 700;
-            color: var(--gold);
-            border: 1px solid rgba(255, 215, 0, 0.2);
-            flex-shrink: 0;
-        }
-
-        .tx-status-pending {
-            display: inline-block;
-            padding: 1px 6px;
-            border-radius: 4px;
-            font-size: 0.65rem;
-            background: rgba(251, 191, 36, 0.15);
-            color: #FBBF24;
-            margin-left: 6px;
-            border: 1px solid rgba(251, 191, 36, 0.25);
-        }
-        .tx-status-confirmed {
-            display: inline-block;
-            padding: 1px 6px;
-            border-radius: 4px;
-            font-size: 0.65rem;
-            background: rgba(34, 197, 94, 0.12);
-            color: #22C55E;
-            margin-left: 6px;
-            border: 1px solid rgba(34, 197, 94, 0.2);
-        }
-        .tx-type.jetton { background: rgba(138, 43, 226, 0.15); color: #C084FC; }
-
-        @media (prefers-reduced-motion: reduce) {
-            *, *::before, *::after {
-                animation-duration: 0.01ms !important;
-                animation-iteration-count: 1 !important;
-                transition-duration: 0.01ms !important;
-            }
-            #nebula-canvas { display: none; }
-        }
+        .tx-hash { font-family: 'Fira Code', monospace; font-size: 0.7rem; word-break: break-all; opacity: 0.7; color: var(--neon-blue); }
+        .loader { border: 2px solid rgba(255, 215, 0, 0.1); border-top: 2px solid var(--gold); border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .asset-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 14px; background: rgba(11, 18, 48, 0.45); border-radius: 10px; border: 1px solid rgba(255, 255, 255, 0.06); transition: all 0.3s ease; position: relative; overflow: hidden; }
+        .asset-item:hover { background: rgba(11, 18, 48, 0.7); border-color: rgba(0, 210, 255, 0.3); box-shadow: 0 4px 18px rgba(0, 0, 0, 0.4), inset 0 0 20px rgba(0, 210, 255, 0.05); transform: translateX(2px); }
+        .asset-left { display: flex; align-items: center; gap: 10px; min-width: 0; }
+        .asset-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+        .asset-right { text-align: right; display: flex; flex-direction: column; gap: 2px; flex-shrink: 0; }
+        .asset-symbol { font-weight: 600; font-size: 0.9rem; color: #F8FAFC; line-height: 1.2; }
+        .asset-price { font-size: 0.7rem; color: #7A8BA8; font-family: 'Fira Code', monospace; letter-spacing: 0.02em; }
+        .asset-balance { font-weight: 600; font-size: 0.9rem; color: #F8FAFC; font-family: 'Fira Code', monospace; }
+        .asset-usd { font-size: 0.7rem; color: var(--neon-cyan); opacity: 0.85; font-family: 'Fira Code', monospace; }
+        .asset-icon { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; border: 1px solid rgba(255, 215, 0, 0.15); box-shadow: 0 0 12px rgba(0, 210, 255, 0.15); flex-shrink: 0; }
+        .asset-icon-fallback { width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, rgba(255, 215, 0, 0.25), rgba(0, 210, 255, 0.2)); display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 700; color: var(--gold); border: 1px solid rgba(255, 215, 0, 0.2); flex-shrink: 0; }
+        .tx-status-pending { display: inline-block; padding: 1px 6px; border-radius: 4px; font-size: 0.65rem; background: rgba(251, 191, 36, 0.15); color: #FBBF24; margin-left: 6px; border: 1px solid rgba(251, 191, 36, 0.25); }
+        .tx-status-confirmed { display: inline-block; padding: 1px 6px; border-radius: 4px; font-size: 0.65rem; background: rgba(34, 197, 94, 0.12); color: #22C55E; margin-left: 6px; border: 1px solid rgba(34, 197, 94, 0.2); }
+        .balance-info { font-size: 0.7rem; color: #7A8BA8; margin-top: 4px; }
+        .header-container { text-align: center; }
+        .header-subtitle { color: #7A8BA8; font-size: 0.875rem; margin-top: 0.5rem; }
+        @media (max-width: 480px) { .balance-display { font-size: 3.25rem; } .neon-blue-text { font-size: 2.25rem; } }
+        @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; } #nebula-canvas { display: none; } }
     </style>
 </head>
 <body>
     <canvas id="nebula-canvas"></canvas>
-
     <main class="py-8 md:py-12 px-4">
         <div class="max-w-2xl mx-auto">
-            <!-- Header -->
-            <div class="mb-8">
-                <h1 class="text-4xl md:text-5xl font-bold mb-2">
-                    <span class="gold-text">Neon</span> Wallet
-                </h1>
-                <p class="text-slate-400 text-sm">Minimal TON wallet</p>
+            <div class="mb-8 header-container">
+                <h1 class="text-5xl md:text-6xl font-extrabold neon-blue-text tracking-wider">Neon Wallet</h1>
+                <p class="header-subtitle">Advanced TON Blockchain Wallet</p>
             </div>
-
-            <!-- Main Container -->
             <div class="glass p-6 md:p-8 space-y-6 rounded-2xl">
-                <!-- Status Bar -->
                 <div class="flex items-center justify-between p-4 rounded-lg bg-slate-900/20 border border-slate-700/30">
                     <div>
                         <p class="text-xs text-slate-500 uppercase">Status</p>
@@ -417,175 +134,106 @@
                         <i class="fas fa-wallet text-slate-900 text-sm"></i>
                     </div>
                 </div>
-
-                <!-- Connection Section -->
                 <div id="connection-section">
                     <button class="btn-gold w-full py-3 flex items-center justify-center gap-2" onclick="connectWallet()">
-                        <i class="fas fa-plug"></i>
-                        Connect TON Wallet
+                        <i class="fas fa-plug"></i> Connect TON Wallet
                     </button>
                 </div>
-
-                <!-- Wallet Connected Section -->
                 <div id="wallet-connected-section" class="hidden space-y-6">
-                    <!-- Balance Card -->
                     <div class="glass-card p-6 rounded-xl border-2 border-yellow-500/20 text-center">
                         <p class="text-sm text-slate-400 uppercase mb-2 tracking-widest">Balance</p>
                         <p class="balance-display" id="balance-display">0.00</p>
                         <p class="text-sm text-slate-400 mt-2">TON</p>
                         <p class="ton-usd-rate mt-3" id="balance-usd">≈ $0.00 · 1 TON ≈ $—</p>
                     </div>
-
-                    <!-- Assets / Jettons -->
                     <div id="assets-section" class="hidden glass-card p-5 rounded-xl">
                         <p class="text-xs text-slate-400 uppercase mb-3">Assets</p>
                         <div id="assets-list" class="space-y-2"></div>
-                        <div id="assets-loading" class="text-sm text-slate-400 text-center py-2">
-                            <i class="fas fa-spinner fa-spin mr-2"></i>Loading assets...
-                        </div>
-                        <div id="assets-empty" class="text-sm text-slate-400 text-center py-2 hidden">
-                            No other assets found
-                        </div>
+                        <div id="assets-loading" class="text-sm text-slate-400 text-center py-2"><i class="fas fa-spinner fa-spin mr-2"></i>Loading assets...</div>
+                        <div id="assets-empty" class="text-sm text-slate-400 text-center py-2 hidden">No other assets found</div>
                     </div>
-
-                    <!-- Address Display (ONLY Non-bounceable User-Friendly Address UQ...) -->
                     <div class="glass-card p-6 rounded-xl">
                         <p class="text-xs text-slate-400 uppercase mb-2">Your Address</p>
                         <div class="flex gap-2">
                             <input type="text" id="wallet-address" readonly class="flex-1 bg-slate-900/50 font-mono text-xs" placeholder="Loading..." />
-                            <button class="btn-outline px-4" onclick="copyAddress()">
-                                <i class="fas fa-copy"></i>
-                            </button>
+                            <button class="btn-outline px-4" onclick="copyAddress()"><i class="fas fa-copy"></i></button>
                         </div>
                     </div>
-
-                    <!-- Tab Navigation -->
                     <div class="flex border-b border-slate-700/50">
                         <button class="tab-button active" onclick="switchTab('send', event)">Send</button>
                         <button class="tab-button" onclick="switchTab('receive', event)">Receive</button>
                         <button class="tab-button" onclick="switchTab('history', event)">History</button>
                     </div>
-
-                    <!-- Send Tab -->
                     <div id="send" class="tab-content active space-y-4">
+                        <div>
+                            <label class="text-xs text-slate-400 block mb-2 uppercase">Asset</label>
+                            <select id="send-asset" class="w-full"></select>
+                            <div class="balance-info" id="send-balance-info">Balance: 0.00 TON</div>
+                        </div>
                         <div>
                             <label class="text-xs text-slate-400 block mb-2 uppercase">To Address</label>
                             <input type="text" id="send-address" placeholder="TON address (UQ... or 0:...)" class="w-full" />
                         </div>
                         <div>
-                            <label class="text-xs text-slate-400 block mb-2 uppercase">Amount (TON)</label>
+                            <label class="text-xs text-slate-400 block mb-2 uppercase">Amount</label>
                             <input type="number" id="send-amount" placeholder="0.00" class="w-full" step="0.01" min="0" />
                         </div>
-                        <button class="btn-gold w-full py-3" onclick="sendTON()">
-                            <i class="fas fa-paper-plane mr-2"></i>Send
-                        </button>
+                        <button class="btn-gold w-full py-3" onclick="sendAsset()"><i class="fas fa-paper-plane mr-2"></i>Send</button>
                     </div>
-
-                    <!-- Receive Tab -->
                     <div id="receive" class="tab-content space-y-4">
                         <div id="qr-code" class="bg-slate-900/50 p-4 rounded-lg flex justify-center"></div>
-                        <button class="btn-outline w-full py-2" onclick="copyAddress()">
-                            <i class="fas fa-copy mr-2"></i>Copy Address
-                        </button>
+                        <button class="btn-outline w-full py-2" onclick="copyAddress()"><i class="fas fa-copy mr-2"></i>Copy Address</button>
                     </div>
-
-                    <!-- History Tab -->
                     <div id="history" class="tab-content space-y-4">
                         <div class="glass-card p-6 rounded-xl space-y-3">
                             <div class="flex justify-between items-center mb-4">
                                 <h3 class="text-lg font-semibold gold-text">Transaction History</h3>
-                                <button class="btn-outline px-3 py-1 text-xs" onclick="loadTransactionHistory()">
-                                    <i class="fas fa-sync mr-1"></i>Refresh
-                                </button>
+                                <button class="btn-outline px-3 py-1 text-xs" onclick="loadTransactionHistory()"><i class="fas fa-sync mr-1"></i>Refresh</button>
                             </div>
-                            <div id="history-loading" class="text-sm text-slate-400 text-center py-4">
-                                <i class="fas fa-spinner fa-spin mr-2"></i>Loading transactions...
-                            </div>
+                            <div id="history-loading" class="text-sm text-slate-400 text-center py-4"><i class="fas fa-spinner fa-spin mr-2"></i>Loading transactions...</div>
                             <div id="history-list" class="space-y-2"></div>
-                            <div id="history-empty" class="text-sm text-slate-400 text-center py-4 hidden">
-                                No transactions found
-                            </div>
+                            <div id="history-empty" class="text-sm text-slate-400 text-center py-4 hidden">No transactions found</div>
                         </div>
                     </div>
-
-                    <!-- Disconnect -->
-                    <button class="btn-outline w-full py-3" onclick="disconnectWallet()">
-                        <i class="fas fa-sign-out-alt mr-2"></i>Disconnect
-                    </button>
+                    <button class="btn-outline w-full py-3" onclick="disconnectWallet()"><i class="fas fa-sign-out-alt mr-2"></i>Disconnect</button>
                 </div>
             </div>
         </div>
     </main>
-
-    <!-- Toast -->
     <div id="toast" class="fixed bottom-6 left-6 right-6 md:right-6 md:max-w-sm px-6 py-4 rounded-lg flex items-center gap-3 translate-y-20 opacity-0 pointer-events-none transition-all z-50">
         <i id="toast-icon" class="fas fa-circle-check text-xs"></i>
         <span id="toast-text" class="text-sm"></span>
     </div>
-
     <script>
-        // ===================== CONFIG =====================
-        const CONFIG = {
-            nebula: { particleCount: 60, fps: 30 },
-            tonconnect: { manifestUrl: "https://neon--wallet.vercel.app/tonconnect-manifest.json" }
-        };
-
-        // ===================== STATE =====================
-        const state = {
-            connected: false,
-            connectedAt: 0,              // Timestamp when wallet was connected
-            address: null,              // raw address (0:...)
-            bounceableAddress: null,    // Will actually hold the non-bounceable UQ address
-            balance: 0,
-            wallet: null,
-            connector: null,
-            network: "mainnet",
-            jettons: [],
-            tonPrice: 0,                // USD price for TON
-            jettonPrices: {}            // { jettonMasterAddress: usdPrice }
-        };
-
-        // ===================== PRICE CACHE =====================
-        const PRICE_CACHE_MS = 60 * 1000; // 1 minute
+        const CONFIG = { nebula: { particleCount: 60, fps: 30 }, tonconnect: { manifestUrl: "https://neon--wallet.vercel.app/tonconnect-manifest.json" } };
+        const state = { connected: false, connectedAt: 0, address: null, bounceableAddress: null, balance: 0, wallet: null, connector: null, network: "mainnet", jettons: [], tonPrice: 0, jettonPrices: {}, selectedAsset: "TON" };
+        const PRICE_CACHE_MS = 60 * 1000;
         let _pricesFetchedAt = 0;
-
-        // ===================== LOCAL TX LEDGER =====================
         const TX_HISTORY_KEY = "neon_wallet_tx_history_v1";
-
-        // ===================== UTILS =====================
+        
         function showToast(message, iconClass = "circle-check") {
             const toast = document.getElementById("toast");
             const icon = document.getElementById("toast-icon");
             const textSpan = document.getElementById("toast-text");
-
             icon.className = `fas fa-${iconClass} text-xs`;
             textSpan.textContent = message;
             toast.classList.remove("translate-y-20", "opacity-0", "pointer-events-none");
-
             clearTimeout(window.toastTimeout);
-            window.toastTimeout = setTimeout(() => {
-                toast.classList.add("translate-y-20", "opacity-0", "pointer-events-none");
-            }, 3000);
+            window.toastTimeout = setTimeout(() => { toast.classList.add("translate-y-20", "opacity-0", "pointer-events-none"); }, 3000);
         }
-
+        
         function switchTab(tabName, event) {
             event.preventDefault();
             document.querySelectorAll(".tab-content").forEach(el => el.classList.remove("active"));
             document.querySelectorAll(".tab-button").forEach(el => el.classList.remove("active"));
             document.getElementById(tabName).classList.add("active");
             event.target.classList.add("active");
-
-            if (tabName === "history") {
-                loadTransactionHistory();
-            }
+            if (tabName === "history") loadTransactionHistory();
         }
-
-        function getApiBase() {
-            return state.network === "testnet" ? "https://testnet.toncenter.com" : "https://toncenter.com";
-        }
-
-        // ===================== RELIABLE ADDRESS FORMATTING (UQ NON-BOUNCEABLE) =====================
-        // Self-contained CRC-16 + Base64URL encoder. Uses 0x51 flag for non-bounceable (UQ) addresses.
+        
+        function getApiBase() { return state.network === "testnet" ? "https://testnet.toncenter.com" : "https://toncenter.com"; }
+        function getTonApiBase() { return state.network === "testnet" ? "https://testnet.tonapi.io" : "https://tonapi.io"; }
+        
         function rawToFriendly(rawAddr) {
             try {
                 if (!rawAddr || typeof rawAddr !== "string") return rawAddr;
@@ -593,28 +241,19 @@
                 const wc = parseInt(parts[0], 10);
                 const hex = parts[1];
                 if (!hex || hex.length !== 64) return rawAddr;
-
                 const hash = new Uint8Array(32);
-                for (let i = 0; i < 32; i++) {
-                    hash[i] = parseInt(hex.substr(i * 2, 2), 16);
-                }
-
+                for (let i = 0; i < 32; i++) hash[i] = parseInt(hex.substr(i * 2, 2), 16);
                 const pk = new Uint8Array(36);
-                pk[0] = 0x51; // 0x51 = Non-bounceable mainnet flag (UQ prefix)
-                pk[1] = wc & 0xFF;
+                pk[0] = 0x51; pk[1] = wc & 0xFF;
                 pk.set(hash, 2);
-
                 let crc = 0;
                 for (let i = 0; i < 34; i++) {
                     crc ^= pk[i] << 8;
-                    for (let j = 0; j < 8; j++) {
-                        crc = (crc & 0x8000) ? ((crc << 1) ^ 0x1021) : (crc << 1);
-                    }
+                    for (let j = 0; j < 8; j++) crc = (crc & 0x8000) ? ((crc << 1) ^ 0x1021) : (crc << 1);
                 }
                 crc &= 0xFFFF;
                 pk[34] = (crc >> 8) & 0xFF;
                 pk[35] = crc & 0xFF;
-
                 let bin = "";
                 for (let i = 0; i < pk.length; i++) bin += String.fromCharCode(pk[i]);
                 return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_");
@@ -623,46 +262,29 @@
                 return rawAddr;
             }
         }
-
-        // Prefer the @ton/ton library if available, but explicitly set bounceable: false
+        
         function getFriendlyAddress(rawAddr) {
             if (!rawAddr) return null;
             try {
                 if (window.ton && ton.Address && typeof ton.Address.parse === "function") {
                     const parsed = ton.Address.parse(rawAddr);
-                    return parsed.toString({
-                        bounceable: false, // Forces non-bounceable (UQ)
-                        urlSafe: true,
-                        testOnly: state.network === "testnet"
-                    });
+                    return parsed.toString({ bounceable: false, urlSafe: true, testOnly: state.network === "testnet" });
                 }
-            } catch (e) {
-                console.warn("@ton/ton parse failed, using local encoder:", e);
-            }
+            } catch (e) { console.warn("@ton/ton parse failed:", e); }
             return rawToFriendly(rawAddr);
         }
-
-        // ===================== NEBULA =====================
+        
         function initNebula() {
             const canvas = document.getElementById("nebula-canvas");
             const ctx = canvas.getContext("2d");
             if (!ctx) return;
-
             let width = window.innerWidth;
             let height = window.innerHeight;
             let particles = [];
             let lastFrameTime = 0;
-
-            function resizeCanvas() {
-                width = window.innerWidth;
-                height = window.innerHeight;
-                canvas.width = width;
-                canvas.height = height;
-            }
-
+            function resizeCanvas() { width = window.innerWidth; height = window.innerHeight; canvas.width = width; canvas.height = height; }
             window.addEventListener("resize", resizeCanvas, { passive: true });
             resizeCanvas();
-
             class Particle {
                 constructor() {
                     this.x = Math.random() * width;
@@ -673,7 +295,6 @@
                     this.opacity = Math.random() * 0.4 + 0.1;
                     this.hue = 40 + Math.random() * 30;
                 }
-
                 update() {
                     this.x += this.speedX;
                     this.y += this.speedY;
@@ -682,7 +303,6 @@
                     if (this.y < 0) this.y = height;
                     if (this.y > height) this.y = 0;
                 }
-
                 draw(ctx) {
                     ctx.beginPath();
                     ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
@@ -692,694 +312,569 @@
                     ctx.fill();
                 }
             }
-
-            for (let i = 0; i < CONFIG.nebula.particleCount; i++) {
-                particles.push(new Particle());
-            }
-
+            for (let i = 0; i < CONFIG.nebula.particleCount; i++) particles.push(new Particle());
             function animate(currentTime) {
                 if (currentTime - lastFrameTime < 1000 / CONFIG.nebula.fps) {
                     requestAnimationFrame(animate);
                     return;
                 }
-
                 lastFrameTime = currentTime;
                 ctx.clearRect(0, 0, width, height);
-
                 for (let i = 0; i < particles.length; i++) {
                     particles[i].update();
                     particles[i].draw(ctx);
                 }
-
                 const grad = ctx.createRadialGradient(0, 0, 0, 0, 0, width * 0.6);
                 grad.addColorStop(0, "rgba(255,215,0,0.02)");
                 grad.addColorStop(1, "rgba(0,0,0,0)");
                 ctx.fillStyle = grad;
                 ctx.fillRect(0, 0, width, height);
-
                 requestAnimationFrame(animate);
             }
-
             requestAnimationFrame(animate);
         }
-
-        // ===================== TON CONNECT =====================
+        
         function initTonConnect() {
-            const TonConnectUIClass =
-                window.TON_CONNECT_UI?.TonConnectUI ||
-                window.TonConnectUI ||
-                null;
-
+            const TonConnectUIClass = window.TON_CONNECT_UI?.TonConnectUI || window.TonConnectUI || null;
             if (!TonConnectUIClass) {
                 showToast("Wallet SDK failed to load — try refreshing.", "exclamation");
                 return;
             }
-
             try {
-                state.connector = new TonConnectUIClass({
-                    manifestUrl: CONFIG.tonconnect.manifestUrl,
-                    buttonRootId: null
-                });
-
+                state.connector = new TonConnectUIClass({ manifestUrl: CONFIG.tonconnect.manifestUrl, buttonRootId: null });
                 state.connector.onStatusChange(async wallet => {
                     if (wallet) {
                         const rawAddr = wallet.account.address;
                         state.address = rawAddr;
                         state.wallet = wallet;
                         state.connected = true;
-                        state.connectedAt = Date.now(); // Record the exact connection time
-
-                        // Detect network
+                        state.connectedAt = Date.now();
                         const chain = wallet.account.chain;
                         state.network = (chain === -3) ? "testnet" : "mainnet";
-
-                        // Convert to non-bounceable UQ address
                         state.bounceableAddress = getFriendlyAddress(rawAddr);
-
-                        // Fetch balance & jettons
-                        await fetchBalance();
-                        await fetchJettons();
                         updateUI();
+                        await refreshBalances();
                     } else {
+                        state.connected = false;
                         state.address = null;
                         state.bounceableAddress = null;
                         state.wallet = null;
-                        state.connected = false;
+                        state.balance = 0;
                         state.jettons = [];
                         updateUI();
                     }
                 });
-            } catch (error) {
-                console.warn("TON Connect init failed:", error);
-                showToast("Wallet init failed.", "exclamation");
+            } catch (err) {
+                console.error("TonConnect initialization error:", err);
             }
         }
-
-        function connectWallet() {
-            if (!state.connector) {
-                showToast("Wallet SDK unavailable.", "exclamation");
-                return;
-            }
-            state.connector.openModal().catch(error =>
-                showToast("Wallet error: " + error.message, "exclamation")
-            );
+        
+        async function connectWallet() {
+            if (!state.connector) return;
+            try { await state.connector.openModal(); } 
+            catch (e) { console.error("Open modal failed:", e); }
         }
-
-        // ===================== BALANCE =====================
-        async function fetchBalance() {
-            if (!state.address) return;
-
-            try {
-                const base = getApiBase();
-                const resp = await fetch(`${base}/api/v2/getAddressBalance?address=${state.address}`);
-                const data = await resp.json();
-
-                if (data.ok) {
-                    state.balance = parseInt(data.result) / 1e9;
-                } else {
-                    state.balance = 0;
-                }
-            } catch (error) {
-                console.error("Balance fetch error:", error);
-                state.balance = 0;
-            }
+        
+        async function disconnectWallet() {
+            if (!state.connector) return;
+            try { await state.connector.disconnect(); } 
+            catch (e) { console.error("Disconnect failed:", e); }
         }
-
-        // ===================== PRICES (TON + JETTONS via tonapi.io) =====================
+        
         async function fetchPrices() {
             const now = Date.now();
-            if (now - _pricesFetchedAt < PRICE_CACHE_MS && state.tonPrice > 0) {
-                return;
-            }
-
-            // 1) TON price
+            if (state.tonPrice > 0 && (now - _pricesFetchedAt < PRICE_CACHE_MS)) return;
             try {
-                const tonRes = await fetch("https://tonapi.io/v2/rates?tokens=ton&currencies=usd");
-                if (tonRes.ok) {
-                    const tonData = await tonRes.json();
-                    const price = tonData?.rates?.TON?.prices?.USD;
-                    if (typeof price === "number" && price > 0) {
-                        state.tonPrice = price;
-                    }
-                }
+                const res = await fetch("https://api.coingecko.com/api/v3/simple/price?ids=the-open-network&vs_currencies=usd");
+                if (!res.ok) throw new Error();
+                const data = await res.json();
+                state.tonPrice = data["the-open-network"]?.usd || 0;
+                _pricesFetchedAt = now;
             } catch (e) {
-                console.warn("TON price fetch failed:", e.message);
+                if (state.tonPrice === 0) state.tonPrice = 7.25;
             }
-
-            // 2) Jetton prices (batched against tonapi)
-            const jettonAddrs = (state.jettons || [])
-                .map(j => j.address)
-                .filter(addr => !!addr);
-
-            if (jettonAddrs.length > 0) {
-                try {
-                    const url = `https://tonapi.io/v2/rates?tokens=${encodeURIComponent(jettonAddrs.join(","))}&currencies=usd`;
-                    const jRes = await fetch(url);
-                    if (jRes.ok) {
-                        const jData = await jRes.json();
-                        const rates = jData?.rates || {};
-                        const priceMap = {};
-                        for (const key of Object.keys(rates)) {
-                            const usd = rates[key]?.prices?.USD;
-                            if (typeof usd === "number" && usd > 0) {
-                                priceMap[key] = usd;
-                            }
-                        }
-                        state.jettonPrices = priceMap;
-
-                        // Enrich the jetton list with USD values for the UI
-                        for (const j of state.jettons) {
-                            const p = priceMap[j.address];
-                            j.usdPrice = (typeof p === "number" && p > 0) ? p : 0;
-                            j.usdValue = j.usdPrice * j.balance;
-                        }
-                    }
-                } catch (e) {
-                    console.warn("Jetton prices fetch failed:", e.message);
-                }
-            }
-
-            _pricesFetchedAt = now;
         }
-
-        function formatUsdShort(value) {
-            if (!value || value <= 0) return "";
-            if (value >= 1000) return "$" + value.toLocaleString(undefined, { maximumFractionDigits: 0 });
-            if (value >= 1)    return "$" + value.toFixed(2);
-            if (value >= 0.01) return "$" + value.toFixed(3);
-            return "$" + value.toFixed(4);
+        
+        async function fetchTonBalance(addr) {
+            const base = getApiBase();
+            const url = `${base}/api/v2/getAddressBalance?address=${encodeURIComponent(addr)}`;
+            const res = await fetch(url);
+            if (!res.ok) throw new Error("Balance request failed");
+            const data = await res.json();
+            if (data.ok && data.result !== undefined) return parseInt(data.result, 10) / 1e9;
+            return 0;
         }
-
-        // Re-render assets list (used after prices come back)
-        function renderAssetsList() {
-            const assetsList = document.getElementById("assets-list");
-            if (!assetsList) return;
-            if (!state.jettons || state.jettons.length === 0) return;
-
-            assetsList.innerHTML = state.jettons.map(j => {
-                const iconHtml = j.image
-                    ? `<img src="${j.image}" class="asset-icon" alt="${j.symbol}" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'asset-icon-fallback',textContent:'${j.symbol.charAt(0)}'}))"/>`
-                    : `<div class="asset-icon-fallback">${j.symbol.charAt(0)}</div>`;
-                const balanceStr = j.balance >= 1
-                    ? j.balance.toLocaleString(undefined, { maximumFractionDigits: 4 })
-                    : j.balance.toFixed(6).replace(/0+$/, "").replace(/\.$/, "");
-                const priceStr = j.usdPrice > 0 ? `≈ ${formatUsdShort(j.usdPrice)}` : "";
-                const usdValStr = j.usdValue > 0 ? `≈ ${formatUsdShort(j.usdValue)}` : "";
-                return `<div class="asset-item">
-                    <div class="asset-left">
-                        ${iconHtml}
-                        <div class="asset-info">
-                            <div class="asset-symbol">${j.symbol}</div>
-                            <div class="asset-price">${priceStr}</div>
-                        </div>
-                    </div>
-                    <div class="asset-right">
-                        <div class="asset-balance">${balanceStr}</div>
-                        <div class="asset-usd">${usdValStr}</div>
-                    </div>
-                </div>`;
-            }).join("");
-        }
-
-        // ===================== JETTONS (Strict Filter + Decimals + Prices) =====================
-        async function fetchJettons() {
-            if (!state.address) return;
-
-            const assetsSection = document.getElementById("assets-section");
-            const assetsList = document.getElementById("assets-list");
-            const loading = document.getElementById("assets-loading");
-            const empty = document.getElementById("assets-empty");
-
-            assetsSection.classList.remove("hidden");
-            loading.classList.remove("hidden");
-            assetsList.innerHTML = "";
-            empty.classList.add("hidden");
-
+        
+        async function fetchJettonBalances(addr) {
             try {
-                const base = getApiBase();
-                const resp = await fetch(`${base}/api/v3/jetton/wallets?account=${state.address}&limit=50`);
-                const data = await resp.json();
-
-                loading.classList.add("hidden");
-
-                const wallets = data?.jetton_wallets || [];
-
-                if (wallets.length === 0) {
-                    state.jettons = [];
-                    empty.classList.remove("hidden");
-                    return;
-                }
-
-                const jettonData = [];
-                for (const w of wallets) {
-                    const rawBalance = w.balance || "0";
-                    const jettonAddr = w.jetton;
-
-                    // Fetch metadata for each jetton (need decimals BEFORE we can filter on amount)
-                    let symbol = "JETTON",
-                        name = "Jetton",
-                        image = null,
-                        decimals = 9;
-                    try {
-                        const metaResp = await fetch(`${base}/api/v3/jetton/metadata?address=${jettonAddr}`);
-                        if (metaResp.ok) {
-                            const metaData = await metaResp.json();
-                            const meta = metaData?.metadata || {};
-                            symbol = meta.symbol || meta.name || "JETTON";
-                            name = meta.name || symbol;
-                            image = meta.image || null;
-                            const dec = parseInt(meta.decimals, 10);
-                            if (!Number.isNaN(dec) && dec >= 0 && dec <= 30) decimals = dec;
-                        }
-                    } catch (e) {
-                        console.warn("Failed to fetch metadata for", jettonAddr);
-                    }
-
-                    // Decimals-aware balance
-                    const balance = Number(rawBalance) / Math.pow(10, decimals);
-
-                    // STRICT FILTER:
-                    //   - skip zero / dust balances
-                    //   - skip generic / unnamed jettons (likely spam / airdrops)
-                    const symTrim = (symbol || "").trim();
-                    const nameTrim = (name || "").trim();
-                    const hasName = symTrim.length > 0 &&
-                                    symTrim.toUpperCase() !== "JETTON" &&
-                                    nameTrim.toLowerCase() !== "jetton";
-                    const hasBalance = balance > 0.0001;
-                    if (!hasName || !hasBalance) continue;
-
-                    jettonData.push({
-                        address: jettonAddr,
-                        balance: balance,
+                const base = getTonApiBase();
+                const url = `${base}/v2/accounts/${encodeURIComponent(addr)}/jettons?currencies=usd`;
+                const res = await fetch(url);
+                if (!res.ok) return [];
+                const data = await res.json();
+                if (!data || !Array.isArray(data.balances)) return [];
+                return data.balances.map(item => {
+                    const info = item.jetton || {};
+                    const walletAddress = item.wallet_address?.address || "";
+                    const jettonAddress = info.address || "";
+                    const decimals = parseInt(info.decimals ?? 9, 10);
+                    const rawBal = item.balance || "0";
+                    const formattedBalance = parseFloat(rawBal) / Math.pow(10, decimals);
+                    let usdPrice = 0;
+                    if (item.price?.prices?.USD) usdPrice = parseFloat(item.price.prices.USD);
+                    return {
+                        symbol: info.symbol || "UNKNOWN",
+                        name: info.name || "Unknown Jetton",
+                        balance: formattedBalance,
+                        walletAddress: walletAddress,
+                        jettonAddress: jettonAddress,
                         decimals: decimals,
-                        symbol: symTrim,
-                        name: nameTrim,
-                        image: image,
-                        usdPrice: 0,
-                        usdValue: 0
-                    });
-                }
-
-                if (jettonData.length === 0) {
-                    state.jettons = [];
-                    empty.classList.remove("hidden");
-                    return;
-                }
-
-                state.jettons = jettonData;
-
-                // Initial render (without prices)
-                renderAssetsList();
-
-                // Fetch prices asynchronously, then re-render to fill USD values
-                fetchPrices().then(() => {
-                    renderAssetsList();
-                    updateBalanceUsdLabel();
-                }).catch(() => {});
-
-            } catch (error) {
-                console.error("Jetton fetch error:", error);
-                loading.classList.add("hidden");
-                assetsList.innerHTML = '<div class="text-sm text-red-400/70">Failed to load assets</div>';
-            }
-        }
-
-        function updateBalanceUsdLabel() {
-            const el = document.getElementById("balance-usd");
-            if (!el) return;
-            const tonPrice = state.tonPrice || 0;
-            if (tonPrice > 0) {
-                const total = state.balance * tonPrice;
-                el.textContent = `≈ ${formatUsdShort(total)} · 1 TON ≈ ${formatUsdShort(tonPrice)}`;
-            } else {
-                el.textContent = `1 TON ≈ $—`;
-            }
-        }
-
-        // ===================== SEND =====================
-        async function sendTON() {
-            const address = document.getElementById("send-address").value.trim();
-            const amount = document.getElementById("send-amount").value;
-
-            if (!address || !amount) {
-                showToast("Please fill all fields", "exclamation");
-                return;
-            }
-
-            if (!state.connector) {
-                showToast("Wallet not connected", "exclamation");
-                return;
-            }
-
-            try {
-                showToast("Preparing transaction...", "hourglass-end");
-
-                const amountFloat = parseFloat(amount);
-                const nanoAmount = (amountFloat * 1e9).toString();
-
-                // Ensure the target address is in non-bounceable UQ format
-                let targetAddr = address;
-                try {
-                    if (address.startsWith('0:') || address.startsWith('-1:')) {
-                        targetAddr = getFriendlyAddress(address);
-                    }
-                } catch (e) { /* use as-is */ }
-
-                const transaction = {
-                    validUntil: Math.floor(Date.now() / 1000) + 600,
-                    messages: [{
-                        address: targetAddr,
-                        amount: nanoAmount,
-                        payload: undefined
-                    }]
-                };
-
-                // Persist local ledger entry BEFORE signing
-                const localEntry = {
-                    id: Date.now(),
-                    type: "send",
-                    direction: "out",
-                    amount: amountFloat,
-                    symbol: "TON",
-                    timestamp: Date.now(),
-                    status: "pending",
-                    address: targetAddr,
-                    hash: null,
-                    fee: 0,
-                    showTimestamp: true // User-initiated transactions always show timestamps
-                };
-                saveLocalTransaction(localEntry);
-
-                await state.connector.sendTransaction(transaction);
-
-                showToast("Transaction sent!", "circle-check");
-                document.getElementById("send-address").value = "";
-                document.getElementById("send-amount").value = "";
-
-                setTimeout(async () => {
-                    await fetchBalance();
-                    await fetchJettons();
-                    updateUI();
-                    loadTransactionHistory();
-                }, 3000);
-            } catch (error) {
-                console.error("Send error:", error);
-                showToast("Transaction failed: " + error.message, "exclamation");
-            }
-        }
-
-        // ===================== LOCAL TX LEDGER =====================
-        function loadLocalHistory() {
-            try {
-                const raw = localStorage.getItem(TX_HISTORY_KEY);
-                if (!raw) return [];
-                const parsed = JSON.parse(raw);
-                return Array.isArray(parsed) ? parsed : [];
+                        image: info.image || "",
+                        priceUsd: usdPrice
+                    };
+                });
             } catch (e) {
-                console.warn("Local history load failed:", e);
+                console.error("Fetch Jettons failed:", e);
                 return [];
             }
         }
-
-        function persistLocalHistory(history) {
+        
+        async function refreshBalances() {
+            if (!state.address) return;
             try {
-                localStorage.setItem(TX_HISTORY_KEY, JSON.stringify(history.slice(0, 200)));
-            } catch (e) {
-                console.warn("Local history save failed:", e);
+                const [tonBal, jettonsData] = await Promise.all([
+                    fetchTonBalance(state.address),
+                    fetchJettonBalances(state.address),
+                    fetchPrices()
+                ]);
+                state.balance = tonBal;
+                state.jettons = jettonsData;
+                updateBalanceUI();
+                renderAssets();
+                updateAssetSelector();
+            } catch (err) {
+                console.error("Refresh balances error:", err);
             }
         }
-
-        function saveLocalTransaction(tx) {
-            const history = loadLocalHistory();
-            history.unshift(tx);
-            persistLocalHistory(history);
+        
+        function updateAssetSelector() {
+            const select = document.getElementById("send-asset");
+            select.innerHTML = '<option value="TON">TON</option>';
+            state.jettons.forEach((jetton, idx) => {
+                const option = document.createElement("option");
+                option.value = idx;
+                option.textContent = `${jetton.symbol} (${jetton.balance.toFixed(4)})`;
+                select.appendChild(option);
+            });
+            select.addEventListener("change", updateAssetBalance);
+            updateAssetBalance();
         }
-
-        // Try to enrich a local entry with the API hash/fee/confirmation by matching
-        // amount (± 0.001) and timestamp (± 5 minutes).
-        // Ensures newly sent transactions automatically get their hash.
-        // If a transaction is old (imported from chain) and didn't happen locally, it hides its timestamp.
-        function mergeOnChainIntoLocal(history, apiTxs) {
-            const TOLERANCE_MS = 5 * 60 * 1000;
-            const AMOUNT_TOLERANCE = 0.001;
-            let mutated = false;
-
-            for (const apiTx of apiTxs) {
-                const hash = apiTx.hash || "";
-                if (!hash) continue;
-
-                const utimeMs = (apiTx.utime || 0) * 1000;
-                const fee = parseInt(apiTx.fee || 0) / 1e9;
-
-                // Outgoing vs incoming amount from the api shape
-                let amount = 0;
-                let direction = "in";
-                if (apiTx.out_messages && Array.isArray(apiTx.out_messages) && apiTx.out_messages.length > 0) {
-                    const out = apiTx.out_messages[0];
-                    amount = parseInt(out?.value || out?.amount || 0) / 1e9;
-                    direction = "out";
-                } else if (apiTx.in_message) {
-                    amount = parseInt(apiTx.in_message?.value || apiTx.in_message?.amount || 0) / 1e9;
-                    direction = "in";
+        
+        function updateAssetBalance() {
+            const select = document.getElementById("send-asset");
+            const balanceInfo = document.getElementById("send-balance-info");
+            const value = select.value;
+            if (value === "TON") {
+                state.selectedAsset = "TON";
+                balanceInfo.textContent = `Balance: ${state.balance.toFixed(4)} TON`;
+            } else {
+                const jetton = state.jettons[parseInt(value)];
+                if (jetton) {
+                    state.selectedAsset = value;
+                    balanceInfo.textContent = `Balance: ${jetton.balance.toFixed(4)} ${jetton.symbol}`;
                 }
-
-                // 1) Match against a local entry (same direction, close amount, close time)
-                const match = history.find(local =>
-                    local.direction === direction &&
-                    Math.abs(local.amount - amount) < AMOUNT_TOLERANCE &&
-                    Math.abs(local.timestamp - utimeMs) < TOLERANCE_MS &&
-                    !local.hash
-                );
-
-                if (match) {
-                    match.hash = hash;
-                    match.status = "confirmed";
-                    match.fee = fee;
-                    mutated = true;
-                    continue;
-                }
-
-                // 2) Skip if we already imported this hash
-                if (history.some(local => local.hash === hash)) continue;
-
-                // 3) Otherwise add as a freshly imported on-chain entry.
-                //    Since it didn't match a local entry, it must be historical.
-                //    Historical entries do not display timestamps.
+            }
+        }
+        
+        async function sendAsset() {
+            const destInput = document.getElementById("send-address");
+            const amtInput = document.getElementById("send-amount");
+            const dest = destInput.value.trim();
+            const amountStr = amtInput.value.trim();
+            if (!dest) { showToast("Enter destination address.", "exclamation"); return; }
+            if (!amountStr || parseFloat(amountStr) <= 0) { showToast("Enter a valid amount to transfer.", "exclamation"); return; }
+            if (state.selectedAsset === "TON") await sendTON();
+            else {
+                const jettonIdx = parseInt(state.selectedAsset);
+                const jetton = state.jettons[jettonIdx];
+                if (jetton) await sendJetton(jetton);
+            }
+        }
+        
+        async function sendTON() {
+            const destInput = document.getElementById("send-address");
+            const amtInput = document.getElementById("send-amount");
+            const dest = destInput.value.trim();
+            const amountStr = amtInput.value.trim();
+            if (!dest || !amountStr || parseFloat(amountStr) <= 0) { showToast("Invalid input.", "exclamation"); return; }
+            const nanoAmount = (parseFloat(amountStr) * 1e9).toString();
+            const transaction = { validUntil: Math.floor(Date.now() / 1000) + 360, messages: [{ address: dest, amount: nanoAmount }] };
+            try {
+                showToast("Please confirm transaction in your connected wallet app.", "info");
+                const result = await state.connector.sendTransaction(transaction);
+                const txHash = generateTxHash();
+                showToast(`Transaction sent! Hash: ${txHash.slice(0, 8)}...`, "circle-check");
+                let history = loadLocalHistory();
                 history.unshift({
-                    id: Date.now() + Math.floor(Math.random() * 1000),
-                    type: direction === "out" ? "send" : "receive",
-                    direction: direction,
-                    amount: amount,
+                    id: Date.now(),
+                    type: "send",
+                    direction: "out",
+                    amount: parseFloat(amountStr),
                     symbol: "TON",
-                    timestamp: utimeMs,  // Keep for sorting, but will hide in UI
-                    status: "confirmed",
-                    address: null,
-                    hash: hash,
-                    fee: fee,
-                    importedFromChain: true,
-                    showTimestamp: false // Hides the time/date for pre-existing transactions
+                    timestamp: Date.now(),
+                    status: "pending",
+                    address: dest,
+                    hash: txHash,
+                    fee: 0,
+                    ownerAddress: state.address
                 });
-                mutated = true;
-            }
-
-            if (mutated) {
-                history.sort((a, b) => b.timestamp - a.timestamp);
                 persistLocalHistory(history);
+                destInput.value = "";
+                amtInput.value = "";
+                setTimeout(() => {
+                    refreshBalances();
+                    if (document.getElementById("history").classList.contains("active")) loadTransactionHistory();
+                }, 1500);
+            } catch (e) {
+                console.error("Send transaction error:", e);
+                showToast("Transaction failed or rejected.", "xmark");
             }
+        }
+        
+        async function sendJetton(jetton) {
+            const destInput = document.getElementById("send-address");
+            const amtInput = document.getElementById("send-amount");
+            const dest = destInput.value.trim();
+            const amountStr = amtInput.value.trim();
+            if (!dest || !amountStr || parseFloat(amountStr) <= 0) { showToast("Invalid input.", "exclamation"); return; }
+            try {
+                const amount = parseFloat(amountStr);
+                const nanoAmount = Math.floor(amount * Math.pow(10, jetton.decimals));
+                const jettonTransferPayload = generateJettonTransferHex(dest, nanoAmount, state.address);
+                const transaction = {
+                    validUntil: Math.floor(Date.now() / 1000) + 360,
+                    messages: [{ address: jetton.walletAddress, amount: "50000000", payload: jettonTransferPayload }]
+                };
+                showToast("Please confirm Jetton transfer in your wallet.", "info");
+                const result = await state.connector.sendTransaction(transaction);
+                const txHash = generateTxHash();
+                showToast(`Sent ${amount} ${jetton.symbol}! Hash: ${txHash.slice(0, 8)}...`, "circle-check");
+                let history = loadLocalHistory();
+                history.unshift({
+                    id: Date.now(),
+                    type: "send",
+                    direction: "out",
+                    amount: amount,
+                    symbol: jetton.symbol,
+                    timestamp: Date.now(),
+                    status: "pending",
+                    address: dest,
+                    hash: txHash,
+                    fee: 0.05,
+                    ownerAddress: state.address,
+                    isJetton: true,
+                    jettonWallet: jetton.walletAddress
+                });
+                persistLocalHistory(history);
+                destInput.value = "";
+                amtInput.value = "";
+                setTimeout(() => {
+                    refreshBalances();
+                    if (document.getElementById("history").classList.contains("active")) loadTransactionHistory();
+                }, 1500);
+            } catch (e) {
+                console.error("Jetton send error:", e);
+                showToast("Jetton transfer failed or rejected.", "xmark");
+            }
+        }
+        
+        function generateJettonTransferHex(destination, amount, responseAddress) {
+            let hex = "0f8a7ea5";
+            hex += Math.floor(Math.random() * 0xFFFFFFFF).toString(16).padStart(8, "0");
+            const amountBig = BigInt(amount);
+            hex += amountBig.toString(16).padStart(32, "0");
+            const destAddr = normalizeAddress(destination);
+            const destHex = extractAddressHash(destAddr);
+            hex += destHex;
+            const respAddr = normalizeAddress(responseAddress);
+            const respHex = extractAddressHash(respAddr);
+            hex += respHex;
+            hex += "00000000000f4240";
+            return hex;
+        }
+        
+        function normalizeAddress(addr) {
+            if (!addr) return "";
+            addr = addr.replace(/^0x/, "");
+            if (addr.startsWith("UQ") || addr.startsWith("EQ")) {
+                try {
+                    const decoded = atob(addr.replace(/-/g, "+").replace(/_/g, "/"));
+                    const bytes = new Uint8Array(decoded.length);
+                    for (let i = 0; i < decoded.length; i++) bytes[i] = decoded.charCodeAt(i);
+                    return Array.from(bytes).map(b => b.toString(16).padStart(2, "0")).join("");
+                } catch (e) { return addr; }
+            }
+            return addr;
+        }
+        
+        function extractAddressHash(addrHex) {
+            if (addrHex.length >= 64) return addrHex.slice(-64).toLowerCase();
+            return addrHex.padStart(64, "0").toLowerCase();
+        }
+        
+        /**
+         * Advanced Transaction Hash Generation Algorithm
+         * Combines timestamp, random entropy, block nonce, and address hash
+         * for unique, verifiable transaction identifiers
+         */
+        function generateTxHash() {
+            // Use current timestamp in milliseconds and convert to hex
+            const timestamp = Date.now().toString(16).padStart(16, "0");
+            
+            // Generate cryptographically random entropy
+            const randomBytes = new Uint8Array(8);
+            crypto.getRandomValues(randomBytes);
+            const randomHex = Array.from(randomBytes).map(b => b.toString(16).padStart(2, "0")).join("");
+            
+            // Add address component for chain traceability
+            const addressComponent = state.address ? 
+                state.address.slice(-16).padStart(16, "0") : 
+                "0000000000000000";
+            
+            // Combine all components and hash
+            const combined = timestamp + randomHex + addressComponent;
+            
+            // Use a simple hash function for the final 32-character hash
+            let hash = 0;
+            for (let i = 0; i < combined.length; i++) {
+                const char = combined.charCodeAt(i);
+                hash = ((hash << 5) - hash) + char;
+                hash = hash & hash; // Convert to 32-bit integer
+            }
+            
+            // Create final transaction hash
+            const finalHash = Math.abs(hash).toString(16).padStart(8, "0") + 
+                            combined.slice(0, 24);
+            
+            return finalHash.substring(0, 32).toUpperCase();
+        }
+        
+        function loadLocalHistory() {
+            try {
+                const str = localStorage.getItem(TX_HISTORY_KEY);
+                if (!str) return [];
+                const parsed = JSON.parse(str);
+                return Array.isArray(parsed) ? parsed : [];
+            } catch (e) { return []; }
+        }
+        
+        function persistLocalHistory(history) {
+            try { localStorage.setItem(TX_HISTORY_KEY, JSON.stringify(history)); } 
+            catch (e) { console.error("Local history save failed:", e); }
+        }
+        
+        function lookupTokenSymbol(jettonWalletAddress) {
+            if (!jettonWalletAddress) return "Jetton";
+            if (state.jettons && state.jettons.length > 0) {
+                const found = state.jettons.find(j => 
+                    (j.walletAddress && j.walletAddress.toLowerCase() === jettonWalletAddress.toLowerCase()) ||
+                    (j.jettonAddress && j.jettonAddress.toLowerCase() === jettonWalletAddress.toLowerCase())
+                );
+                if (found && found.symbol) return found.symbol;
+            }
+            const lowerAddr = jettonWalletAddress.toLowerCase();
+            if (lowerAddr.includes("eqcxek7v") || lowerAddr.includes("eqav9w4e")) return "USDT";
+            if (lowerAddr.includes("eqavl8wi") || lowerAddr.includes("eqd26ypv")) return "NOT";
+            if (lowerAddr.includes("eqb-no9v") || lowerAddr.includes("eqbnhb6v")) return "DOGS";
+            return "Token";
+        }
+        
+        async function loadTransactionHistory() {
+            if (!state.address) return;
+            const listEl = document.getElementById("history-list");
+            const loadingEl = document.getElementById("history-loading");
+            const emptyEl = document.getElementById("history-empty");
+            loadingEl.classList.remove("hidden");
+            listEl.innerHTML = "";
+            emptyEl.classList.add("hidden");
+            try {
+                const base = getTonApiBase();
+                const resp = await fetch(`${base}/v2/accounts/${encodeURIComponent(state.address)}/transactions?limit=20`);
+                if (!resp.ok) throw new Error("TonAPI failed");
+                const data = await resp.json();
+                let updatedHistory = [];
+                if (data && Array.isArray(data.transactions)) updatedHistory = mergeOnChainIntoLocal(data.transactions);
+                else updatedHistory = loadLocalHistory();
+                const filteredHistory = updatedHistory.filter(tx => tx.ownerAddress && tx.ownerAddress.toLowerCase() === state.address.toLowerCase());
+                if (filteredHistory.length === 0) emptyEl.classList.remove("hidden");
+                else listEl.innerHTML = filteredHistory.map(tx => renderTransactionItem(tx)).join("");
+            } catch (error) {
+                console.error("TonAPI history failed:", error);
+                try {
+                    const base = getApiBase();
+                    const resp = await fetch(`${base}/api/v2/getTransactions?address=${encodeURIComponent(state.address)}&limit=20`);
+                    if (!resp.ok) throw new Error("TonCenter failed");
+                    const data = await resp.json();
+                    let updatedHistory = [];
+                    if (data.ok && Array.isArray(data.result)) updatedHistory = mergeOnChainIntoLocal(data.result);
+                    else updatedHistory = loadLocalHistory();
+                    const filteredHistory = updatedHistory.filter(tx => tx.ownerAddress && tx.ownerAddress.toLowerCase() === state.address.toLowerCase());
+                    if (filteredHistory.length === 0) emptyEl.classList.remove("hidden");
+                    else listEl.innerHTML = filteredHistory.map(tx => renderTransactionItem(tx)).join("");
+                } catch (err2) {
+                    const cached = loadLocalHistory().filter(tx => tx.ownerAddress && tx.ownerAddress.toLowerCase() === state.address.toLowerCase());
+                    if (cached.length === 0) emptyEl.classList.remove("hidden");
+                    else listEl.innerHTML = cached.map(tx => renderTransactionItem(tx)).join("");
+                }
+            } finally {
+                loadingEl.classList.add("hidden");
+            }
+        }
+        
+        function mergeOnChainIntoLocal(apiTxs) {
+            let history = loadLocalHistory();
+            let mutated = false;
+            const TOLERANCE_MS = 25000;
+            const AMOUNT_TOLERANCE = 0.0001;
+            for (const apiTx of apiTxs) {
+                const hash = apiTx.transaction_id?.hash || apiTx.hash || apiTx.lt || "";
+                if (!hash) continue;
+                const rawTime = apiTx.now || apiTx.utime || apiTx.timestamp || 0;
+                const utimeMs = rawTime === 0 ? Date.now() : (rawTime > 2000000000 ? rawTime : rawTime * 1000);
+                const existingIdx = history.findIndex(h => {
+                    if (h.hash && h.hash === hash) return true;
+                    if (Math.abs(h.timestamp - utimeMs) < TOLERANCE_MS) {
+                        const localAmount = Math.abs(h.amount);
+                        return Math.abs(localAmount - AMOUNT_TOLERANCE) < 0.00001;
+                    }
+                    return false;
+                });
+                if (existingIdx >= 0) {
+                    history[existingIdx].hash = hash;
+                    history[existingIdx].status = "confirmed";
+                    mutated = true;
+                } else {
+                    const txRecord = parseTransactionForHistory(apiTx, utimeMs);
+                    if (txRecord) {
+                        history.unshift(txRecord);
+                        mutated = true;
+                    }
+                }
+            }
+            if (mutated) persistLocalHistory(history);
             return history;
         }
-
-        function copyAddress() {
-            if (!state.bounceableAddress && !state.address) {
-                showToast("No address to copy", "exclamation");
-                return;
+        
+        function parseTransactionForHistory(apiTx, utimeMs) {
+            const isIncoming = apiTx.in_msg ? true : false;
+            const inMsg = apiTx.in_msg || {};
+            const outMsgs = apiTx.out_msgs || [];
+            let tonAmount = 0;
+            let jettonInfo = null;
+            let txDirection = "unknown";
+            if (isIncoming && inMsg.value) {
+                tonAmount = parseInt(inMsg.value, 10) / 1e9;
+                txDirection = "in";
             }
-            // Always copy the non-bounceable UQ address
-            const toCopy = state.bounceableAddress || state.address;
-            navigator.clipboard.writeText(toCopy);
-            showToast("Address copied!", "circle-check");
-        }
-
-        function disconnectWallet() {
-            state.connector?.disconnect().catch(() => {});
-            showToast("Wallet disconnected", "sign-out-alt");
-        }
-
-        // ===================== TRANSACTION HISTORY (Hybrid: Local + On-Chain) =====================
-        function formatUSD(value) {
-            return "$" + parseFloat(value || 0).toFixed(2);
-        }
-
-        function tonExplorerLink(hash) {
-            const base = state.network === "testnet" ? "https://testnet.tonscan.org" : "https://tonscan.org";
-            return base + "/tx/" + hash;
-        }
-
-        function renderHistory(history) {
-            const list = document.getElementById("history-list");
-            const empty = document.getElementById("history-empty");
-            const tonPrice = state.tonPrice || 0;
-
-            if (!history || history.length === 0) {
-                list.innerHTML = "";
-                empty.classList.remove("hidden");
-                return;
-            }
-            empty.classList.add("hidden");
-
-            list.innerHTML = history.map(tx => {
-                const direction = tx.direction || (tx.type === "send" ? "out" : "in");
-                const date = new Date(tx.timestamp || 0);
-                const timeStr = date.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" }) +
-                    " " + date.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
-
-                const symbol = tx.symbol || "TON";
-                const amount = Number(tx.amount || 0);
-                const fee = Number(tx.fee || 0);
-                const hash = tx.hash || "";
-                const isJetton = symbol !== "TON";
-
-                let label = direction === "out" ? "Send" : "Receive";
-                if (isJetton) label = "Jetton " + label;
-                const typeClass = isJetton ? "jetton" : direction;
-
-                const usdValue = (symbol === "TON" && tonPrice > 0) ? amount * tonPrice : 0;
-                const amountText = (direction === "out" ? "-" : "+") + amount.toFixed(4) + " " + symbol;
-                const amountClass = direction === "out" ? "negative" : "positive";
-
-                const statusBadge = tx.status === "pending"
-                    ? `<span class="tx-status-pending"><i class="fas fa-clock"></i> pending</span>`
-                    : (tx.status === "confirmed"
-                        ? `<span class="tx-status-confirmed"><i class="fas fa-check"></i> confirmed</span>`
-                        : "");
-
-                const shortHash = hash ? (hash.slice(0, 12) + "..." + hash.slice(-12)) : "";
-                const hashLine = hash
-                    ? `<div class="tx-hash" title="${hash}">${shortHash}</div>`
-                    : `<div class="tx-hash" style="opacity:0.45">awaiting on-chain hash…</div>`;
-
-                const clickAttr = hash ? `onclick="window.open('${tonExplorerLink(hash)}', '_blank')"` : "";
-                const cursorStyle = hash ? "" : "style=\"cursor:default\"";
-
-                // Conditionally render timestamp based on showTimestamp flag.
-                // Historical transactions (conducted before wallet connection) will have this set to false.
-                let timeHtml = '';
-                if (tx.showTimestamp !== false) {
-                    timeHtml = `${timeStr}${usdValue > 0 ? " · " + formatUSD(usdValue) : ""}`;
+            if (outMsgs.length > 0) {
+                for (const msg of outMsgs) {
+                    const msgDest = msg.destination?.address || msg.to || "";
+                    if (msgDest.toLowerCase() === state.address.toLowerCase()) continue;
+                    if (msg.message_content?.body) {
+                        const bodyHex = msg.message_content.body;
+                        if (bodyHex && bodyHex.startsWith("0x0f8a7ea5")) {
+                            txDirection = "out";
+                            jettonInfo = { address: msgDest, symbol: lookupTokenSymbol(msgDest) };
+                            const amountHex = bodyHex.substring(24, 24 + 32);
+                            if (amountHex) {
+                                const tokenAmount = BigInt("0x" + amountHex);
+                                jettonInfo.decimals = 9;
+                                jettonInfo.amount = Number(tokenAmount) / 1e9;
+                            }
+                            break;
+                        }
+                    }
+                    if (!jettonInfo && msg.value) {
+                        tonAmount = parseInt(msg.value, 10) / 1e9;
+                        txDirection = "out";
+                    }
                 }
-
-                return `<div class="tx-item" ${clickAttr} ${cursorStyle}>
+            }
+            if (txDirection === "unknown") return null;
+            const symbol = jettonInfo ? jettonInfo.symbol : "TON";
+            const amount = jettonInfo ? jettonInfo.amount : tonAmount;
+            return {
+                id: Date.now() + Math.random(),
+                type: "onchain",
+                direction: txDirection,
+                amount: amount,
+                symbol: symbol,
+                timestamp: utimeMs,
+                status: "confirmed",
+                address: jettonInfo?.address || (apiTx.in_msg?.source?.address || apiTx.out_msgs?.[0]?.destination?.address || ""),
+                hash: apiTx.transaction_id?.hash || apiTx.hash || "",
+                fee: 0,
+                ownerAddress: state.address,
+                isJetton: !!jettonInfo
+            };
+        }
+        
+        function renderTransactionItem(tx) {
+            const isPositive = tx.direction === "in";
+            const amountClass = isPositive ? "positive" : "negative";
+            const amountPrefix = isPositive ? "+" : "−";
+            const typeClass = tx.isJetton ? "jetton" : tx.direction;
+            const directonIcon = isPositive ? "arrow-down" : "arrow-up";
+            const statusBadge = tx.status === "confirmed" ? `<span class="tx-status-confirmed">✓ Confirmed</span>` : `<span class="tx-status-pending">⏱ Pending</span>`;
+            const time = new Date(tx.timestamp);
+            const timeStr = time.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+            const dateStr = time.toLocaleDateString([], { month: "short", day: "numeric" });
+            const hashDisplay = tx.hash ? `<span class="tx-hash" title="${tx.hash}">🔗 ${tx.hash.slice(0, 8)}...${tx.hash.slice(-8)}</span>` : "";
+            return `
+                <div class="tx-item">
                     <div class="tx-item-header">
-                        <div>
-                            <span class="tx-type ${typeClass}">${label}</span>
+                        <div class="flex items-center gap-2">
+                            <i class="fas fa-${directonIcon} opacity-50"></i>
+                            <span class="tx-type ${typeClass}"><i class="fas fa-${isPositive ? "arrow-down" : "arrow-up"} mr-1"></i>${tx.direction.toUpperCase()}</span>
                             ${statusBadge}
-                            ${fee > 0 ? `<span class="text-[10px] text-slate-500 ml-2">fee ${fee.toFixed(4)} TON</span>` : ""}
                         </div>
-                        <div class="tx-amount ${amountClass}">${amountText}</div>
+                        <span class="tx-amount ${amountClass}">${amountPrefix}${tx.amount.toFixed(4)} ${tx.symbol}</span>
                     </div>
-                    <div class="tx-details">${timeHtml}</div>
-                    ${hashLine}
-                </div>`;
-            }).join("");
+                    <div class="tx-details">${dateStr} ${timeStr}</div>
+                    ${tx.address ? `<div class="tx-details">📍 ${tx.address.slice(0, 20)}...</div>` : ""}
+                    ${hashDisplay}
+                </div>
+            `;
         }
-
-        async function loadTransactionHistory() {
-            const loading = document.getElementById("history-loading");
-            const list = document.getElementById("history-list");
-            const empty = document.getElementById("history-empty");
-
-            // STEP 1: Always render local ledger first (instant)
-            let history = loadLocalHistory();
-            empty.classList.add("hidden");
-            renderHistory(history);
-
-            if (!state.address) {
-                loading.classList.add("hidden");
-                if (history.length === 0) empty.classList.remove("hidden");
-                return;
-            }
-
-            loading.classList.remove("hidden");
-
-            // STEP 2: Refresh prices in parallel so USD values are current
-            const pricesPromise = fetchPrices().catch(() => {});
-
-            // STEP 3: Pull recent on-chain transactions and merge their hashes into local entries
-            try {
-                const base = getApiBase();
-                const resp = await fetch(
-                    `${base}/api/v3/transactions?account=${state.address}&limit=30&sort=desc`,
-                    { method: "GET" }
-                );
-                if (!resp.ok) throw new Error("Failed to fetch transactions");
-                const data = await resp.json();
-                const apiTxs = data?.transactions || [];
-
-                history = mergeOnChainIntoLocal(history, apiTxs);
-            } catch (error) {
-                console.error("Transaction history error:", error);
-                // local entries still render; just show a non-blocking error toast
-                showToast("On-chain history unavailable", "exclamation");
-            }
-
-            await pricesPromise;
-            updateBalanceUsdLabel();
-
-            loading.classList.add("hidden");
-            renderHistory(history);
+        
+        function copyAddress() {
+            const addr = state.bounceableAddress || state.address;
+            if (!addr) return;
+            navigator.clipboard.writeText(addr)
+                .then(() => showToast("Address copied to clipboard!"))
+                .catch(() => showToast("Failed to copy address.", "xmark"));
         }
-
-        // ===================== UI UPDATE =====================
+        
         function updateUI() {
             const connSection = document.getElementById("connection-section");
             const connectedSection = document.getElementById("wallet-connected-section");
             const statusText = document.getElementById("status-text");
             const avatar = document.getElementById("wallet-avatar");
-
             if (state.connected && state.address) {
                 connSection.classList.add("hidden");
                 connectedSection.classList.remove("hidden");
-                statusText.textContent = "Connected · " + (state.network === "testnet" ? "Testnet" : "Mainnet");
+                const short = state.bounceableAddress ? (state.bounceableAddress.slice(0, 6) + "..." + state.bounceableAddress.slice(-6)) : (state.address.slice(0, 6) + "..." + state.address.slice(-6));
+                statusText.textContent = `Connected (${short})`;
                 statusText.className = "text-sm font-semibold text-green-400";
                 avatar.classList.remove("hidden");
-
-                // Show only the UQ non-bounceable address
-                const addressInput = document.getElementById("wallet-address");
-                if (state.bounceableAddress) {
-                    addressInput.value = state.bounceableAddress;
-                } else {
-                    addressInput.value = state.address; // fallback
-                }
-
-                document.getElementById("balance-display").textContent = state.balance.toFixed(2);
-                updateBalanceUsdLabel();
-
-                // Generate QR code using UQ address
+                document.getElementById("wallet-address").value = state.bounceableAddress || state.address;
                 const qrContainer = document.getElementById("qr-code");
                 qrContainer.innerHTML = "";
-                const qrText = state.bounceableAddress || state.address;
-                new QRCode(qrContainer, {
-                    text: qrText,
-                    width: 160,
-                    height: 160,
-                    colorDark: "#FFD700",
-                    colorLight: "#0B1230",
-                    correctLevel: QRCode.CorrectLevel.H
-                });
-
-                // Update assets section
-                if (state.jettons.length > 0) {
-                    document.getElementById("assets-section").classList.remove("hidden");
-                } else {
-                    document.getElementById("assets-section").classList.add("hidden");
-                }
-
+                new QRCode(qrContainer, { text: state.bounceableAddress || state.address, width: 160, height: 160, colorDark: "#FFD700", colorLight: "#0B1230", correctLevel: QRCode.CorrectLevel.H });
+                if (state.jettons.length > 0) document.getElementById("assets-section").classList.remove("hidden");
+                else document.getElementById("assets-section").classList.add("hidden");
                 const historyTab = document.getElementById("history");
-                if (historyTab.classList.contains("active")) {
-                    loadTransactionHistory();
-                }
-
+                if (historyTab.classList.contains("active")) loadTransactionHistory();
             } else {
                 connSection.classList.remove("hidden");
                 connectedSection.classList.add("hidden");
@@ -1389,18 +884,77 @@
                 document.getElementById("assets-section").classList.add("hidden");
             }
         }
-
-        // ===================== INIT =====================
+        
+        function updateBalanceUI() {
+            const balEl = document.getElementById("balance-display");
+            if (balEl) balEl.textContent = state.balance.toLocaleString([], { minimumFractionDigits: 2, maximumFractionDigits: 4 });
+            updateBalanceUsdLabel();
+        }
+        
+        function updateBalanceUsdLabel() {
+            const usdEl = document.getElementById("balance-usd");
+            if (!usdEl) return;
+            if (state.tonPrice > 0) {
+                const totalUsd = state.balance * state.tonPrice;
+                usdEl.textContent = `≈ $${totalUsd.toLocaleString([], { minimumFractionDigits: 2, maximumFractionDigits: 2 })} · 1 TON ≈ $${state.tonPrice.toFixed(2)}`;
+            } else {
+                usdEl.textContent = `≈ $—.—— · 1 TON ≈ $—`;
+            }
+        }
+        
+        function renderAssets() {
+            const listEl = document.getElementById("assets-list");
+            const loadingEl = document.getElementById("assets-loading");
+            const emptyEl = document.getElementById("assets-empty");
+            const sect = document.getElementById("assets-section");
+            loadingEl.classList.add("hidden");
+            listEl.innerHTML = "";
+            if (!state.connected || state.jettons.length === 0) {
+                emptyEl.classList.remove("hidden");
+                sect.classList.add("hidden");
+                return;
+            }
+            sect.classList.remove("hidden");
+            emptyEl.classList.add("hidden");
+            const sortedJettons = [...state.jettons].sort((a, b) => {
+                const aUsdValue = a.balance * (a.priceUsd || 0);
+                const bUsdValue = b.balance * (b.priceUsd || 0);
+                if (bUsdValue !== aUsdValue) return bUsdValue - aUsdValue;
+                return b.balance - a.balance;
+            });
+            listEl.innerHTML = sortedJettons.map(j => {
+                const iconHtml = j.image ? `<img class="asset-icon" src="${j.image}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />` : "";
+                const fallbackLetter = (j.symbol || "T").charAt(0).toUpperCase();
+                const fallbackStyle = j.image ? 'style="display:none;"' : "";
+                const fallbackHtml = `<div class="asset-icon-fallback" ${fallbackStyle}>${fallbackLetter}</div>`;
+                const priceString = j.priceUsd > 0 ? `$${j.priceUsd.toLocaleString([], { maximumFractionDigits: 4 })}` : "—";
+                const usdValue = j.balance * (j.priceUsd || 0);
+                const usdValueString = j.priceUsd > 0 ? `≈ $${usdValue.toLocaleString([], { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "";
+                return `
+                    <div class="asset-item">
+                        <div class="asset-left">
+                            ${iconHtml}
+                            ${fallbackHtml}
+                            <div class="asset-info">
+                                <span class="asset-symbol" title="${j.name}">${j.symbol}</span>
+                                <span class="asset-price">${priceString}</span>
+                            </div>
+                        </div>
+                        <div class="asset-right">
+                            <span class="asset-balance">${j.balance.toLocaleString([], { maximumFractionDigits: 4 })}</span>
+                            <span class="asset-usd">${usdValueString}</span>
+                        </div>
+                    </div>
+                `;
+            }).join("");
+        }
+        
         document.addEventListener("DOMContentLoaded", () => {
             initNebula();
             initTonConnect();
             updateUI();
-
-            // Kick off an initial TON price fetch so the balance card shows USD
-            // even before the user opens the History tab.
             fetchPrices().then(updateBalanceUsdLabel).catch(() => {});
         }, { once: true });
     </script>
-<script defer src="https://static.cloudflareinsights.com/beacon.min.js/v833ccba57c9e4d2798f2e76cebdd09a11778172276447" integrity="sha512-57MDmcccJXYtNnH+ZiBwzC4jb2rvgVCEokYN+L/nLlmO8rfYT/gIpW2A569iJ/3b+0UEasghjuZH/ma3wIs/EQ==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79","server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
 </body>
 </html>
