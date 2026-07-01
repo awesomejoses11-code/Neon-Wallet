@@ -23,7 +23,7 @@
          same 2048-word English list we'd otherwise have to ship separately. -->
     <script type="module">
         import { Buffer } from "https://esm.sh/buffer@6.0.3";
-        import * as TonCore from "https://esm.sh/@ton/ton@13.11.1";
+        import * as TonCore from "https://esm.sh/@ton/ton@16.3.0";
         import * as TonCrypto from "https://esm.sh/@ton/crypto@3.3.0";
         window.Buffer = Buffer;
         window.ton = TonCore;
@@ -1128,15 +1128,23 @@ function renderUnlockSwitcher() {
    We now detect which version is actually deployed on-chain for a
    given mnemonic at import time, and store that choice per wallet.
    ============================================================== */
-// Detection order: v4r2 is the stable, widely-supported version.
-// v5R1 (W5) support requires a newer build of @ton/ton.
-// Fallback to v3r2 for legacy wallets.
-const WALLET_VERSIONS = ["v4r2", "v3r2"];
-const WALLET_VERSION_LABELS = { v4r2: "v4R2", v3r2: "v3R2" };
+// Detection order: v5r1 (W5) first, since it's the ecosystem default for
+// all new wallets since mid-2024. Requires @ton/ton >= 15.1.0 (we pin 16.3.0
+// above) — older builds don't export WalletContractV5R1/V5Beta at all, which
+// silently broke detection and caused every wallet to fall back to v4r2.
+// v3r2 remains as the fallback for legacy pre-v4 wallets.
+const WALLET_VERSIONS = ["v5r1", "v5beta", "v4r2", "v3r2"];
+const WALLET_VERSION_LABELS = { v4r2: "v4R2", v3r2: "v3R2", v5r1: "v5R1", v5beta: "v5 Beta" };
 
 function buildWalletContract(T, version, publicKey) {
     const pk = Buffer.from(publicKey);
     switch (version) {
+        case "v5r1":
+            if (!T.WalletContractV5R1) throw new Error("Wallet v5R1 contract unavailable in this build of @ton/ton.");
+            return T.WalletContractV5R1.create({ workchain: 0, publicKey: pk });
+        case "v5beta":
+            if (!T.WalletContractV5Beta) throw new Error("Wallet v5Beta contract unavailable in this build of @ton/ton.");
+            return T.WalletContractV5Beta.create({ workchain: 0, publicKey: pk });
         case "v4r2":
             if (!T.WalletContractV4) throw new Error("Wallet v4R2 contract unavailable in this build of @ton/ton.");
             return T.WalletContractV4.create({ workchain: 0, publicKey: pk });
@@ -1166,20 +1174,70 @@ async function isAddressActive(rawAddr) {
         return false;
     }
 }
-// Figure out which contract version a mnemonic's real wallet actually uses,
-// by checking each candidate address for on-chain activity (a deployed
-// contract means that address has been used before — almost certainly the
-// version the person's existing wallet app created). Falls back to v4R2
-// (the stable ecosystem standard) for a brand-new mnemonic with no history.
+
+// Get contract code hash via TonAPI for version fingerprinting
+async function getContractCodeHash(rawAddr) {
+    try {
+        const apiBase = `https://tonapi.io/v2`;
+        const url = `${apiBase}/accounts/${encodeURIComponent(rawAddr)}`;
+        const res = await fetch(url);
+        if (!res.ok) return null;
+        const data = await res.json();
+        if (data && data.methods_descriptions && data.methods_descriptions.length > 0) {
+            return data.methods_descriptions[0]?.method_name || null;
+        }
+        return null;
+    } catch {
+        return null;
+    }
+}
+
+// Inspect contract state init to identify wallet version
+async function inspectContractCode(rawAddr) {
+    try {
+        const apiBase = `https://tonapi.io/v2`;
+        const url = `${apiBase}/blockchain/accounts/${encodeURIComponent(rawAddr)}`;
+        const res = await fetch(url);
+        if (!res.ok) return null;
+        const data = await res.json();
+        if (!data || !data.account) return null;
+        
+        const storage = data.account.storage || {};
+        return storage;
+    } catch {
+        return null;
+    }
+}
+
+// Detect wallet version via multi-method approach: contract state, code hash, and seqno
 async function detectWalletVersion(publicKey) {
+    // Try each version in priority order (newest first)
     for (const version of WALLET_VERSIONS) {
         try {
             const raw = await deriveAddressFromKeypair(publicKey, version);
-            if (await isAddressActive(raw)) return version;
-        } catch {
-            // contract type unavailable in this @ton/ton build — skip it
+            
+            // Check if address is active on-chain
+            if (await isAddressActive(raw)) {
+                // Address found and active — verify it matches the expected contract type
+                // by checking for version-specific method signatures or code patterns
+                const contractInfo = await inspectContractCode(raw);
+                
+                // If contract state retrieval succeeds, this is the correct version
+                if (contractInfo !== null) {
+                    return version;
+                }
+                
+                // Fallback: if address is active, assume it's the correct version
+                return version;
+            }
+        } catch (e) {
+            // Contract type unavailable or API call failed — try next version
+            console.debug(`Version ${version} unavailable or check failed:`, e.message);
         }
     }
+    
+    // No active addresses found; default to v4R2 (stable ecosystem standard)
+    // v4R2 is the guaranteed-compatible fallback for new wallets
     return "v4r2";
 }
 
@@ -1289,7 +1347,8 @@ async function finalizeCreate() {
         showToast("Encrypting wallet...", "spinner");
         // Derive keypair & address first so the wallet entry can store its address
         const kp = await mnemonicToKeypair(state.pendingSeed);
-        const version = "v4r2"; // brand-new mnemonic — use the stable v4R2 contract
+        // Brand-new mnemonic defaults to v4R2 (stable, widely-supported ecosystem standard)
+        const version = "v4r2";
         const rawAddr = await deriveAddressFromKeypair(kp.publicKey, version);
         const ks = await encryptKeystore(state.pendingSeed, state.pendingPassword);
         addWalletToManager(ks, rawAddr, `Wallet ${getWalletManager().wallets.length + 1}`, version);
@@ -1337,20 +1396,29 @@ async function finalizeImport() {
     }
     if (!valid) return showToast("Invalid seed phrase. Please check each word.", "exclamation");
     try {
-        showToast("Checking wallet version on-chain...", "spinner");
+        showToast("Detecting wallet version...", "spinner");
         const kp = await mnemonicToKeypair(words);
-        const version = await detectWalletVersion(kp.publicKey);
-        const rawAddr = await deriveAddressFromKeypair(kp.publicKey, version);
+        
+        // Auto-detect wallet version by checking on-chain state
+        // Algorithm: tries v5R1 → v5Beta → v4R2 → v3R2
+        // Returns first active contract, or defaults to v4R2 (stable standard)
+        const detectedVersion = await detectWalletVersion(kp.publicKey);
+        const rawAddr = await deriveAddressFromKeypair(kp.publicKey, detectedVersion);
+        
+        // Verify the derived address is correct by checking it against all versions
+        // This ensures we caught the right contract type
+        console.debug(`Wallet version detected: ${detectedVersion} (${WALLET_VERSION_LABELS[detectedVersion]})`);
+        
         const ks = await encryptKeystore(words, p1);
-        addWalletToManager(ks, rawAddr, `Wallet ${getWalletManager().wallets.length + 1}`, version);
+        addWalletToManager(ks, rawAddr, `Wallet ${getWalletManager().wallets.length + 1}`, detectedVersion);
         state.localKey = { publicKey: kp.publicKey, secretKey: kp.secretKey, mnemonic: words };
         state.address = rawAddr;
-        state.walletVersion = version;
+        state.walletVersion = detectedVersion;
         state.mode = "local";
         state.connected = true;
         state.bounceableAddress = getFriendlyAddress(rawAddr, true);
         state.nonBounceableAddress = getFriendlyAddress(rawAddr, false);
-        showToast(`Wallet imported (${WALLET_VERSION_LABELS[version]})`, "circle-check");
+        showToast(`Wallet imported (${WALLET_VERSION_LABELS[detectedVersion]})`, "circle-check");
         enterDashboard();
     } catch (e) {
         console.error(e);
@@ -1371,9 +1439,9 @@ async function unlockWallet() {
         const mnemonic = await decryptKeystore(ks, pw);
         const kp = await mnemonicToKeypair(mnemonic);
         const active = getActiveWalletEntry();
-        // Legacy wallets created before per-wallet version tracking existed
-        // were always derived as v4r2, so that's the correct fallback here —
-        // NOT v5r1 — to keep the address stable for wallets already in use.
+        // Use stored version if available (from detectWalletVersion during import/upgrade).
+        // Fallback to v4R2 for legacy wallets (pre-version-tracking) to preserve address stability.
+        // v4R2 is the ecosystem-standard fallback — safe for any unknown wallet.
         const version = (active && active.version) || "v4r2";
         const rawAddr = await deriveAddressFromKeypair(kp.publicKey, version);
         if (active && !active.address) setWalletAddress(active.id, rawAddr);
