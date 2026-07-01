@@ -76,8 +76,11 @@
         .btn-outline:hover { background: rgba(255, 255, 255, 0.08); border-color: rgba(255, 215, 0, 0.25); transform: translateY(-2px); }
         .btn-danger { background: rgba(239, 68, 68, 0.12); border: 1px solid rgba(239, 68, 68, 0.4); color: #FCA5A5; font-family: inherit; font-weight: 500; padding: 10px 18px; border-radius: 10px; font-size: 0.8rem; cursor: pointer; transition: all 0.3s ease; }
         .btn-danger:hover { background: rgba(239, 68, 68, 0.22); }
-        input, textarea { background: rgba(11, 18, 48, 0.6); border: 2.25px solid rgba(255, 215, 0, 0.35); color: #F8FAFC; padding: 27px 30px; border-radius: 30px; font-size: 1.575rem; font-family: inherit; transition: all 0.3s ease; width: 100%; text-align: center; }
-        select { background: rgba(11, 18, 48, 0.6); border: 2.25px solid rgba(255, 215, 0, 0.35); color: #F8FAFC; padding: 27px 30px; border-radius: 30px; font-size: 1.575rem; font-family: inherit; transition: all 0.3s ease; width: 100%; text-align: center; text-align-last: center; }
+        input, textarea { background: rgba(11, 18, 48, 0.6) !important; border: 2.25px solid rgba(255, 215, 0, 0.35) !important; color: #F8FAFC !important; padding: 32px 28px !important; border-radius: 30px !important; font-size: 2rem !important; font-family: inherit !important; transition: all 0.3s ease; width: 100% !important; text-align: center; min-height: 76px; box-sizing: border-box; }
+        select { background: rgba(11, 18, 48, 0.6) !important; border: 2.25px solid rgba(255, 215, 0, 0.35) !important; color: #F8FAFC !important; padding: 32px 28px !important; border-radius: 30px !important; font-size: 2rem !important; font-family: inherit !important; transition: all 0.3s ease; width: 100% !important; text-align: center; text-align-last: center; min-height: 76px; box-sizing: border-box; }
+        /* Long monospace content (addresses) needs to stay left-aligned and
+           readable rather than centered/overflowing at the larger font size */
+        #send-address, #wallet-address { text-align: left !important; font-family: 'Fira Code', monospace; word-break: break-all; }
         /* Keep loader circular */
         .loader { border-radius: 50% !important; }
         input::placeholder, textarea::placeholder { color: #7A8BA8; text-align: center; }
@@ -337,7 +340,10 @@
         </div>
 
         <div class="glass-card p-5 rounded-xl">
-          <p class="text-xs text-slate-400 uppercase mb-2">Your Address</p>
+          <div class="flex items-center justify-between mb-2">
+            <p class="text-xs text-slate-400 uppercase">Your Address</p>
+            <span id="wallet-version-badge" class="mode-pill local hidden"></span>
+          </div>
           <div class="flex gap-2">
             <input type="text" id="wallet-address" readonly class="flex-1 font-mono text-xs" placeholder="Loading..." />
             <button class="btn-outline px-4" onclick="copyAddress()" title="Copy address"><i class="fas fa-copy"></i></button>
@@ -407,7 +413,10 @@
     <h3 class="text-lg font-bold gold-text"><i class="fas fa-shield-halved mr-2"></i>Reveal Seed Phrase</h3>
     <p class="text-sm text-slate-400">Enter your password to view your seed phrase. Never share it.</p>
     <div id="reveal-step1">
-      <input type="password" id="reveal-pw" placeholder="Password" autocomplete="current-password" />
+      <input type="password" id="reveal-pw" placeholder="Password" autocomplete="current-password" onkeydown="if(event.key==='Enter')doReveal()" />
+      <div id="reveal-bio-wrap" class="hidden mt-3">
+        <button class="btn-outline w-full py-3" onclick="revealWithBiometric()"><i class="fas fa-fingerprint mr-2"></i>Use Biometrics</button>
+      </div>
       <div class="flex gap-2 mt-3">
         <button class="btn-outline flex-1 py-2" onclick="closeRevealModal()">Cancel</button>
         <button class="btn-gold flex-1 py-2" onclick="doReveal()">Reveal</button>
@@ -562,6 +571,7 @@ const state = {
     selectedAsset: "TON",
     // local key state (in memory only when unlocked)
     localKey: null,       // { publicKey: Uint8Array, secretKey: Uint8Array, mnemonic: string[] }
+    walletVersion: null,  // "v5r1" | "v4r2" | "v3r2" — which wallet contract this local key derives
     pendingSeed: null,    // during create flow
     pendingPassword: null,
     pendingWordCount: 24  // 12 or 24 — chosen on the Create Wallet screen
@@ -902,26 +912,45 @@ function disableBiometricUnlock(walletId) {
         showToast("Biometric unlock disabled", "fingerprint");
     }
 }
-async function unlockWithBiometric(walletId) {
+// Shared by every password-gated action (unlock, reveal seed, etc) so
+// biometrics is a true 1:1 stand-in for typing the password anywhere it's
+// asked for, not just at unlock.
+async function getBiometricPassword(walletId) {
     const manager = getWalletManager();
     const w = manager.wallets.find(w => w.id === walletId);
-    if (!w || !w.biometric) return showToast("Biometric unlock isn't set up for this wallet", "exclamation");
+    if (!w || !w.biometric) throw new Error("Biometric unlock isn't set up for this wallet");
+    const assertion = await navigator.credentials.get({
+        publicKey: {
+            challenge: crypto.getRandomValues(new Uint8Array(32)),
+            allowCredentials: [{ id: unb64(w.biometric.credentialId).buffer, type: "public-key" }],
+            userVerification: "required",
+            extensions: { prf: { eval: { first: BIO_PRF_SALT } } }
+        }
+    });
+    const prfBits = assertion?.getClientExtensionResults()?.prf?.results?.first;
+    if (!prfBits) throw new Error("Biometric verification failed");
+    const wrapKey = await crypto.subtle.importKey("raw", prfBits, "AES-GCM", false, ["decrypt"]);
+    const plain = await crypto.subtle.decrypt({ name: "AES-GCM", iv: unb64(w.biometric.iv) }, wrapKey, unb64(w.biometric.ct));
+    return new TextDecoder().decode(plain);
+}
+async function unlockWithBiometric(walletId) {
+    if (!walletId) return;
     try {
         showToast("Confirm with biometrics...", "fingerprint");
-        const assertion = await navigator.credentials.get({
-            publicKey: {
-                challenge: crypto.getRandomValues(new Uint8Array(32)),
-                allowCredentials: [{ id: unb64(w.biometric.credentialId).buffer, type: "public-key" }],
-                userVerification: "required",
-                extensions: { prf: { eval: { first: BIO_PRF_SALT } } }
-            }
-        });
-        const prfBits = assertion?.getClientExtensionResults()?.prf?.results?.first;
-        if (!prfBits) throw new Error("Biometric verification failed");
-        const wrapKey = await crypto.subtle.importKey("raw", prfBits, "AES-GCM", false, ["decrypt"]);
-        const plain = await crypto.subtle.decrypt({ name: "AES-GCM", iv: unb64(w.biometric.iv) }, wrapKey, unb64(w.biometric.ct));
-        document.getElementById("unlock-pw").value = new TextDecoder().decode(plain);
+        document.getElementById("unlock-pw").value = await getBiometricPassword(walletId);
         await unlockWallet();
+    } catch (e) {
+        console.error(e);
+        showToast("Biometric unlock failed — use your password", "exclamation");
+    }
+}
+async function revealWithBiometric() {
+    const active = getActiveWalletEntry();
+    if (!active) return;
+    try {
+        showToast("Confirm with biometrics...", "fingerprint");
+        document.getElementById("reveal-pw").value = await getBiometricPassword(active.id);
+        await doReveal();
     } catch (e) {
         console.error(e);
         showToast("Biometric unlock failed — use your password", "exclamation");
@@ -929,6 +958,12 @@ async function unlockWithBiometric(walletId) {
 }
 async function renderUnlockBiometricButton() {
     const wrap = document.getElementById("unlock-bio-wrap");
+    if (!wrap) return;
+    const active = getActiveWalletEntry();
+    wrap.classList.toggle("hidden", !(active && active.biometric && await biometricCapable()));
+}
+async function renderRevealBiometricButton() {
+    const wrap = document.getElementById("reveal-bio-wrap");
     if (!wrap) return;
     const active = getActiveWalletEntry();
     wrap.classList.toggle("hidden", !(active && active.biometric && await biometricCapable()));
@@ -1003,10 +1038,10 @@ function getActiveWalletEntry() {
     const m = getWalletManager();
     return m.wallets.find(w => w.id === m.activeId) || null;
 }
-function addWalletToManager(encryptedData, address, name) {
+function addWalletToManager(encryptedData, address, name, version) {
     const manager = getWalletManager();
     const id = "wallet_" + Date.now() + "_" + Math.random().toString(36).slice(2, 7);
-    manager.wallets.push({ id, name: name || `Wallet ${manager.wallets.length + 1}`, address, encrypted: encryptedData, createdAt: Date.now() });
+    manager.wallets.push({ id, name: name || `Wallet ${manager.wallets.length + 1}`, address, version: version || "v4r2", encrypted: encryptedData, createdAt: Date.now() });
     manager.activeId = id;
     saveWalletManager(manager);
     return id;
@@ -1081,16 +1116,73 @@ function renderUnlockSwitcher() {
 }
 
 /* ==============================================================
-   LOCAL WALLET ADDRESS DERIVATION (Wallet v4R2)
+   LOCAL WALLET ADDRESS DERIVATION
+   ------------------------------------------------------------
+   A single mnemonic derives a DIFFERENT address per wallet contract
+   version (v3R2 / v4R2 / v5R1-W5) — same keys, different smart
+   contract, different address. This app used to hardcode v4R2,
+   which silently produced the wrong address for anyone whose real
+   wallet (e.g. Tonkeeper, MyTonWallet) is actually v5R1/W5 — the
+   ecosystem default for all new wallets since mid-2024 — or an
+   older v3R2 wallet.
+   We now detect which version is actually deployed on-chain for a
+   given mnemonic at import time, and store that choice per wallet.
    ============================================================== */
-async function deriveAddressFromKeypair(publicKey) {
-    // Build a v4R2 wallet contract via @ton/ton.
+// Detection order: newest-first, since v5R1 (W5) is the current
+// default for new wallets across Tonkeeper/MyTonWallet/etc.
+const WALLET_VERSIONS = ["v5r1", "v4r2", "v3r2"];
+const WALLET_VERSION_LABELS = { v5r1: "v5R1 (W5)", v4r2: "v4R2", v3r2: "v3R2" };
+
+function buildWalletContract(T, version, publicKey) {
+    const pk = Buffer.from(publicKey);
+    switch (version) {
+        case "v5r1":
+            if (!T.WalletContractV5R1) throw new Error("Wallet v5R1 (W5) contract unavailable in this build of @ton/ton.");
+            return T.WalletContractV5R1.create({ workchain: 0, publicKey: pk });
+        case "v4r2":
+            if (!T.WalletContractV4) throw new Error("Wallet v4R2 contract unavailable in this build of @ton/ton.");
+            return T.WalletContractV4.create({ workchain: 0, publicKey: pk });
+        case "v3r2":
+            if (!T.WalletContractV3R2) throw new Error("Wallet v3R2 contract unavailable in this build of @ton/ton.");
+            return T.WalletContractV3R2.create({ workchain: 0, publicKey: pk });
+        default:
+            throw new Error("Unknown wallet contract version: " + version);
+    }
+}
+async function deriveAddressFromKeypair(publicKey, version = "v5r1") {
     const T = window.ton;
-    if (!T || !T.WalletContractV4 || !T.beginCell) {
+    if (!T || !T.beginCell) {
         throw new Error("Wallet contract builder unavailable — the @ton/ton library failed to load. Check your network connection and try again.");
     }
-    const w = T.WalletContractV4.create({ workchain: 0, publicKey: Buffer.from(publicKey) });
+    const w = buildWalletContract(T, version, publicKey);
     return w.address.toRawString(); // "0:hex"
+}
+async function isAddressActive(rawAddr) {
+    try {
+        const url = `${getApiBase()}/api/v2/getAddressInformation?address=${encodeURIComponent(rawAddr)}`;
+        const res = await fetch(url);
+        if (!res.ok) return false;
+        const data = await res.json();
+        return !!(data && data.ok && data.result && data.result.state === "active");
+    } catch {
+        return false;
+    }
+}
+// Figure out which contract version a mnemonic's real wallet actually uses,
+// by checking each candidate address for on-chain activity (a deployed
+// contract means that address has been used before — almost certainly the
+// version the person's existing wallet app created). Falls back to v5R1
+// (the current ecosystem default) for a brand-new mnemonic with no history.
+async function detectWalletVersion(publicKey) {
+    for (const version of WALLET_VERSIONS) {
+        try {
+            const raw = await deriveAddressFromKeypair(publicKey, version);
+            if (await isAddressActive(raw)) return version;
+        } catch {
+            // contract type unavailable in this @ton/ton build — skip it
+        }
+    }
+    return "v5r1";
 }
 
 /* ==============================================================
@@ -1199,11 +1291,13 @@ async function finalizeCreate() {
         showToast("Encrypting wallet...", "spinner");
         // Derive keypair & address first so the wallet entry can store its address
         const kp = await mnemonicToKeypair(state.pendingSeed);
-        const rawAddr = await deriveAddressFromKeypair(kp.publicKey);
+        const version = "v5r1"; // brand-new mnemonic — use the current ecosystem-default contract
+        const rawAddr = await deriveAddressFromKeypair(kp.publicKey, version);
         const ks = await encryptKeystore(state.pendingSeed, state.pendingPassword);
-        addWalletToManager(ks, rawAddr, `Wallet ${getWalletManager().wallets.length + 1}`);
+        addWalletToManager(ks, rawAddr, `Wallet ${getWalletManager().wallets.length + 1}`, version);
         state.localKey = { publicKey: kp.publicKey, secretKey: kp.secretKey, mnemonic: state.pendingSeed.slice() };
         state.address = rawAddr;
+        state.walletVersion = version;
         state.mode = "local";
         state.connected = true;
         state.bounceableAddress = getFriendlyAddress(rawAddr, true);
@@ -1245,18 +1339,20 @@ async function finalizeImport() {
     }
     if (!valid) return showToast("Invalid seed phrase. Please check each word.", "exclamation");
     try {
-        showToast("Importing wallet...", "spinner");
+        showToast("Checking wallet version on-chain...", "spinner");
         const kp = await mnemonicToKeypair(words);
-        const rawAddr = await deriveAddressFromKeypair(kp.publicKey);
+        const version = await detectWalletVersion(kp.publicKey);
+        const rawAddr = await deriveAddressFromKeypair(kp.publicKey, version);
         const ks = await encryptKeystore(words, p1);
-        addWalletToManager(ks, rawAddr, `Wallet ${getWalletManager().wallets.length + 1}`);
+        addWalletToManager(ks, rawAddr, `Wallet ${getWalletManager().wallets.length + 1}`, version);
         state.localKey = { publicKey: kp.publicKey, secretKey: kp.secretKey, mnemonic: words };
         state.address = rawAddr;
+        state.walletVersion = version;
         state.mode = "local";
         state.connected = true;
         state.bounceableAddress = getFriendlyAddress(rawAddr, true);
         state.nonBounceableAddress = getFriendlyAddress(rawAddr, false);
-        showToast("Wallet imported successfully!", "circle-check");
+        showToast(`Wallet imported (${WALLET_VERSION_LABELS[version]})`, "circle-check");
         enterDashboard();
     } catch (e) {
         console.error(e);
@@ -1276,11 +1372,16 @@ async function unlockWallet() {
         showToast("Decrypting...", "spinner");
         const mnemonic = await decryptKeystore(ks, pw);
         const kp = await mnemonicToKeypair(mnemonic);
-        const rawAddr = await deriveAddressFromKeypair(kp.publicKey);
         const active = getActiveWalletEntry();
+        // Legacy wallets created before per-wallet version tracking existed
+        // were always derived as v4r2, so that's the correct fallback here —
+        // NOT v5r1 — to keep the address stable for wallets already in use.
+        const version = (active && active.version) || "v4r2";
+        const rawAddr = await deriveAddressFromKeypair(kp.publicKey, version);
         if (active && !active.address) setWalletAddress(active.id, rawAddr);
         state.localKey = { publicKey: kp.publicKey, secretKey: kp.secretKey, mnemonic };
         state.address = rawAddr;
+        state.walletVersion = version;
         state.mode = "local";
         state.connected = true;
         state.bounceableAddress = getFriendlyAddress(rawAddr, true);
@@ -1295,6 +1396,7 @@ async function unlockWallet() {
 function lockWallet() {
     if (state.mode === "local") {
         state.localKey = null;
+        state.walletVersion = null;
         state.connected = false;
         state.address = null;
         state.mode = null;
@@ -1312,6 +1414,7 @@ function confirmForget() {
     if (!confirm(msg)) return;
     clearKeystore();
     state.localKey = null;
+    state.walletVersion = null;
     state.connected = false;
     state.address = null;
     state.mode = null;
@@ -1396,6 +1499,13 @@ function enterDashboard() {
     else { badge.classList.add("tonconnect"); document.getElementById("mode-badge-text").textContent = "TonConnect"; }
     document.getElementById("net-badge-text").textContent = "Mainnet";
     document.getElementById("wallet-address").value = state.nonBounceableAddress || state.address || "";
+    const vBadge = document.getElementById("wallet-version-badge");
+    if (state.mode === "local" && state.walletVersion) {
+        vBadge.textContent = WALLET_VERSION_LABELS[state.walletVersion] || state.walletVersion;
+        vBadge.classList.remove("hidden");
+    } else {
+        vBadge.classList.add("hidden");
+    }
     renderWalletSwitcher();
     renderBiometricRow();
     renderQR();
@@ -1674,11 +1784,12 @@ async function sendViaLocal(tx) {
     if (!state.localKey) throw new Error("Wallet is locked");
     if (tx.assetSel !== "TON") throw new Error("Jetton sending from local wallet is not yet supported in this build.");
     const T = window.ton;
-    if (!T || !T.WalletContractV4 || !T.TonClient || !T.internal) throw new Error("Ton library not loaded");
+    if (!T || !T.TonClient || !T.internal) throw new Error("Ton library not loaded");
     const client = new T.TonClient({
         endpoint: "https://toncenter.com/api/v2/jsonRPC"
     });
-    const w = T.WalletContractV4.create({ workchain: 0, publicKey: Buffer.from(state.localKey.publicKey) });
+    const version = state.walletVersion || "v4r2";
+    const w = buildWalletContract(T, version, state.localKey.publicKey);
     const contract = client.open(w);
     const seqno = await contract.getSeqno();
     await contract.sendTransfer({
@@ -1704,6 +1815,7 @@ function showSeedModal() {
     document.getElementById("reveal-step1").classList.remove("hidden-section");
     document.getElementById("reveal-step2").classList.add("hidden-section");
     document.getElementById("reveal-pw").value = "";
+    renderRevealBiometricButton();
     setTimeout(() => document.getElementById("reveal-pw").focus(), 50);
 }
 function closeRevealModal() {
