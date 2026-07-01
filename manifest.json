@@ -1,0 +1,16 @@
+{
+  "name": "Neon Wallet",
+  "short_name": "Neon Wallet",
+  "description": "Premium TON blockchain wallet with integrated swaps, QR scanning, and multi-chain expansion.",
+  "start_url": "/wallet.html",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#050816",
+  "theme_color": "#FFD700",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
