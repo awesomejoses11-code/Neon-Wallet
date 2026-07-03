@@ -960,36 +960,50 @@ async function resolveSeedKeypair(words, preference = "auto") {
 }
 
 /* ==============================================================
-   CRYPTO: Self-contained wallet address derivation (v3R2 / v4R2)
+   CRYPTO: Self-contained wallet address derivation (v3R2 / v4R2 / v5R1)
    ------------------------------------------------------------
    deriveAddressFromKeypair() normally asks @ton/ton (loaded from
    esm.sh) to build the wallet contract and read its address. If
    that CDN import ever fails, address derivation used to have no
    fallback at all — import would hang or error out completely.
    This is a from-scratch implementation of the same math for the
-   two most common contract versions (v3R2, v4R2), using only the
-   embedded compiled contract code and Web Crypto's SHA-256:
+   three supported contract versions (v3R2, v4R2, v5R1), using only
+   the embedded compiled contract code and Web Crypto's SHA-256:
      1. Parse the wallet's compiled code as a BoC (bag of cells)
         and compute its cell hash + depth (same algorithm TVM/
         @ton/ton use for cell "representation hashes").
-     2. Build the wallet's data cell (seqno=0, subwallet_id, the
-        public key, and — for v4R2 — an empty plugin dict).
+     2. Build the wallet's data cell — layout differs per version:
+        v3R2/v4R2 use seqno + subwallet_id + pubkey (+ empty plugin
+        dict for v4R2); v5R1 uses is_signature_auth_allowed + seqno
+        + wallet_id (network/workchain/version/subwallet packed +
+        XORed with the network global id) + pubkey + empty
+        extensions dict.
      3. Build the StateInit cell (code ref + data ref) and hash it;
         that hash IS the wallet address's account ID.
-   v5R1 isn't included here — its contract layout is newer/more
-   complex and isn't needed for the offline-recovery case this
-   exists for. verifySelfContainedFallback() cross-checks this
-   against the real @ton/ton library whenever it's available, so
-   we know before relying on it whether it's actually correct on
-   this device/browser.
+   v5Beta isn't included here — it's rarely used and wasn't needed
+   for the offline-recovery case this exists for.
+   verifySelfContainedFallback() cross-checks this against the real
+   @ton/ton library whenever it's available, so we know before
+   relying on it whether it's actually correct on this device/browser.
    ============================================================== */
 const WALLET_CODE_BOC_HEX = {
     // Source: compiled wallet contract code, as embedded by tonweb/@ton
     // libraries (toncenter/tonweb WalletContractV3.js / WalletContractV4R2.js).
     v3r2: "B5EE9C724101010100710000DEFF0020DD2082014C97BA218201339CBAB19F71B0ED44D0D31FD31F31D70BFFE304E0A4F2608308D71820D31FD31FD31FF82313BBF263ED44D0D31FD31FD3FFD15132BAF2A15144BAF2A204F901541055F910F2A3F8009320D74A96D307D402FB00E8D101A4C8CB1FCB1FCBFFC9ED5410BD6DAD",
-    v4r2: "B5EE9C72410214010002D4000114FF00F4A413F4BCF2C80B010201200203020148040504F8F28308D71820D31FD31FD31F02F823BBF264ED44D0D31FD31FD3FFF404D15143BAF2A15151BAF2A205F901541064F910F2A3F80024A4C8CB1F5240CB1F5230CBFF5210F400C9ED54F80F01D30721C0009F6C519320D74A96D307D402FB00E830E021C001E30021C002E30001C0039130E30D03A4C8CB1F12CB1FCBFF1011121302E6D001D0D3032171B0925F04E022D749C120925F04E002D31F218210706C7567BD22821064737472BDB0925F05E003FA403020FA4401C8CA07CBFFC9D0ED44D0810140D721F404305C810108F40A6FA131B3925F07E005D33FC8258210706C7567BA923830E30D03821064737472BA925F06E30D06070201200809007801FA00F40430F8276F2230500AA121BEF2E0508210706C7567831EB17080185004CB0526CF1658FA0219F400CB6917CB1F5260CB3F20C98040FB0006008A5004810108F45930ED44D0810140D720C801CF16F400C9ED540172B08E23821064737472831EB17080185005CB055003CF1623FA0213CB6ACB1FCB3FC98040FB00925F03E20201200A0B0059BD242B6F6A2684080A06B90FA0218470D4080847A4937D29910CE6903E9FF9837812801B7810148987159F31840201580C0D0011B8C97ED44D0D70B1F8003DB29DFB513420405035C87D010C00B23281F2FFF274006040423D029BE84C600201200E0F0019ADCE76A26840206B90EB85FFC00019AF1DF6A26840106B90EB858FC0006ED207FA00D4D422F90005C8CA0715CBFFC9D077748018C8CB05CB0222CF165005FA0214CB6B12CCCCC973FB00C84014810108F451F2A7020070810108D718FA00D33FC8542047810108F451F2A782106E6F746570748018C8CB05CB025006CF165004FA0214CB6A12CB1FCB3FC973FB0002006C810108D718FA00D33F305224810108F459F2A782106473747270748018C8CB05CB025005CF165003FA0213CB6ACB1F12CB3FC973FB00000AF400C9ED54696225E5"
+    v4r2: "B5EE9C72410214010002D4000114FF00F4A413F4BCF2C80B010201200203020148040504F8F28308D71820D31FD31FD31F02F823BBF264ED44D0D31FD31FD3FFF404D15143BAF2A15151BAF2A205F901541064F910F2A3F80024A4C8CB1F5240CB1F5230CBFF5210F400C9ED54F80F01D30721C0009F6C519320D74A96D307D402FB00E830E021C001E30021C002E30001C0039130E30D03A4C8CB1F12CB1FCBFF1011121302E6D001D0D3032171B0925F04E022D749C120925F04E002D31F218210706C7567BD22821064737472BDB0925F05E003FA403020FA4401C8CA07CBFFC9D0ED44D0810140D721F404305C810108F40A6FA131B3925F07E005D33FC8258210706C7567BA923830E30D03821064737472BA925F06E30D06070201200809007801FA00F40430F8276F2230500AA121BEF2E0508210706C7567831EB17080185004CB0526CF1658FA0219F400CB6917CB1F5260CB3F20C98040FB0006008A5004810108F45930ED44D0810140D720C801CF16F400C9ED540172B08E23821064737472831EB17080185005CB055003CF1623FA0213CB6ACB1FCB3FC98040FB00925F03E20201200A0B0059BD242B6F6A2684080A06B90FA0218470D4080847A4937D29910CE6903E9FF9837812801B7810148987159F31840201580C0D0011B8C97ED44D0D70B1F8003DB29DFB513420405035C87D010C00B23281F2FFF274006040423D029BE84C600201200E0F0019ADCE76A26840206B90EB85FFC00019AF1DF6A26840106B90EB858FC0006ED207FA00D4D422F90005C8CA0715CBFFC9D077748018C8CB05CB0222CF165005FA0214CB6B12CCCCC973FB00C84014810108F451F2A7020070810108D718FA00D33FC8542047810108F451F2A782106E6F746570748018C8CB05CB025006CF165004FA0214CB6A12CB1FCB3FC973FB0002006C810108D718FA00D33F305224810108F459F2A782106473747270748018C8CB05CB025005CF165003FA0213CB6ACB1F12CB3FC973FB00000AF400C9ED54696225E5",
+    // Source: compiled W5/v5R1 wallet contract code, as embedded by @ton/ton's WalletContractV5R1.js.
+    v5r1: "b5ee9c7241021401000281000114ff00f4a413f4bcf2c80b01020120020d020148030402dcd020d749c120915b8f6320d70b1f2082106578746ebd21821073696e74bdb0925f03e082106578746eba8eb48020d72101d074d721fa4030fa44f828fa443058bd915be0ed44d0810141d721f4058307f40e6fa1319130e18040d721707fdb3ce03120d749810280b99130e070e2100f020120050c020120060902016e07080019adce76a2684020eb90eb85ffc00019af1df6a2684010eb90eb858fc00201480a0b0017b325fb51341c75c875c2c7e00011b262fb513435c280200019be5f0f6a2684080a0eb90fa02c0102f20e011e20d70b1f82107369676ebaf2e08a7f0f01e68ef0eda2edfb218308d722028308d723208020d721d31fd31fd31fed44d0d200d31f20d31fd3ffd70a000af90140ccf9109a28945f0adb31e1f2c087df02b35007b0f2d0845125baf2e0855036baf2e086f823bbf2d0882292f800de01a47fc8ca00cb1f01cf16c9ed542092f80fde70db3cd81003f6eda2edfb02f404216e926c218e4c0221d73930709421c700b38e2d01d72820761e436c20d749c008f2e09320d74ac002f2e09320d71d06c712c2005230b0f2d089d74cd7393001a4e86c128407bbf2e093d74ac000f2e093ed55e2d20001c000915be0ebd72c08142091709601d72c081c12e25210b1e30f20d74a111213009601fa4001fa44f828fa443058baf2e091ed44d0810141d718f405049d7fc8ca0040048307f453f2e08b8e14038307f45bf2e08c22d70a00216e01b3b0f2d090e2c85003cf1612f400c9ed54007230d72c08248e2d21f2e092d200ed44d0d2005113baf2d08f54503091319c01810140d721d70a00f2e08ee2c8ca0058cf16c9ed5493f2c08de20010935bdb31e1d74cd0b4d6c35e"
 };
 const WALLET_DEFAULT_SUBWALLET_ID = 698983191; // + workchain (0 here); same constant @ton/ton/tonweb use
+const NETWORK_GLOBAL_ID = -239; // mainnet (this app doesn't support testnet — see getApiBase())
+// Builds v5R1's packed wallet_id: mirrors @ton/ton's storeWalletIdV5R1() — a
+// 32-bit "context" of [1 bit isClientContext=1][8 bit workchain][8 bit version
+// code][15 bit subwallet], XORed with the network global id. Signed-int32
+// XOR here matches the library's BigInt XOR for these value ranges.
+function walletIdV5R1(networkGlobalId, workchain, walletVersionRaw, subwalletNumber) {
+    const context = (1 << 31) | ((workchain & 0xFF) << 23) | ((walletVersionRaw & 0xFF) << 15) | (subwalletNumber & 0x7FFF);
+    return networkGlobalId ^ context;
+}
 function hexToBytes(hex) {
     const out = new Uint8Array(hex.length / 2);
     for (let i = 0; i < out.length; i++) out[i] = parseInt(hex.substr(i * 2, 2), 16);
@@ -1080,17 +1094,26 @@ async function getCodeCellHashDepth(version) {
 }
 async function buildDataCellHashDepth(version, publicKey) {
     const bw = new BitWriter();
-    bw.writeUint(0, 32);                        // seqno
-    bw.writeUint(WALLET_DEFAULT_SUBWALLET_ID, 32); // subwallet_id (workchain 0)
-    bw.writeBytes(publicKey);                   // 256-bit public key
-    if (version === "v4r2") bw.writeUint(0, 1);  // empty plugins dict
+    if (version === "v5r1") {
+        bw.writeUint(1, 1);                     // is_signature_auth_allowed
+        bw.writeUint(0, 32);                    // seqno
+        const walletId = walletIdV5R1(NETWORK_GLOBAL_ID, 0 /* workchain */, 0 /* v5r1 version code */, 0 /* subwallet number */);
+        bw.writeUint(walletId, 32);             // wallet_id
+        bw.writeBytes(publicKey);               // 256-bit public key
+        bw.writeUint(0, 1);                     // empty extensions dict
+    } else {
+        bw.writeUint(0, 32);                        // seqno
+        bw.writeUint(WALLET_DEFAULT_SUBWALLET_ID, 32); // subwallet_id (workchain 0)
+        bw.writeBytes(publicKey);                   // 256-bit public key
+        if (version === "v4r2") bw.writeUint(0, 1);  // empty plugins dict
+    }
     const { d2, data } = bw.finalize();
     const hashBuf = await crypto.subtle.digest("SHA-256", concatBytes([new Uint8Array([0, d2]), data]));
     return { hash: new Uint8Array(hashBuf), depth: 0 };
 }
 async function selfContainedDeriveAddress(publicKey, version) {
-    if (version !== "v3r2" && version !== "v4r2") {
-        throw new Error(`Offline address derivation only supports v3R2/v4R2 (not ${WALLET_VERSION_LABELS[version] || version}) — reconnect and try again.`);
+    if (version !== "v3r2" && version !== "v4r2" && version !== "v5r1") {
+        throw new Error(`Offline address derivation only supports v3R2/v4R2/v5R1 (not ${WALLET_VERSION_LABELS[version] || version}) — reconnect and try again.`);
     }
     const code = await getCodeCellHashDepth(version);
     const data = await buildDataCellHashDepth(version, publicKey);
@@ -1122,9 +1145,16 @@ const FALLBACK_VERIFIED_KEY = "neon_wallet_fallback_verified_v1";
 async function verifySelfContainedFallback() {
     try {
         const T = window.ton;
-        if (!T || !T.WalletContractV3R2 || !T.WalletContractV4) return;
+        if (!T) return;
+        // Map each offline-supported version to the @ton/ton class that must be
+        // present to verify it. A version is skipped (not failed) if this build
+        // of the library doesn't include that class.
+        const REQUIRED_CLASS = { v3r2: "WalletContractV3R2", v4r2: "WalletContractV4", v5r1: "WalletContractV5R1" };
         const testPk = crypto.getRandomValues(new Uint8Array(32));
-        for (const version of ["v3r2", "v4r2"]) {
+        let anyChecked = false;
+        for (const version of ["v3r2", "v4r2", "v5r1"]) {
+            if (!T[REQUIRED_CLASS[version]]) continue;
+            anyChecked = true;
             const official = buildWalletContract(T, version, testPk).address.toRawString();
             const fallback = await selfContainedDeriveAddress(testPk, version);
             if (official.toLowerCase() !== fallback.toLowerCase()) {
@@ -1133,6 +1163,7 @@ async function verifySelfContainedFallback() {
                 return;
             }
         }
+        if (!anyChecked) return;
         localStorage.setItem(FALLBACK_VERIFIED_KEY, JSON.stringify({ ok: true, ts: Date.now() }));
         console.debug("Offline address derivation verified against @ton/ton ✓");
     } catch (e) {
