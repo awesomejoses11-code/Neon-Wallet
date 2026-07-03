@@ -23,7 +23,7 @@
          same 2048-word English list we'd otherwise have to ship separately. -->
     <script type="module">
         import { Buffer } from "https://esm.sh/buffer@6.0.3";
-        import * as TonCore from "https://esm.sh/@ton/ton@13.11.1";
+        import * as TonCore from "https://esm.sh/@ton/ton@16.3.0";
         import * as TonCrypto from "https://esm.sh/@ton/crypto@3.3.0";
         window.Buffer = Buffer;
         window.ton = TonCore;
@@ -173,6 +173,7 @@
         <div class="grid gap-3">
           <button class="btn-gold py-4 text-base flex items-center justify-center gap-2" onclick="goCreate()"><i class="fas fa-plus-circle"></i> Create New Wallet</button>
           <button class="btn-outline py-4 text-base flex items-center justify-center gap-2" onclick="goImport()"><i class="fas fa-key"></i> Import with Seed Phrase</button>
+          <button class="btn-outline py-4 text-base flex items-center justify-center gap-2" onclick="goRestoreBackup()"><i class="fas fa-file-import"></i> Restore from Backup File</button>
           <div class="flex items-center gap-3 my-1"><div class="flex-1 h-px bg-slate-700/50"></div><span class="text-xs text-slate-500 uppercase">or</span><div class="flex-1 h-px bg-slate-700/50"></div></div>
           <button class="btn-outline py-4 text-base flex items-center justify-center gap-2" onclick="connectTonConnect()"><i class="fas fa-plug"></i> Connect TonConnect Wallet</button>
         </div>
@@ -258,6 +259,19 @@
         </div>
         <p class="text-sm text-slate-400">Enter your 12 or 24-word seed phrase. Words are separated by spaces.</p>
         <div>
+          <label class="text-xs text-slate-400 uppercase block mb-2">Seed Type</label>
+          <div class="flex gap-2 text-xs">
+            <label class="glass-card flex-1 p-3 rounded-xl cursor-pointer flex items-start gap-2">
+              <input type="radio" name="import-seed-type" value="native" checked class="mt-0.5" />
+              <span><span class="font-semibold block">TON native</span><span class="text-slate-500">Tonkeeper, MyTonWallet, and most TON wallets</span></span>
+            </label>
+            <label class="glass-card flex-1 p-3 rounded-xl cursor-pointer flex items-start gap-2">
+              <input type="radio" name="import-seed-type" value="bip39" class="mt-0.5" />
+              <span><span class="font-semibold block">BIP39 (Ledger / TrustWallet)</span><span class="text-slate-500">Standard BIP39, path m/44'/607'/0'</span></span>
+            </label>
+          </div>
+        </div>
+        <div>
           <label class="text-xs text-slate-400 uppercase block mb-2">Seed Phrase</label>
           <textarea id="import-seed" placeholder="word1 word2 word3 ... word24" autocomplete="off" spellcheck="false"></textarea>
           <p class="text-xs text-slate-500 mt-1" id="import-seed-count">0 words (12 or 24 expected)</p>
@@ -274,6 +288,34 @@
         </div>
         <div class="info-box"><i class="fas fa-circle-info mr-1"></i>Your seed phrase never leaves this device. It is encrypted with your password and stored only in localStorage.</div>
         <button class="btn-gold w-full py-3" onclick="finalizeImport()"><i class="fas fa-key mr-2"></i>Import Wallet</button>
+      </div>
+    </section>
+
+    <!-- ===================== RESTORE FROM BACKUP FILE ===================== -->
+    <section id="screen-restore-backup" class="screen">
+      <div class="glass p-6 md:p-8 rounded-2xl space-y-5">
+        <div class="flex items-center gap-3">
+          <button class="btn-outline px-3 py-2" onclick="goWelcome()"><i class="fas fa-arrow-left"></i></button>
+          <h2 class="text-xl font-bold">Restore from Backup</h2>
+        </div>
+        <p class="text-sm text-slate-400">Restore a wallet from a Neon Wallet backup JSON file (created via Export Backup). No network lookup needed — the file already contains the address and wallet version.</p>
+        <div>
+          <label class="text-xs text-slate-400 uppercase block mb-2">Backup File</label>
+          <input type="file" id="restore-file" accept="application/json,.json" />
+          <p class="text-xs text-slate-500 mt-1" id="restore-file-status">No file selected</p>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="text-xs text-slate-400 uppercase block mb-2">New Password</label>
+            <input type="password" id="restore-pw1" placeholder="At least 8 chars" autocomplete="new-password" />
+          </div>
+          <div>
+            <label class="text-xs text-slate-400 uppercase block mb-2">Confirm</label>
+            <input type="password" id="restore-pw2" placeholder="Repeat" autocomplete="new-password" />
+          </div>
+        </div>
+        <div class="warning-box"><i class="fas fa-exclamation-triangle mr-1"></i>Backup files are unencrypted and contain your seed phrase in plain text. Delete the file from your downloads once restored.</div>
+        <button class="btn-gold w-full py-3" onclick="finalizeRestoreBackup()"><i class="fas fa-file-import mr-2"></i>Restore Wallet</button>
       </div>
     </section>
 
@@ -399,6 +441,9 @@
         </div>
         <div class="flex gap-2">
           <button class="btn-outline flex-1 py-2 text-sm" onclick="showSeedModal()"><i class="fas fa-eye mr-1"></i>Reveal Seed</button>
+          <button class="btn-outline flex-1 py-2 text-sm" onclick="showExportBackupModal()"><i class="fas fa-file-export mr-1"></i>Export Backup</button>
+        </div>
+        <div class="flex gap-2">
           <button class="btn-outline flex-1 py-2 text-sm" onclick="lockWallet()"><i class="fas fa-lock mr-1"></i>Lock</button>
           <button class="btn-danger flex-1 py-2 text-sm" onclick="confirmDisconnect()"><i class="fas fa-sign-out-alt mr-1"></i>Disconnect</button>
         </div>
@@ -464,6 +509,32 @@
     <div class="flex gap-2">
       <button class="btn-outline flex-1 py-2" onclick="closeConfirmModal()">Cancel</button>
       <button class="btn-gold flex-1 py-2" id="cm-confirm-btn" onclick="confirmSend()">Send</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== IMPORT: CANDIDATE PICKER MODAL ===================== -->
+<div id="import-candidates-modal" class="modal-backdrop hidden-section">
+  <div class="modal space-y-4">
+    <h3 class="text-lg font-bold gold-text"><i class="fas fa-list-check mr-2"></i>Choose Your Wallet</h3>
+    <p class="text-sm text-slate-400">This seed phrase can produce a different address for each wallet contract version. We checked on-chain balance and activity for each — pick the one that's actually yours.</p>
+    <div id="import-candidates-list" class="space-y-2"></div>
+    <div class="flex gap-2">
+      <button class="btn-outline flex-1 py-2" onclick="closeImportCandidatesModal()">Cancel</button>
+      <button class="btn-gold flex-1 py-2" onclick="confirmImportCandidate()">Continue</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== EXPORT BACKUP MODAL ===================== -->
+<div id="export-backup-modal" class="modal-backdrop hidden-section">
+  <div class="modal space-y-4">
+    <h3 class="text-lg font-bold gold-text"><i class="fas fa-file-export mr-2"></i>Export Backup</h3>
+    <p class="text-sm text-slate-400">Downloads a JSON file with your seed phrase, wallet version, address, and public key. Anyone with this file can access your wallet — store it as carefully as your seed phrase.</p>
+    <input type="password" id="export-backup-pw" placeholder="Password" autocomplete="current-password" onkeydown="if(event.key==='Enter')doExportBackup()" />
+    <div class="flex gap-2 mt-1">
+      <button class="btn-outline flex-1 py-2" onclick="closeExportBackupModal()">Cancel</button>
+      <button class="btn-gold flex-1 py-2" onclick="doExportBackup()">Download Backup</button>
     </div>
   </div>
 </div>
@@ -646,7 +717,7 @@ async function copyToClipboard(text, successMsg = "Copied to clipboard", icon = 
 /* ==============================================================
    SCREEN ROUTER
    ============================================================== */
-const SCREENS = ["welcome","create-pw","create-seed","create-verify","import","unlock","dashboard"];
+const SCREENS = ["welcome","create-pw","create-seed","create-verify","import","restore-backup","unlock","dashboard"];
 function showScreen(name) {
     SCREENS.forEach(s => document.getElementById("screen-" + s)?.classList.remove("active"));
     document.getElementById("screen-" + name)?.classList.add("active");
@@ -655,6 +726,7 @@ function showScreen(name) {
 function goWelcome() { state.pendingSeed = null; state.pendingPassword = null; showScreen("welcome"); refreshExistingBanner(); }
 function goCreate()  { showScreen("create-pw"); }
 function goImport()  { showScreen("import"); }
+function goRestoreBackup() { showScreen("restore-backup"); }
 function goUnlock()  { showScreen("unlock"); renderUnlockSwitcher(); renderUnlockBiometricButton(); setTimeout(() => document.getElementById("unlock-pw")?.focus(), 50); }
 
 /* ==============================================================
@@ -1131,7 +1203,7 @@ function renderUnlockSwitcher() {
 // Detection order: v4r2 is the stable, widely-supported version.
 // v5R1 (W5) support requires a newer build of @ton/ton.
 // Fallback to v3r2 for legacy wallets.
-const WALLET_VERSIONS = ["v5r1", "v5beta", "v4r2", "v3r2", "v3r1"];
+const WALLET_VERSIONS = ["v5r1", "v5beta", "v4r2", "v3r2"];
 const WALLET_VERSION_LABELS = { v4r2: "v4R2", v3r2: "v3R2", v5r1: "v5R1", v5beta: "v5 Beta" };
 
 function buildWalletContract(T, version, publicKey) {
@@ -1155,12 +1227,108 @@ function buildWalletContract(T, version, publicKey) {
 }
 async function deriveAddressFromKeypair(publicKey, version = "v4r2") {
     const T = window.ton;
-    if (!T || !T.beginCell) {
+    if (T && T.beginCell) {
+        try {
+            const w = buildWalletContract(T, version, publicKey);
+            return w.address.toRawString(); // "0:hex"
+        } catch (e) {
+            if (version !== "v3r2" && version !== "v4r2") throw e;
+            console.warn(`@ton/ton contract build failed for ${version}, using self-contained fallback:`, e.message);
+        }
+    } else if (version !== "v3r2" && version !== "v4r2") {
         throw new Error("Wallet contract builder unavailable — the @ton/ton library failed to load. Check your network connection and try again.");
     }
-    const w = buildWalletContract(T, version, publicKey);
-    return w.address.toRawString(); // "0:hex"
+    // @ton/ton unavailable (or failed) and this is v3R2/v4R2 — derive without it.
+    return manualDeriveAddress(version, publicKey, 0);
 }
+
+/* ==============================================================
+   SELF-CONTAINED ADDRESS DERIVATION (v3R2 / v4R2 only)
+   ------------------------------------------------------------
+   Recovers the single point of failure above: if the esm.sh CDN
+   import of @ton/ton fails, address derivation used to be
+   impossible entirely. This reimplements just enough of TON's cell
+   spec (crypto/vm/cells/DataCell.cpp) by hand to compute the same
+   address for wallet v3R2/v4R2, with no library dependency beyond
+   Web Crypto's SHA-256:
+     - build the wallet's StateInit cell (code ref + data ref)
+     - hash it the same way TON hashes any ordinary, level-0 cell:
+       sha256(refsDescriptor . bitsDescriptor . paddedBits .
+              childDepths . childHashes)
+   The wallet code cell is a fixed constant per version (identical
+   bytecode for every wallet of that version — only the data cell
+   differs, by public key). Its hash+depth below were computed with
+   the real @ton/core library and cross-checked against this exact
+   algorithm across many keypairs before shipping, so this fallback
+   produces byte-identical addresses to @ton/ton, not just plausible
+   ones. v5R1 still needs the real library — it isn't reimplemented
+   here.
+   ============================================================== */
+function hexToBytes(hex) {
+    const out = new Uint8Array(hex.length / 2);
+    for (let i = 0; i < out.length; i++) out[i] = parseInt(hex.substr(i * 2, 2), 16);
+    return out;
+}
+function bytesToHex(bytes) {
+    return Array.from(bytes, b => b.toString(16).padStart(2, "0")).join("");
+}
+const WALLET_CODE_INFO = {
+    v3r2: { hash: hexToBytes("84dafa449f98a6987789ba232358072bc0f76dc4524002a5d0918b9a75d2d599"), depth: 0 },
+    v4r2: { hash: hexToBytes("feb5ff6820e2ff0d9483e7e0d62c817d846789fb4ae580c878866d959dabd5c0"), depth: 7 },
+};
+function bitsToPaddedBytes(bits) {
+    // TON's hash-repr padding: if bit length isn't byte-aligned, append a
+    // single 1 bit then 0-pad to the next byte boundary.
+    const out = bits.slice();
+    if (out.length % 8 !== 0) {
+        out.push(1);
+        while (out.length % 8 !== 0) out.push(0);
+    }
+    const bytes = new Uint8Array(out.length / 8);
+    for (let i = 0; i < out.length; i += 8) {
+        let byte = 0;
+        for (let j = 0; j < 8; j++) byte = (byte << 1) | out[i + j];
+        bytes[i / 8] = byte;
+    }
+    return bytes;
+}
+function cellBitsDescriptor(bitLen) { return Math.ceil(bitLen / 8) + Math.floor(bitLen / 8); }
+async function hashOrdinaryCell(bitsArray, refs) {
+    // refs: [{ hash: Uint8Array(32), depth: number }] — ordinary, level-0 cells only.
+    const d1 = refs.length; // refCount + 8*isExotic(0) + 32*levelMask(0)
+    const d2 = cellBitsDescriptor(bitsArray.length);
+    const dataBytes = bitsToPaddedBytes(bitsArray);
+    const repr = new Uint8Array(2 + dataBytes.length + refs.length * 2 + refs.length * 32);
+    let o = 0;
+    repr[o++] = d1; repr[o++] = d2;
+    repr.set(dataBytes, o); o += dataBytes.length;
+    for (const r of refs) { repr[o++] = Math.floor(r.depth / 256); repr[o++] = r.depth % 256; }
+    for (const r of refs) { repr.set(r.hash, o); o += 32; }
+    const hash = new Uint8Array(await crypto.subtle.digest("SHA-256", repr));
+    const depth = refs.length === 0 ? 0 : 1 + Math.max(...refs.map(r => r.depth));
+    return { hash, depth };
+}
+function writeUintBits(bits, value, width) {
+    for (let i = width - 1; i >= 0; i--) bits.push((value >>> i) & 1);
+}
+async function manualDeriveAddress(version, publicKeyBytes, workchain = 0) {
+    if (version !== "v3r2" && version !== "v4r2") throw new Error("Self-contained derivation only supports v3R2/v4R2.");
+    const walletId = (698983191 + workchain) >>> 0; // @ton/ton's default subwallet id when none is given
+    const dataBits = [];
+    writeUintBits(dataBits, 0, 32); // seqno
+    writeUintBits(dataBits, walletId, 32);
+    for (const b of publicKeyBytes) for (let i = 7; i >= 0; i--) dataBits.push((b >> i) & 1);
+    if (version === "v4r2") dataBits.push(0); // empty plugins dict
+    const dataCell = await hashOrdinaryCell(dataBits, []);
+    const codeCell = WALLET_CODE_INFO[version];
+    // StateInit: splitDepth?(0) special?(0) code^(1) data^(1) libraries(empty=0)
+    const stateInit = await hashOrdinaryCell([0, 0, 1, 1, 0], [
+        { hash: codeCell.hash, depth: codeCell.depth },
+        { hash: dataCell.hash, depth: dataCell.depth },
+    ]);
+    return `${workchain}:${bytesToHex(stateInit.hash)}`;
+}
+
 async function isAddressActive(rawAddr) {
     try {
         const url = `${getApiBase()}/api/v2/getAddressInformation?address=${encodeURIComponent(rawAddr)}`;
@@ -1190,53 +1358,31 @@ async function getContractCodeHash(rawAddr) {
     }
 }
 
-// Inspect contract state init to identify wallet version
-async function inspectContractCode(rawAddr) {
-    try {
-        const apiBase = `https://tonapi.io/v2`;
-        const url = `${apiBase}/blockchain/accounts/${encodeURIComponent(rawAddr)}`;
-        const res = await fetch(url);
-        if (!res.ok) return null;
-        const data = await res.json();
-        if (!data || !data.account) return null;
-        
-        const storage = data.account.storage || {};
-        return storage;
-    } catch {
-        return null;
-    }
-}
-
-// Detect wallet version via multi-method approach: contract state, code hash, and seqno
-async function detectWalletVersion(publicKey) {
-    // Try each version in priority order (newest first)
-    for (const version of WALLET_VERSIONS) {
+/* ==============================================================
+   IMPORT: WALLET VERSION CANDIDATES
+   ------------------------------------------------------------
+   Previously this silently auto-selected the first version with
+   on-chain activity. We now derive all candidate addresses, fetch
+   balance/activity for each, and let the person doing the import
+   pick — auto-selection can silently land funds transfers on the
+   wrong address if two versions both happen to be deployed.
+   ============================================================== */
+const IMPORT_CANDIDATE_VERSIONS = ["v5r1", "v4r2", "v3r2"];
+async function computeImportCandidates(publicKey) {
+    const results = [];
+    for (const version of IMPORT_CANDIDATE_VERSIONS) {
         try {
-            const raw = await deriveAddressFromKeypair(publicKey, version);
-            
-            // Check if address is active on-chain
-            if (await isAddressActive(raw)) {
-                // Address found and active — verify it matches the expected contract type
-                // by checking for version-specific method signatures or code patterns
-                const contractInfo = await inspectContractCode(raw);
-                
-                // If contract state retrieval succeeds, this is the correct version
-                if (contractInfo !== null) {
-                    return version;
-                }
-                
-                // Fallback: if address is active, assume it's the correct version
-                return version;
-            }
+            const rawAddr = await deriveAddressFromKeypair(publicKey, version);
+            results.push({ version, rawAddr });
         } catch (e) {
-            // Contract type unavailable or API call failed — try next version
-            console.debug(`Version ${version} unavailable or check failed:`, e.message);
+            console.debug(`Candidate ${version} unavailable:`, e.message);
         }
     }
-    
-    // No active addresses found; default to v4R2 (stable ecosystem standard)
-    // v4R2 is the guaranteed-compatible fallback for new wallets
-    return "v4r2";
+    await Promise.all(results.map(async (r) => {
+        try { r.balance = await fetchTonBalance(r.rawAddr); } catch { r.balance = null; }
+        try { r.active = await isAddressActive(r.rawAddr); } catch { r.active = false; }
+    }));
+    return results;
 }
 
 /* ==============================================================
