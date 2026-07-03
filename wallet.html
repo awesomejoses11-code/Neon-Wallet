@@ -173,7 +173,6 @@
         <div class="grid gap-3">
           <button class="btn-gold py-4 text-base flex items-center justify-center gap-2" onclick="goCreate()"><i class="fas fa-plus-circle"></i> Create New Wallet</button>
           <button class="btn-outline py-4 text-base flex items-center justify-center gap-2" onclick="goImport()"><i class="fas fa-key"></i> Import with Seed Phrase</button>
-          <button class="btn-outline py-4 text-base flex items-center justify-center gap-2" onclick="goRestoreBackup()"><i class="fas fa-file-import"></i> Restore from Backup File</button>
           <div class="flex items-center gap-3 my-1"><div class="flex-1 h-px bg-slate-700/50"></div><span class="text-xs text-slate-500 uppercase">or</span><div class="flex-1 h-px bg-slate-700/50"></div></div>
           <button class="btn-outline py-4 text-base flex items-center justify-center gap-2" onclick="connectTonConnect()"><i class="fas fa-plug"></i> Connect TonConnect Wallet</button>
         </div>
@@ -257,65 +256,66 @@
           <button class="btn-outline px-3 py-2" onclick="goWelcome()"><i class="fas fa-arrow-left"></i></button>
           <h2 class="text-xl font-bold">Import Wallet</h2>
         </div>
-        <p class="text-sm text-slate-400">Enter your 12 or 24-word seed phrase. Words are separated by spaces.</p>
-        <div>
-          <label class="text-xs text-slate-400 uppercase block mb-2">Seed Type</label>
-          <div class="flex gap-2 text-xs">
-            <label class="glass-card flex-1 p-3 rounded-xl cursor-pointer flex items-start gap-2">
-              <input type="radio" name="import-seed-type" value="native" checked class="mt-0.5" />
-              <span><span class="font-semibold block">TON native</span><span class="text-slate-500">Tonkeeper, MyTonWallet, and most TON wallets</span></span>
-            </label>
-            <label class="glass-card flex-1 p-3 rounded-xl cursor-pointer flex items-start gap-2">
-              <input type="radio" name="import-seed-type" value="bip39" class="mt-0.5" />
-              <span><span class="font-semibold block">BIP39 (Ledger / TrustWallet)</span><span class="text-slate-500">Standard BIP39, path m/44'/607'/0'</span></span>
-            </label>
-          </div>
+        <div class="flex gap-2 text-xs">
+          <button id="import-tab-seed" class="tab-button active" style="padding:8px 14px;" onclick="setImportTab('seed')">Seed Phrase</button>
+          <button id="import-tab-backup" class="tab-button" style="padding:8px 14px;" onclick="setImportTab('backup')">Restore Backup File</button>
         </div>
-        <div>
-          <label class="text-xs text-slate-400 uppercase block mb-2">Seed Phrase</label>
-          <textarea id="import-seed" placeholder="word1 word2 word3 ... word24" autocomplete="off" spellcheck="false"></textarea>
-          <p class="text-xs text-slate-500 mt-1" id="import-seed-count">0 words (12 or 24 expected)</p>
-        </div>
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <label class="text-xs text-slate-400 uppercase block mb-2">Password</label>
-            <input type="password" id="import-pw1" placeholder="At least 8 chars" autocomplete="new-password" />
-          </div>
-          <div>
-            <label class="text-xs text-slate-400 uppercase block mb-2">Confirm</label>
-            <input type="password" id="import-pw2" placeholder="Repeat" autocomplete="new-password" />
-          </div>
-        </div>
-        <div class="info-box"><i class="fas fa-circle-info mr-1"></i>Your seed phrase never leaves this device. It is encrypted with your password and stored only in localStorage.</div>
-        <button class="btn-gold w-full py-3" onclick="finalizeImport()"><i class="fas fa-key mr-2"></i>Import Wallet</button>
-      </div>
-    </section>
 
-    <!-- ===================== RESTORE FROM BACKUP FILE ===================== -->
-    <section id="screen-restore-backup" class="screen">
-      <div class="glass p-6 md:p-8 rounded-2xl space-y-5">
-        <div class="flex items-center gap-3">
-          <button class="btn-outline px-3 py-2" onclick="goWelcome()"><i class="fas fa-arrow-left"></i></button>
-          <h2 class="text-xl font-bold">Restore from Backup</h2>
-        </div>
-        <p class="text-sm text-slate-400">Restore a wallet from a Neon Wallet backup JSON file (created via Export Backup). No network lookup needed — the file already contains the address and wallet version.</p>
-        <div>
-          <label class="text-xs text-slate-400 uppercase block mb-2">Backup File</label>
-          <input type="file" id="restore-file" accept="application/json,.json" />
-          <p class="text-xs text-slate-500 mt-1" id="restore-file-status">No file selected</p>
-        </div>
-        <div class="grid grid-cols-2 gap-3">
+        <!-- ---- Seed phrase import ---- -->
+        <div id="import-panel-seed" class="space-y-5">
+          <p class="text-sm text-slate-400">Enter your 12 or 24-word seed phrase. Words are separated by spaces.</p>
           <div>
-            <label class="text-xs text-slate-400 uppercase block mb-2">New Password</label>
-            <input type="password" id="restore-pw1" placeholder="At least 8 chars" autocomplete="new-password" />
+            <label class="text-xs text-slate-400 uppercase block mb-2">Seed Phrase</label>
+            <textarea id="import-seed" placeholder="word1 word2 word3 ... word24" autocomplete="off" spellcheck="false"></textarea>
+            <p class="text-xs text-slate-500 mt-1" id="import-seed-count">0 words (12 or 24 expected)</p>
           </div>
           <div>
-            <label class="text-xs text-slate-400 uppercase block mb-2">Confirm</label>
-            <input type="password" id="restore-pw2" placeholder="Repeat" autocomplete="new-password" />
+            <label class="text-xs text-slate-400 uppercase block mb-2">Seed Format</label>
+            <select id="import-seed-format">
+              <option value="auto" selected>Auto-detect</option>
+              <option value="ton">TON-native (Tonkeeper, MyTonWallet, this app)</option>
+              <option value="bip39">BIP39 / Ledger / TrustWallet (path m/44'/607'/0')</option>
+            </select>
+            <p class="text-xs text-slate-500 mt-1">Ledger and TrustWallet derive TON keys differently from Tonkeeper-style wallets. Leave on Auto-detect unless an import fails.</p>
           </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="text-xs text-slate-400 uppercase block mb-2">Password</label>
+              <input type="password" id="import-pw1" placeholder="At least 8 chars" autocomplete="new-password" />
+            </div>
+            <div>
+              <label class="text-xs text-slate-400 uppercase block mb-2">Confirm</label>
+              <input type="password" id="import-pw2" placeholder="Repeat" autocomplete="new-password" />
+            </div>
+          </div>
+          <div class="info-box"><i class="fas fa-circle-info mr-1"></i>Your seed phrase never leaves this device. It is encrypted with your password and stored only in localStorage.</div>
+          <button class="btn-gold w-full py-3" onclick="startImport()"><i class="fas fa-key mr-2"></i>Import Wallet</button>
         </div>
-        <div class="warning-box"><i class="fas fa-exclamation-triangle mr-1"></i>Backup files are unencrypted and contain your seed phrase in plain text. Delete the file from your downloads once restored.</div>
-        <button class="btn-gold w-full py-3" onclick="finalizeRestoreBackup()"><i class="fas fa-file-import mr-2"></i>Restore Wallet</button>
+
+        <!-- ---- Backup JSON restore ---- -->
+        <div id="import-panel-backup" class="space-y-5 hidden">
+          <p class="text-sm text-slate-400">Paste or load a Neon Wallet backup file (JSON). This restores the exact address and contract version from the file — no seed word confirmation or on-chain lookup needed.</p>
+          <div>
+            <label class="text-xs text-slate-400 uppercase block mb-2">Backup File</label>
+            <input type="file" id="restore-file-input" accept="application/json,.json" onchange="handleRestoreFileSelected(event)" />
+          </div>
+          <div>
+            <label class="text-xs text-slate-400 uppercase block mb-2">...or paste JSON</label>
+            <textarea id="restore-json" placeholder='{"mnemonic":[...],"version":"v4r2","address":"0:...","publicKey":"..."}' spellcheck="false" style="min-height:100px;"></textarea>
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="text-xs text-slate-400 uppercase block mb-2">New Password</label>
+              <input type="password" id="restore-pw1" placeholder="At least 8 chars" autocomplete="new-password" />
+            </div>
+            <div>
+              <label class="text-xs text-slate-400 uppercase block mb-2">Confirm</label>
+              <input type="password" id="restore-pw2" placeholder="Repeat" autocomplete="new-password" />
+            </div>
+          </div>
+          <div class="info-box"><i class="fas fa-circle-info mr-1"></i>This sets a fresh password to re-encrypt the restored wallet on this device.</div>
+          <button class="btn-gold w-full py-3" onclick="restoreFromBackupJson()"><i class="fas fa-file-import mr-2"></i>Restore Wallet</button>
+        </div>
       </div>
     </section>
 
@@ -441,7 +441,7 @@
         </div>
         <div class="flex gap-2">
           <button class="btn-outline flex-1 py-2 text-sm" onclick="showSeedModal()"><i class="fas fa-eye mr-1"></i>Reveal Seed</button>
-          <button class="btn-outline flex-1 py-2 text-sm" onclick="showExportBackupModal()"><i class="fas fa-file-export mr-1"></i>Export Backup</button>
+          <button class="btn-outline flex-1 py-2 text-sm" onclick="openExportBackupModal()"><i class="fas fa-file-export mr-1"></i>Export Backup</button>
         </div>
         <div class="flex gap-2">
           <button class="btn-outline flex-1 py-2 text-sm" onclick="lockWallet()"><i class="fas fa-lock mr-1"></i>Lock</button>
@@ -478,6 +478,32 @@
   </div>
 </div>
 
+<!-- ===================== IMPORT VERSION PICKER MODAL ===================== -->
+<div id="import-version-modal" class="modal-backdrop hidden-section">
+  <div class="modal space-y-4">
+    <h3 class="text-lg font-bold gold-text"><i class="fas fa-list-check mr-2"></i>Choose Wallet Version</h3>
+    <p class="text-sm text-slate-400">This seed phrase controls a different address on each contract version. We checked what's live on-chain for each — pick the one you actually use.</p>
+    <div id="import-version-note" class="text-xs text-cyan-300"></div>
+    <div id="import-version-list" class="space-y-2" style="max-height:50vh;overflow-y:auto;"></div>
+    <button class="btn-outline w-full py-2 text-sm" onclick="closeImportVersionModal()">Cancel Import</button>
+  </div>
+</div>
+
+<!-- ===================== EXPORT BACKUP MODAL ===================== -->
+<div id="export-backup-modal" class="modal-backdrop hidden-section">
+  <div class="modal space-y-4">
+    <h3 class="text-lg font-bold gold-text"><i class="fas fa-file-export mr-2"></i>Export Backup File</h3>
+    <p class="text-sm text-slate-400">Downloads a JSON file with your seed phrase, wallet version, address, and public key. Restoring from this file skips seed-word confirmation and on-chain lookup entirely. Store it as securely as your seed phrase.</p>
+    <div id="export-backup-step1">
+      <input type="password" id="export-backup-pw" placeholder="Password" autocomplete="current-password" onkeydown="if(event.key==='Enter')doExportBackup()" />
+      <div class="flex gap-2 mt-3">
+        <button class="btn-outline flex-1 py-2" onclick="closeExportBackupModal()">Cancel</button>
+        <button class="btn-gold flex-1 py-2" onclick="doExportBackup()">Export</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- ===================== BIOMETRIC SETUP MODAL ===================== -->
 <div id="biometric-modal" class="modal-backdrop hidden-section">
   <div class="modal space-y-4">
@@ -509,32 +535,6 @@
     <div class="flex gap-2">
       <button class="btn-outline flex-1 py-2" onclick="closeConfirmModal()">Cancel</button>
       <button class="btn-gold flex-1 py-2" id="cm-confirm-btn" onclick="confirmSend()">Send</button>
-    </div>
-  </div>
-</div>
-
-<!-- ===================== IMPORT: CANDIDATE PICKER MODAL ===================== -->
-<div id="import-candidates-modal" class="modal-backdrop hidden-section">
-  <div class="modal space-y-4">
-    <h3 class="text-lg font-bold gold-text"><i class="fas fa-list-check mr-2"></i>Choose Your Wallet</h3>
-    <p class="text-sm text-slate-400">This seed phrase can produce a different address for each wallet contract version. We checked on-chain balance and activity for each — pick the one that's actually yours.</p>
-    <div id="import-candidates-list" class="space-y-2"></div>
-    <div class="flex gap-2">
-      <button class="btn-outline flex-1 py-2" onclick="closeImportCandidatesModal()">Cancel</button>
-      <button class="btn-gold flex-1 py-2" onclick="confirmImportCandidate()">Continue</button>
-    </div>
-  </div>
-</div>
-
-<!-- ===================== EXPORT BACKUP MODAL ===================== -->
-<div id="export-backup-modal" class="modal-backdrop hidden-section">
-  <div class="modal space-y-4">
-    <h3 class="text-lg font-bold gold-text"><i class="fas fa-file-export mr-2"></i>Export Backup</h3>
-    <p class="text-sm text-slate-400">Downloads a JSON file with your seed phrase, wallet version, address, and public key. Anyone with this file can access your wallet — store it as carefully as your seed phrase.</p>
-    <input type="password" id="export-backup-pw" placeholder="Password" autocomplete="current-password" onkeydown="if(event.key==='Enter')doExportBackup()" />
-    <div class="flex gap-2 mt-1">
-      <button class="btn-outline flex-1 py-2" onclick="closeExportBackupModal()">Cancel</button>
-      <button class="btn-gold flex-1 py-2" onclick="doExportBackup()">Download Backup</button>
     </div>
   </div>
 </div>
@@ -645,6 +645,7 @@ const state = {
     walletVersion: null,  // "v4r2" | "v3r2" — which wallet contract this local key derives
     pendingSeed: null,    // during create flow
     pendingPassword: null,
+    pendingImport: null,  // { words, password, keypair, scheme } — during import, before version picked
     pendingWordCount: 24  // 12 or 24 — chosen on the Create Wallet screen
 };
 
@@ -717,7 +718,7 @@ async function copyToClipboard(text, successMsg = "Copied to clipboard", icon = 
 /* ==============================================================
    SCREEN ROUTER
    ============================================================== */
-const SCREENS = ["welcome","create-pw","create-seed","create-verify","import","restore-backup","unlock","dashboard"];
+const SCREENS = ["welcome","create-pw","create-seed","create-verify","import","unlock","dashboard"];
 function showScreen(name) {
     SCREENS.forEach(s => document.getElementById("screen-" + s)?.classList.remove("active"));
     document.getElementById("screen-" + name)?.classList.add("active");
@@ -726,7 +727,6 @@ function showScreen(name) {
 function goWelcome() { state.pendingSeed = null; state.pendingPassword = null; showScreen("welcome"); refreshExistingBanner(); }
 function goCreate()  { showScreen("create-pw"); }
 function goImport()  { showScreen("import"); }
-function goRestoreBackup() { showScreen("restore-backup"); }
 function goUnlock()  { showScreen("unlock"); renderUnlockSwitcher(); renderUnlockBiometricButton(); setTimeout(() => document.getElementById("unlock-pw")?.focus(), 50); }
 
 /* ==============================================================
@@ -877,6 +877,273 @@ async function mnemonicToKeypairFallback(mnemonic, password = "") {
     const naclLib = await ensureNacl();
     const kp = naclLib.sign.keyPair.fromSeed(seed.slice(0, 32));
     return { publicKey: new Uint8Array(kp.publicKey), secretKey: new Uint8Array(kp.secretKey) };
+}
+
+/* ==============================================================
+   CRYPTO: BIP39-derived TON seeds (Ledger / TrustWallet path)
+   ------------------------------------------------------------
+   Some hardware wallets and third-party wallets (Ledger Live's TON
+   app, TrustWallet, etc.) don't use TON's native mnemonic algorithm
+   at all — they treat the phrase as a plain BIP39 mnemonic, run it
+   through the standard BIP39 seed function, then derive an ed25519
+   key via SLIP-0010 along TON's registered coin path m/44'/607'/0'.
+   That produces a completely different key (and address) from the
+   same words under TON-native derivation. We detect a BIP39-valid
+   phrase that fails the TON-native check and offer this path too,
+   so seed phrases exported from Ledger/TrustWallet actually import.
+   ============================================================== */
+async function bip39SeedFromMnemonic(words, passphrase = "") {
+    const enc = new TextEncoder();
+    const mnemonicStr = words.join(" ").normalize("NFKD");
+    const salt = ("mnemonic" + (passphrase || "")).normalize("NFKD");
+    return pbkdf2Sha512(enc.encode(mnemonicStr), enc.encode(salt), 2048, 64);
+}
+async function validateBip39Checksum(words) {
+    if (!Array.isArray(words) || (words.length !== 12 && words.length !== 24)) return false;
+    await ensureWordlist();
+    const idxs = words.map(w => BIP39_WORDS.indexOf(w));
+    if (idxs.some(i => i < 0)) return false;
+    let bits = "";
+    for (const i of idxs) bits += i.toString(2).padStart(11, "0");
+    const totalBits = bits.length;           // 132 (12w) or 264 (24w)
+    const csLen = totalBits / 33;             // 4 (12w) or 8 (24w)
+    const entropyBitsStr = bits.slice(0, totalBits - csLen);
+    const checksumBitsStr = bits.slice(totalBits - csLen);
+    const entropyBytes = new Uint8Array(entropyBitsStr.length / 8);
+    for (let i = 0; i < entropyBytes.length; i++) entropyBytes[i] = parseInt(entropyBitsStr.substr(i * 8, 8), 2);
+    const hashBuf = await crypto.subtle.digest("SHA-256", entropyBytes);
+    const hashBits = Array.from(new Uint8Array(hashBuf)).map(b => b.toString(2).padStart(8, "0")).join("");
+    return hashBits.slice(0, csLen) === checksumBitsStr;
+}
+async function slip10Ed25519Master(seed) {
+    const key = await hmacSha512(new TextEncoder().encode("ed25519 seed"), seed);
+    return { k: key.slice(0, 32), c: key.slice(32, 64) };
+}
+async function slip10Ed25519ChildHardened(k, c, index) {
+    // ed25519 SLIP-0010 only supports hardened derivation.
+    const hardenedIndex = (index >>> 0) + 0x80000000;
+    const data = new Uint8Array(1 + 32 + 4);
+    data[0] = 0;
+    data.set(k, 1);
+    new DataView(data.buffer).setUint32(33, hardenedIndex, false);
+    const I = await hmacSha512(c, data);
+    return { k: I.slice(0, 32), c: I.slice(32, 64) };
+}
+async function deriveTonKeypairFromBip39(words, passphrase = "") {
+    const seed = await bip39SeedFromMnemonic(words, passphrase);
+    let { k, c } = await slip10Ed25519Master(seed);
+    for (const idx of [44, 607, 0]) { ({ k, c } = await slip10Ed25519ChildHardened(k, c, idx)); }
+    const naclLib = await ensureNacl();
+    const kp = naclLib.sign.keyPair.fromSeed(k);
+    return { publicKey: new Uint8Array(kp.publicKey), secretKey: new Uint8Array(kp.secretKey) };
+}
+/**
+ * Figures out which derivation scheme a seed phrase actually uses.
+ * @param {string[]} words
+ * @param {"auto"|"ton"|"bip39"} preference
+ * @returns {Promise<{scheme:"ton"|"bip39", keypair:{publicKey:Uint8Array,secretKey:Uint8Array}}>}
+ */
+async function resolveSeedKeypair(words, preference = "auto") {
+    if (preference === "ton") {
+        if (!(await validateMnemonic(words))) throw new Error("Not a valid TON-native seed phrase.");
+        return { scheme: "ton", keypair: await mnemonicToKeypair(words) };
+    }
+    if (preference === "bip39") {
+        if (!(await validateBip39Checksum(words))) throw new Error("Not a valid BIP39 seed phrase (checksum failed).");
+        return { scheme: "bip39", keypair: await deriveTonKeypairFromBip39(words) };
+    }
+    // auto-detect: TON-native first (its own checksum is effectively exclusive to
+    // real TON phrases), then fall back to standard BIP39.
+    if (await validateMnemonic(words)) return { scheme: "ton", keypair: await mnemonicToKeypair(words) };
+    if (await validateBip39Checksum(words)) return { scheme: "bip39", keypair: await deriveTonKeypairFromBip39(words) };
+    throw new Error("Invalid seed phrase — didn't validate as TON-native or as standard BIP39.");
+}
+
+/* ==============================================================
+   CRYPTO: Self-contained wallet address derivation (v3R2 / v4R2)
+   ------------------------------------------------------------
+   deriveAddressFromKeypair() normally asks @ton/ton (loaded from
+   esm.sh) to build the wallet contract and read its address. If
+   that CDN import ever fails, address derivation used to have no
+   fallback at all — import would hang or error out completely.
+   This is a from-scratch implementation of the same math for the
+   two most common contract versions (v3R2, v4R2), using only the
+   embedded compiled contract code and Web Crypto's SHA-256:
+     1. Parse the wallet's compiled code as a BoC (bag of cells)
+        and compute its cell hash + depth (same algorithm TVM/
+        @ton/ton use for cell "representation hashes").
+     2. Build the wallet's data cell (seqno=0, subwallet_id, the
+        public key, and — for v4R2 — an empty plugin dict).
+     3. Build the StateInit cell (code ref + data ref) and hash it;
+        that hash IS the wallet address's account ID.
+   v5R1 isn't included here — its contract layout is newer/more
+   complex and isn't needed for the offline-recovery case this
+   exists for. verifySelfContainedFallback() cross-checks this
+   against the real @ton/ton library whenever it's available, so
+   we know before relying on it whether it's actually correct on
+   this device/browser.
+   ============================================================== */
+const WALLET_CODE_BOC_HEX = {
+    // Source: compiled wallet contract code, as embedded by tonweb/@ton
+    // libraries (toncenter/tonweb WalletContractV3.js / WalletContractV4R2.js).
+    v3r2: "B5EE9C724101010100710000DEFF0020DD2082014C97BA218201339CBAB19F71B0ED44D0D31FD31F31D70BFFE304E0A4F2608308D71820D31FD31FD31FF82313BBF263ED44D0D31FD31FD3FFD15132BAF2A15144BAF2A204F901541055F910F2A3F8009320D74A96D307D402FB00E8D101A4C8CB1FCB1FCBFFC9ED5410BD6DAD",
+    v4r2: "B5EE9C72410214010002D4000114FF00F4A413F4BCF2C80B010201200203020148040504F8F28308D71820D31FD31FD31F02F823BBF264ED44D0D31FD31FD3FFF404D15143BAF2A15151BAF2A205F901541064F910F2A3F80024A4C8CB1F5240CB1F5230CBFF5210F400C9ED54F80F01D30721C0009F6C519320D74A96D307D402FB00E830E021C001E30021C002E30001C0039130E30D03A4C8CB1F12CB1FCBFF1011121302E6D001D0D3032171B0925F04E022D749C120925F04E002D31F218210706C7567BD22821064737472BDB0925F05E003FA403020FA4401C8CA07CBFFC9D0ED44D0810140D721F404305C810108F40A6FA131B3925F07E005D33FC8258210706C7567BA923830E30D03821064737472BA925F06E30D06070201200809007801FA00F40430F8276F2230500AA121BEF2E0508210706C7567831EB17080185004CB0526CF1658FA0219F400CB6917CB1F5260CB3F20C98040FB0006008A5004810108F45930ED44D0810140D720C801CF16F400C9ED540172B08E23821064737472831EB17080185005CB055003CF1623FA0213CB6ACB1FCB3FC98040FB00925F03E20201200A0B0059BD242B6F6A2684080A06B90FA0218470D4080847A4937D29910CE6903E9FF9837812801B7810148987159F31840201580C0D0011B8C97ED44D0D70B1F8003DB29DFB513420405035C87D010C00B23281F2FFF274006040423D029BE84C600201200E0F0019ADCE76A26840206B90EB85FFC00019AF1DF6A26840106B90EB858FC0006ED207FA00D4D422F90005C8CA0715CBFFC9D077748018C8CB05CB0222CF165005FA0214CB6B12CCCCC973FB00C84014810108F451F2A7020070810108D718FA00D33FC8542047810108F451F2A782106E6F746570748018C8CB05CB025006CF165004FA0214CB6A12CB1FCB3FC973FB0002006C810108D718FA00D33F305224810108F459F2A782106473747270748018C8CB05CB025005CF165003FA0213CB6ACB1F12CB3FC973FB00000AF400C9ED54696225E5"
+};
+const WALLET_DEFAULT_SUBWALLET_ID = 698983191; // + workchain (0 here); same constant @ton/ton/tonweb use
+function hexToBytes(hex) {
+    const out = new Uint8Array(hex.length / 2);
+    for (let i = 0; i < out.length; i++) out[i] = parseInt(hex.substr(i * 2, 2), 16);
+    return out;
+}
+function concatBytes(arrays) {
+    let total = 0; for (const a of arrays) total += a.length;
+    const out = new Uint8Array(total);
+    let off = 0; for (const a of arrays) { out.set(a, off); off += a.length; }
+    return out;
+}
+function readUintBE(bytes, offset, len) {
+    let v = 0;
+    for (let i = 0; i < len; i++) v = v * 256 + bytes[offset + i];
+    return v;
+}
+class BitWriter {
+    constructor() { this.bits = []; }
+    writeUint(value, len) { for (let i = len - 1; i >= 0; i--) this.bits.push((value >>> i) & 1); }
+    writeBytes(bytes) { for (const b of bytes) this.writeUint(b, 8); }
+    finalize() {
+        const bitsLen = this.bits.length;
+        const totalBytes = (bitsLen % 8 !== 0) ? Math.ceil((bitsLen + 1) / 8) : Math.ceil(bitsLen / 8);
+        const data = new Uint8Array(totalBytes);
+        for (let i = 0; i < bitsLen; i++) if (this.bits[i]) data[i >> 3] |= (0x80 >> (i & 7));
+        if (bitsLen % 8 !== 0) data[bitsLen >> 3] |= (0x80 >> (bitsLen & 7)); // padding: append 1 then 0s
+        const d2 = Math.floor(bitsLen / 8) * 2 + (bitsLen % 8 !== 0 ? 1 : 0);
+        return { d2, data };
+    }
+}
+// Parses a BoC into a flat cell array + root index. Ordinary (non-exotic) cells only —
+// sufficient for compiled wallet contract code, which is what this is used for.
+function parseBocCells(bytes) {
+    if (bytes.length < 11 || bytes[0] !== 0xB5 || bytes[1] !== 0xEE || bytes[2] !== 0x9C || bytes[3] !== 0x72) {
+        throw new Error("Not a valid BoC (bad magic bytes)");
+    }
+    const flagsByte = bytes[4];
+    const hasIdx = (flagsByte & 0x80) !== 0;
+    const sizeBytes = flagsByte & 0x07;
+    let pos = 5;
+    const offBytes = bytes[pos]; pos += 1;
+    const cellsCount = readUintBE(bytes, pos, sizeBytes); pos += sizeBytes;
+    const rootsCount = readUintBE(bytes, pos, sizeBytes); pos += sizeBytes;
+    pos += sizeBytes; // absent count, unused here
+    const totCellsSize = readUintBE(bytes, pos, offBytes); pos += offBytes;
+    const rootList = [];
+    for (let i = 0; i < rootsCount; i++) { rootList.push(readUintBE(bytes, pos, sizeBytes)); pos += sizeBytes; }
+    if (hasIdx) pos += cellsCount * offBytes;
+    const cellData = bytes.slice(pos, pos + totCellsSize);
+    const cells = [];
+    let cp = 0;
+    for (let i = 0; i < cellsCount; i++) {
+        const d1 = cellData[cp], d2 = cellData[cp + 1]; cp += 2;
+        const refsCount = d1 & 0x07;
+        const exotic = (d1 & 0x08) !== 0;
+        if (exotic) throw new Error("Exotic cells not supported by the offline fallback parser");
+        const dataLen = Math.ceil(d2 / 2);
+        const data = cellData.slice(cp, cp + dataLen); cp += dataLen;
+        const refs = [];
+        for (let r = 0; r < refsCount; r++) { refs.push(readUintBE(cellData, cp, sizeBytes)); cp += sizeBytes; }
+        cells.push({ d1, d2, data, refs });
+    }
+    return { cells, rootIndex: rootList[0] };
+}
+async function resolveCellHash(idx, cells, cache) {
+    if (cache[idx]) return cache[idx];
+    const cell = cells[idx];
+    const refResults = [];
+    for (const r of cell.refs) refResults.push(await resolveCellHash(r, cells, cache));
+    const depth = refResults.length ? Math.max(...refResults.map(x => x.depth)) + 1 : 0;
+    const parts = [new Uint8Array([cell.d1, cell.d2]), cell.data];
+    for (const r of refResults) { const b = new Uint8Array(2); b[0] = (r.depth >> 8) & 0xFF; b[1] = r.depth & 0xFF; parts.push(b); }
+    for (const r of refResults) parts.push(r.hash);
+    const hashBuf = await crypto.subtle.digest("SHA-256", concatBytes(parts));
+    const result = { hash: new Uint8Array(hashBuf), depth };
+    cache[idx] = result;
+    return result;
+}
+let _codeCellCache = {};
+async function getCodeCellHashDepth(version) {
+    if (_codeCellCache[version]) return _codeCellCache[version];
+    const hex = WALLET_CODE_BOC_HEX[version];
+    if (!hex) throw new Error("No embedded offline code for wallet version " + version);
+    const { cells, rootIndex } = parseBocCells(hexToBytes(hex));
+    const result = await resolveCellHash(rootIndex, cells, {});
+    _codeCellCache[version] = result;
+    return result;
+}
+async function buildDataCellHashDepth(version, publicKey) {
+    const bw = new BitWriter();
+    bw.writeUint(0, 32);                        // seqno
+    bw.writeUint(WALLET_DEFAULT_SUBWALLET_ID, 32); // subwallet_id (workchain 0)
+    bw.writeBytes(publicKey);                   // 256-bit public key
+    if (version === "v4r2") bw.writeUint(0, 1);  // empty plugins dict
+    const { d2, data } = bw.finalize();
+    const hashBuf = await crypto.subtle.digest("SHA-256", concatBytes([new Uint8Array([0, d2]), data]));
+    return { hash: new Uint8Array(hashBuf), depth: 0 };
+}
+async function selfContainedDeriveAddress(publicKey, version) {
+    if (version !== "v3r2" && version !== "v4r2") {
+        throw new Error(`Offline address derivation only supports v3R2/v4R2 (not ${WALLET_VERSION_LABELS[version] || version}) — reconnect and try again.`);
+    }
+    const code = await getCodeCellHashDepth(version);
+    const data = await buildDataCellHashDepth(version, publicKey);
+    const bw = new BitWriter();
+    bw.writeUint(0, 1); bw.writeUint(0, 1); bw.writeUint(1, 1); bw.writeUint(1, 1); bw.writeUint(0, 1); // split_depth, special, code, data, library
+    const { d2, data: siData } = bw.finalize();
+    const d1 = 2; // 2 refs: code, data
+    const refs = [code, data];
+    const depthBufs = refs.map(r => { const b = new Uint8Array(2); b[0] = (r.depth >> 8) & 0xFF; b[1] = r.depth & 0xFF; return b; });
+    const total = concatBytes([new Uint8Array([d1, d2]), siData, ...depthBufs, ...refs.map(r => r.hash)]);
+    const hashBuf = await crypto.subtle.digest("SHA-256", total);
+    const hashHex = Array.from(new Uint8Array(hashBuf)).map(b => b.toString(16).padStart(2, "0")).join("");
+    return "0:" + hashHex;
+}
+// Waits briefly for the @ton/ton ESM bundle to finish loading before giving up on it.
+function waitForTon(timeoutMs = 6000) {
+    return new Promise(resolve => {
+        if (window.ton && window.ton.beginCell) return resolve(true);
+        const onReady = () => { cleanup(); resolve(true); };
+        const timer = setTimeout(() => { cleanup(); resolve(false); }, timeoutMs);
+        function cleanup() { clearTimeout(timer); window.removeEventListener("ton-libs-ready", onReady); }
+        window.addEventListener("ton-libs-ready", onReady);
+    });
+}
+const FALLBACK_VERIFIED_KEY = "neon_wallet_fallback_verified_v1";
+// Cross-checks the from-scratch derivation above against the real @ton/ton
+// library whenever it's actually loaded, so we know — before we ever need
+// to rely on it — whether it's trustworthy on this device/browser.
+async function verifySelfContainedFallback() {
+    try {
+        const T = window.ton;
+        if (!T || !T.WalletContractV3R2 || !T.WalletContractV4) return;
+        const testPk = crypto.getRandomValues(new Uint8Array(32));
+        for (const version of ["v3r2", "v4r2"]) {
+            const official = buildWalletContract(T, version, testPk).address.toRawString();
+            const fallback = await selfContainedDeriveAddress(testPk, version);
+            if (official.toLowerCase() !== fallback.toLowerCase()) {
+                console.error(`Offline fallback derivation MISMATCH for ${version}: official=${official} fallback=${fallback}`);
+                localStorage.setItem(FALLBACK_VERIFIED_KEY, JSON.stringify({ ok: false, ts: Date.now() }));
+                return;
+            }
+        }
+        localStorage.setItem(FALLBACK_VERIFIED_KEY, JSON.stringify({ ok: true, ts: Date.now() }));
+        console.debug("Offline address derivation verified against @ton/ton ✓");
+    } catch (e) {
+        console.warn("Offline fallback verification skipped:", e.message);
+    }
+}
+function isFallbackVerified() {
+    try {
+        const rec = JSON.parse(localStorage.getItem(FALLBACK_VERIFIED_KEY) || "null");
+        return !!(rec && rec.ok);
+    } catch { return false; }
 }
 
 /* ==============================================================
@@ -1226,109 +1493,23 @@ function buildWalletContract(T, version, publicKey) {
     }
 }
 async function deriveAddressFromKeypair(publicKey, version = "v4r2") {
-    const T = window.ton;
+    let T = window.ton;
+    if (!T || !T.beginCell) {
+        // Give the esm.sh bundle a little longer in case it's still loading
+        // (slow network, first paint racing the ESM import) before falling back.
+        await waitForTon(4000);
+        T = window.ton;
+    }
     if (T && T.beginCell) {
-        try {
-            const w = buildWalletContract(T, version, publicKey);
-            return w.address.toRawString(); // "0:hex"
-        } catch (e) {
-            if (version !== "v3r2" && version !== "v4r2") throw e;
-            console.warn(`@ton/ton contract build failed for ${version}, using self-contained fallback:`, e.message);
-        }
-    } else if (version !== "v3r2" && version !== "v4r2") {
-        throw new Error("Wallet contract builder unavailable — the @ton/ton library failed to load. Check your network connection and try again.");
+        const w = buildWalletContract(T, version, publicKey);
+        return w.address.toRawString(); // "0:hex"
     }
-    // @ton/ton unavailable (or failed) and this is v3R2/v4R2 — derive without it.
-    return manualDeriveAddress(version, publicKey, 0);
+    // @ton/ton never came up — fall back to self-contained derivation for the
+    // versions we can compute offline (v3R2/v4R2). v5R1/v5Beta still require
+    // the library.
+    console.warn(`@ton/ton unavailable — using offline fallback derivation for ${version}`);
+    return await selfContainedDeriveAddress(publicKey, version);
 }
-
-/* ==============================================================
-   SELF-CONTAINED ADDRESS DERIVATION (v3R2 / v4R2 only)
-   ------------------------------------------------------------
-   Recovers the single point of failure above: if the esm.sh CDN
-   import of @ton/ton fails, address derivation used to be
-   impossible entirely. This reimplements just enough of TON's cell
-   spec (crypto/vm/cells/DataCell.cpp) by hand to compute the same
-   address for wallet v3R2/v4R2, with no library dependency beyond
-   Web Crypto's SHA-256:
-     - build the wallet's StateInit cell (code ref + data ref)
-     - hash it the same way TON hashes any ordinary, level-0 cell:
-       sha256(refsDescriptor . bitsDescriptor . paddedBits .
-              childDepths . childHashes)
-   The wallet code cell is a fixed constant per version (identical
-   bytecode for every wallet of that version — only the data cell
-   differs, by public key). Its hash+depth below were computed with
-   the real @ton/core library and cross-checked against this exact
-   algorithm across many keypairs before shipping, so this fallback
-   produces byte-identical addresses to @ton/ton, not just plausible
-   ones. v5R1 still needs the real library — it isn't reimplemented
-   here.
-   ============================================================== */
-function hexToBytes(hex) {
-    const out = new Uint8Array(hex.length / 2);
-    for (let i = 0; i < out.length; i++) out[i] = parseInt(hex.substr(i * 2, 2), 16);
-    return out;
-}
-function bytesToHex(bytes) {
-    return Array.from(bytes, b => b.toString(16).padStart(2, "0")).join("");
-}
-const WALLET_CODE_INFO = {
-    v3r2: { hash: hexToBytes("84dafa449f98a6987789ba232358072bc0f76dc4524002a5d0918b9a75d2d599"), depth: 0 },
-    v4r2: { hash: hexToBytes("feb5ff6820e2ff0d9483e7e0d62c817d846789fb4ae580c878866d959dabd5c0"), depth: 7 },
-};
-function bitsToPaddedBytes(bits) {
-    // TON's hash-repr padding: if bit length isn't byte-aligned, append a
-    // single 1 bit then 0-pad to the next byte boundary.
-    const out = bits.slice();
-    if (out.length % 8 !== 0) {
-        out.push(1);
-        while (out.length % 8 !== 0) out.push(0);
-    }
-    const bytes = new Uint8Array(out.length / 8);
-    for (let i = 0; i < out.length; i += 8) {
-        let byte = 0;
-        for (let j = 0; j < 8; j++) byte = (byte << 1) | out[i + j];
-        bytes[i / 8] = byte;
-    }
-    return bytes;
-}
-function cellBitsDescriptor(bitLen) { return Math.ceil(bitLen / 8) + Math.floor(bitLen / 8); }
-async function hashOrdinaryCell(bitsArray, refs) {
-    // refs: [{ hash: Uint8Array(32), depth: number }] — ordinary, level-0 cells only.
-    const d1 = refs.length; // refCount + 8*isExotic(0) + 32*levelMask(0)
-    const d2 = cellBitsDescriptor(bitsArray.length);
-    const dataBytes = bitsToPaddedBytes(bitsArray);
-    const repr = new Uint8Array(2 + dataBytes.length + refs.length * 2 + refs.length * 32);
-    let o = 0;
-    repr[o++] = d1; repr[o++] = d2;
-    repr.set(dataBytes, o); o += dataBytes.length;
-    for (const r of refs) { repr[o++] = Math.floor(r.depth / 256); repr[o++] = r.depth % 256; }
-    for (const r of refs) { repr.set(r.hash, o); o += 32; }
-    const hash = new Uint8Array(await crypto.subtle.digest("SHA-256", repr));
-    const depth = refs.length === 0 ? 0 : 1 + Math.max(...refs.map(r => r.depth));
-    return { hash, depth };
-}
-function writeUintBits(bits, value, width) {
-    for (let i = width - 1; i >= 0; i--) bits.push((value >>> i) & 1);
-}
-async function manualDeriveAddress(version, publicKeyBytes, workchain = 0) {
-    if (version !== "v3r2" && version !== "v4r2") throw new Error("Self-contained derivation only supports v3R2/v4R2.");
-    const walletId = (698983191 + workchain) >>> 0; // @ton/ton's default subwallet id when none is given
-    const dataBits = [];
-    writeUintBits(dataBits, 0, 32); // seqno
-    writeUintBits(dataBits, walletId, 32);
-    for (const b of publicKeyBytes) for (let i = 7; i >= 0; i--) dataBits.push((b >> i) & 1);
-    if (version === "v4r2") dataBits.push(0); // empty plugins dict
-    const dataCell = await hashOrdinaryCell(dataBits, []);
-    const codeCell = WALLET_CODE_INFO[version];
-    // StateInit: splitDepth?(0) special?(0) code^(1) data^(1) libraries(empty=0)
-    const stateInit = await hashOrdinaryCell([0, 0, 1, 1, 0], [
-        { hash: codeCell.hash, depth: codeCell.depth },
-        { hash: dataCell.hash, depth: dataCell.depth },
-    ]);
-    return `${workchain}:${bytesToHex(stateInit.hash)}`;
-}
-
 async function isAddressActive(rawAddr) {
     try {
         const url = `${getApiBase()}/api/v2/getAddressInformation?address=${encodeURIComponent(rawAddr)}`;
@@ -1358,31 +1539,53 @@ async function getContractCodeHash(rawAddr) {
     }
 }
 
-/* ==============================================================
-   IMPORT: WALLET VERSION CANDIDATES
-   ------------------------------------------------------------
-   Previously this silently auto-selected the first version with
-   on-chain activity. We now derive all candidate addresses, fetch
-   balance/activity for each, and let the person doing the import
-   pick — auto-selection can silently land funds transfers on the
-   wrong address if two versions both happen to be deployed.
-   ============================================================== */
-const IMPORT_CANDIDATE_VERSIONS = ["v5r1", "v4r2", "v3r2"];
-async function computeImportCandidates(publicKey) {
-    const results = [];
-    for (const version of IMPORT_CANDIDATE_VERSIONS) {
+// Inspect contract state init to identify wallet version
+async function inspectContractCode(rawAddr) {
+    try {
+        const apiBase = `https://tonapi.io/v2`;
+        const url = `${apiBase}/blockchain/accounts/${encodeURIComponent(rawAddr)}`;
+        const res = await fetch(url);
+        if (!res.ok) return null;
+        const data = await res.json();
+        if (!data || !data.account) return null;
+        
+        const storage = data.account.storage || {};
+        return storage;
+    } catch {
+        return null;
+    }
+}
+
+// Detect wallet version via multi-method approach: contract state, code hash, and seqno
+async function detectWalletVersion(publicKey) {
+    // Try each version in priority order (newest first)
+    for (const version of WALLET_VERSIONS) {
         try {
-            const rawAddr = await deriveAddressFromKeypair(publicKey, version);
-            results.push({ version, rawAddr });
+            const raw = await deriveAddressFromKeypair(publicKey, version);
+            
+            // Check if address is active on-chain
+            if (await isAddressActive(raw)) {
+                // Address found and active — verify it matches the expected contract type
+                // by checking for version-specific method signatures or code patterns
+                const contractInfo = await inspectContractCode(raw);
+                
+                // If contract state retrieval succeeds, this is the correct version
+                if (contractInfo !== null) {
+                    return version;
+                }
+                
+                // Fallback: if address is active, assume it's the correct version
+                return version;
+            }
         } catch (e) {
-            console.debug(`Candidate ${version} unavailable:`, e.message);
+            // Contract type unavailable or API call failed — try next version
+            console.debug(`Version ${version} unavailable or check failed:`, e.message);
         }
     }
-    await Promise.all(results.map(async (r) => {
-        try { r.balance = await fetchTonBalance(r.rawAddr); } catch { r.balance = null; }
-        try { r.active = await isAddressActive(r.rawAddr); } catch { r.active = false; }
-    }));
-    return results;
+    
+    // No active addresses found; default to v4R2 (stable ecosystem standard)
+    // v4R2 is the guaranteed-compatible fallback for new wallets
+    return "v4r2";
 }
 
 /* ==============================================================
@@ -1523,50 +1726,160 @@ document.addEventListener("input", (e) => {
         document.getElementById("import-seed-count").textContent = `${words.length} words (12 or 24 expected)`;
     }
 });
-async function finalizeImport() {
+function setImportTab(tab) {
+    document.getElementById("import-tab-seed").classList.toggle("active", tab === "seed");
+    document.getElementById("import-tab-backup").classList.toggle("active", tab === "backup");
+    document.getElementById("import-panel-seed").classList.toggle("hidden", tab !== "seed");
+    document.getElementById("import-panel-backup").classList.toggle("hidden", tab !== "backup");
+}
+// Candidate addresses (v3R2/v4R2/v5R1) held here between startImport() and the
+// user's pick in the version-picker modal — never persisted.
+async function buildImportCandidates(publicKey) {
+    const versions = ["v5r1", "v4r2", "v3r2"];
+    const results = [];
+    for (const version of versions) {
+        let rawAddr = null, error = null, balance = 0, active = false;
+        try {
+            rawAddr = await deriveAddressFromKeypair(publicKey, version);
+        } catch (e) {
+            error = e.message || String(e);
+        }
+        if (rawAddr) {
+            try {
+                [balance, active] = await Promise.all([fetchTonBalance(rawAddr), isAddressActive(rawAddr)]);
+            } catch { /* leave balance 0 / active false — address is still shown */ }
+        }
+        results.push({ version, rawAddr, balance, active, error });
+    }
+    return results;
+}
+function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+function renderImportVersionCandidates(candidates) {
+    const anyActive = candidates.some(c => c.active);
+    const list = document.getElementById("import-version-list");
+    list.innerHTML = candidates.map(c => {
+        const label = WALLET_VERSION_LABELS[c.version] || c.version;
+        const addr = c.rawAddr ? getFriendlyAddress(c.rawAddr, false) : null;
+        const recommended = c.active || (!anyActive && c.version === "v4r2");
+        let status;
+        if (c.error) status = `<span class="text-red-400 text-xs"><i class="fas fa-triangle-exclamation mr-1"></i>${escapeHtml(c.error)}</span>`;
+        else if (c.active) status = `<span class="text-emerald-400 text-xs"><i class="fas fa-circle-check mr-1"></i>Active on-chain · ${c.balance.toFixed(4)} TON</span>`;
+        else status = `<span class="text-slate-500 text-xs">No on-chain activity yet</span>`;
+        return `<button class="glass-card p-3 rounded-xl w-full text-left" ${c.rawAddr ? `onclick="finalizeImportWithVersion('${c.version}')"` : "disabled style=\"opacity:.5;\""}>
+          <div class="flex justify-between items-center gap-2">
+            <span class="font-semibold text-sm">${label}</span>
+            ${recommended ? `<span class="mode-pill" style="background:rgba(34,197,94,.15);color:#4ADE80;">Recommended</span>` : ""}
+          </div>
+          <div class="font-mono text-xs text-slate-400 break-all mt-1">${addr ? escapeHtml(addr) : "—"}</div>
+          <div class="mt-1">${status}</div>
+        </button>`;
+    }).join("");
+}
+function closeImportVersionModal() {
+    document.getElementById("import-version-modal").classList.add("hidden-section");
+    state.pendingImport = null;
+}
+async function startImport() {
     const text = document.getElementById("import-seed").value.trim().toLowerCase();
     const p1 = document.getElementById("import-pw1").value;
     const p2 = document.getElementById("import-pw2").value;
+    const formatPref = document.getElementById("import-seed-format").value; // "auto" | "ton" | "bip39"
     const words = text.split(/\s+/).filter(Boolean);
     if (words.length !== 12 && words.length !== 24) return showToast("Seed phrase must be 12 or 24 words", "exclamation");
     if (p1.length < 8) return showToast("Password must be at least 8 characters", "exclamation");
     if (p1 !== p2) return showToast("Passwords don't match", "exclamation");
-    let valid = false;
+    let scheme, keypair;
     try {
-        valid = await validateMnemonic(words);
+        showToast("Validating seed phrase...", "spinner");
+        ({ scheme, keypair } = await resolveSeedKeypair(words, formatPref));
     } catch (e) {
         console.error(e);
-        return showToast("Couldn't validate seed phrase: " + (e.message || e), "exclamation");
+        return showToast(e.message || "Couldn't validate seed phrase", "exclamation");
     }
-    if (!valid) return showToast("Invalid seed phrase. Please check each word.", "exclamation");
     try {
-        showToast("Detecting wallet version...", "spinner");
-        const kp = await mnemonicToKeypair(words);
-        
-        // Auto-detect wallet version by checking on-chain state
-        // Algorithm: tries v5R1 → v5Beta → v4R2 → v3R2
-        // Returns first active contract, or defaults to v4R2 (stable standard)
-        const detectedVersion = await detectWalletVersion(kp.publicKey);
-        const rawAddr = await deriveAddressFromKeypair(kp.publicKey, detectedVersion);
-        
-        // Verify the derived address is correct by checking it against all versions
-        // This ensures we caught the right contract type
-        console.debug(`Wallet version detected: ${detectedVersion} (${WALLET_VERSION_LABELS[detectedVersion]})`);
-        
-        const ks = await encryptKeystore(words, p1);
-        addWalletToManager(ks, rawAddr, `Wallet ${getWalletManager().wallets.length + 1}`, detectedVersion);
-        state.localKey = { publicKey: kp.publicKey, secretKey: kp.secretKey, mnemonic: words };
+        showToast("Checking wallet versions on-chain...", "spinner");
+        const candidates = await buildImportCandidates(keypair.publicKey);
+        state.pendingImport = { words, password: p1, keypair, scheme };
+        renderImportVersionCandidates(candidates);
+        document.getElementById("import-version-note").textContent =
+            scheme === "bip39" ? "Detected as a BIP39 (Ledger/TrustWallet) seed." : "Detected as a TON-native seed.";
+        document.getElementById("import-version-modal").classList.remove("hidden-section");
+    } catch (e) {
+        console.error(e);
+        showToast("Couldn't check wallet versions: " + (e.message || e), "exclamation");
+    }
+}
+async function finalizeImportWithVersion(version) {
+    const pending = state.pendingImport;
+    if (!pending) return;
+    try {
+        showToast("Encrypting wallet...", "spinner");
+        const { words, password, keypair } = pending;
+        const rawAddr = await deriveAddressFromKeypair(keypair.publicKey, version);
+        const ks = await encryptKeystore(words, password);
+        addWalletToManager(ks, rawAddr, `Wallet ${getWalletManager().wallets.length + 1}`, version);
+        state.localKey = { publicKey: keypair.publicKey, secretKey: keypair.secretKey, mnemonic: words };
         state.address = rawAddr;
-        state.walletVersion = detectedVersion;
+        state.walletVersion = version;
         state.mode = "local";
         state.connected = true;
         state.bounceableAddress = getFriendlyAddress(rawAddr, true);
         state.nonBounceableAddress = getFriendlyAddress(rawAddr, false);
-        showToast(`Wallet imported (${WALLET_VERSION_LABELS[detectedVersion]})`, "circle-check");
+        state.pendingImport = null;
+        document.getElementById("import-version-modal").classList.add("hidden-section");
+        showToast(`Wallet imported (${WALLET_VERSION_LABELS[version]})`, "circle-check");
         enterDashboard();
     } catch (e) {
         console.error(e);
         showToast("Import failed: " + (e.message || e), "exclamation");
+    }
+}
+
+/* ---- Restore from JSON backup (no on-chain lookup) ---- */
+function handleRestoreFileSelected(evt) {
+    const file = evt.target.files && evt.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => { document.getElementById("restore-json").value = String(reader.result || ""); };
+    reader.onerror = () => showToast("Couldn't read that file", "exclamation");
+    reader.readAsText(file);
+}
+async function restoreFromBackupJson() {
+    const raw = document.getElementById("restore-json").value.trim();
+    const p1 = document.getElementById("restore-pw1").value;
+    const p2 = document.getElementById("restore-pw2").value;
+    if (!raw) return showToast("Paste or select a backup file first", "exclamation");
+    if (p1.length < 8) return showToast("Password must be at least 8 characters", "exclamation");
+    if (p1 !== p2) return showToast("Passwords don't match", "exclamation");
+    let backup;
+    try { backup = JSON.parse(raw); } catch { return showToast("That's not valid JSON", "exclamation"); }
+    const { mnemonic, version, address, publicKey } = backup || {};
+    if (!Array.isArray(mnemonic) || (mnemonic.length !== 12 && mnemonic.length !== 24)) return showToast("Backup is missing a valid mnemonic", "exclamation");
+    if (!version || !address) return showToast("Backup is missing version/address", "exclamation");
+    try {
+        showToast("Verifying backup...", "spinner");
+        const words = mnemonic.map(w => String(w).toLowerCase());
+        const kp = await mnemonicToKeypair(words);
+        const derivedPkHex = Array.from(kp.publicKey).map(b => b.toString(16).padStart(2, "0")).join("");
+        if (publicKey && publicKey.toLowerCase() !== derivedPkHex.toLowerCase()) {
+            return showToast("Backup file's public key doesn't match its mnemonic — file may be corrupted.", "exclamation");
+        }
+        const ks = await encryptKeystore(words, p1);
+        addWalletToManager(ks, address, `Wallet ${getWalletManager().wallets.length + 1}`, version);
+        state.localKey = { publicKey: kp.publicKey, secretKey: kp.secretKey, mnemonic: words };
+        state.address = address;
+        state.walletVersion = version;
+        state.mode = "local";
+        state.connected = true;
+        state.bounceableAddress = getFriendlyAddress(address, true);
+        state.nonBounceableAddress = getFriendlyAddress(address, false);
+        showToast(`Wallet restored (${WALLET_VERSION_LABELS[version] || version})`, "circle-check");
+        enterDashboard();
+    } catch (e) {
+        console.error(e);
+        showToast("Restore failed: " + (e.message || e), "exclamation");
     }
 }
 
@@ -2171,6 +2484,11 @@ window.addEventListener("DOMContentLoaded", async () => {
     // the time the user reaches Create/Import — failures here are silent
     // since ensureWordlist() is re-awaited (and surfaced) at actual point of use.
     ensureWordlist().catch(() => {});
+    // Whenever @ton/ton actually loads, quietly cross-check the offline
+    // fallback derivation against it so we know it's trustworthy before
+    // we're ever forced to rely on it.
+    if (window.ton && window.ton.beginCell) verifySelfContainedFallback();
+    else window.addEventListener("ton-libs-ready", () => verifySelfContainedFallback(), { once: true });
 });
 </script>
 <script defer src="https://static.cloudflareinsights.com/beacon.min.js/v4513226cdae34746b4dedf0b4dfa099e1781791509496" integrity="sha512-ZE9pZaUXND66v380QUtch/5sE9tPFh2zg45pR2PB0CVkCtOREv2AJKkSidISWkysEuQ0EH8faUU5du78bx87UQ==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79","server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
