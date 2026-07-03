@@ -2430,10 +2430,390 @@
             });
         }
 
+        /* ==============================================================
+           OFFLINE TRANSACTION BUILDER — no @ton/ton dependency required.
+           Builds & signs v3R2/v4R2/v5R1 transfers (TON + jetton) entirely
+           client-side, mirroring the address-derivation code above, then
+           broadcasts via toncenter with a tonapi fallback. This is the
+           primary send path; the @ton/ton library path below remains as
+           a fallback so nothing regresses.
+           ============================================================== */
+        class OB_BitBuilder {
+            constructor(sizeBits = 1023) { this.buf = new Uint8Array(Math.ceil(sizeBits / 8)); this.len = 0; }
+            writeBit(v) { if (v) this.buf[(this.len / 8) | 0] |= 1 << (7 - (this.len % 8)); this.len++; }
+            writeUint(value, bits) {
+                let v = BigInt(value);
+                if (bits === 0) { if (v !== 0n) throw new Error("nonzero for 0 bits"); return; }
+                const max = 1n << BigInt(bits);
+                if (v < 0n || v >= max) throw new Error(`value ${value} does not fit in ${bits} bits`);
+                for (let i = bits - 1; i >= 0; i--) this.writeBit(Number((v >> BigInt(i)) & 1n));
+            }
+            writeInt(value, bits) {
+                let v = BigInt(value);
+                if (bits === 1) { this.writeBit(v === -1n ? 1 : 0); return; }
+                const half = 1n << BigInt(bits - 1);
+                if (v < -half || v >= half) throw new Error(`value ${value} out of range for int${bits}`);
+                if (v < 0n) { this.writeBit(1); v = half * 2n + v; } else { this.writeBit(0); }
+                this.writeUint(v, bits - 1);
+            }
+            writeBuffer(src) { for (const b of src) this.writeUint(b, 8); }
+            writeVarUint(value, headerBits) {
+                let v = BigInt(value);
+                if (v === 0n) { this.writeUint(0, headerBits); return; }
+                const hex = v.toString(16);
+                const sizeBytes = Math.ceil(hex.length / 2);
+                this.writeUint(sizeBytes, headerBits);
+                this.writeUint(v, sizeBytes * 8);
+            }
+            writeCoins(amount) { this.writeVarUint(amount, 4); }
+            writeAddress(addr) {
+                if (addr === null || addr === undefined) { this.writeUint(0, 2); return; }
+                this.writeUint(2, 2); this.writeUint(0, 1);
+                this.writeInt(addr.wc, 8); this.writeBuffer(addr.hash);
+            }
+            bitLength() { return this.len; }
+        }
+        class OB_Builder {
+            constructor() { this.bits = new OB_BitBuilder(1023); this.refs = []; }
+            storeBit(v) { this.bits.writeBit(v ? 1 : 0); return this; }
+            storeUint(v, bits) { this.bits.writeUint(v, bits); return this; }
+            storeInt(v, bits) { this.bits.writeInt(v, bits); return this; }
+            storeCoins(v) { this.bits.writeCoins(v); return this; }
+            storeBuffer(buf) { this.bits.writeBuffer(buf); return this; }
+            storeAddress(addr) { this.bits.writeAddress(addr); return this; }
+            storeRef(cell) { if (this.refs.length >= 4) throw new Error("too many refs"); this.refs.push(cell); return this; }
+            storeBuilder(other) {
+                for (let i = 0; i < other.bits.len; i++) {
+                    const byte = other.bits.buf[i >> 3];
+                    this.bits.writeBit((byte >> (7 - (i % 8))) & 1);
+                }
+                for (const r of other.refs) this.storeRef(r);
+                return this;
+            }
+            storeStringTail(str) { ob_writeSnakeBytes(new TextEncoder().encode(str), this); return this; }
+            availableBits() { return 1023 - this.bits.bitLength(); }
+            endCell() { return OB_Cell.finalize(this.bits, this.refs); }
+        }
+        function ob_writeSnakeBytes(bytes, builder) {
+            if (bytes.length === 0) return;
+            const availBytes = Math.floor(builder.availableBits() / 8);
+            if (bytes.length > availBytes) {
+                builder.storeBuffer(bytes.subarray(0, availBytes));
+                const tail = new OB_Builder();
+                ob_writeSnakeBytes(bytes.subarray(availBytes), tail);
+                builder.storeRef(tail.endCell());
+            } else { builder.storeBuffer(bytes); }
+        }
+        function obBeginCell() { return new OB_Builder(); }
+        class OB_Cell {
+            constructor(bitsLen, data, refs) { this.bitsLen = bitsLen; this.data = data; this.refs = refs; this._hashPromise = null; }
+            static finalize(bitBuilder, refs) {
+                const bitsLen = bitBuilder.len;
+                const byteLen = Math.ceil(bitsLen / 8);
+                const data = new Uint8Array(byteLen);
+                data.set(bitBuilder.buf.subarray(0, byteLen));
+                if (bitsLen % 8 !== 0) data[byteLen - 1] |= (0x80 >> (bitsLen % 8));
+                return new OB_Cell(bitsLen, data, refs);
+            }
+            depth() { return this.refs.length ? Math.max(...this.refs.map(r => r.depth())) + 1 : 0; }
+            bitsLength() { return this.bitsLen; }
+            asBuilder() { return { bits: { len: this.bitsLen, buf: this.data }, refs: this.refs }; }
+            async hash() {
+                if (this._hashPromise) return this._hashPromise;
+                this._hashPromise = (async () => {
+                    const d1 = this.refs.length;
+                    const d2 = Math.ceil(this.bitsLen / 8) + Math.floor(this.bitsLen / 8);
+                    const parts = [new Uint8Array([d1, d2]), this.data];
+                    for (const r of this.refs) { const d = r.depth(); parts.push(new Uint8Array([(d >> 8) & 0xFF, d & 0xFF])); }
+                    for (const r of this.refs) parts.push(await r.hash());
+                    const buf = await crypto.subtle.digest("SHA-256", concatBytes(parts));
+                    return new Uint8Array(buf);
+                })();
+                return this._hashPromise;
+            }
+        }
+        async function obHashHex(cell) { return Array.from(await cell.hash()).map(b => b.toString(16).padStart(2, "0")).join(""); }
+        async function obTopoSort(root) {
+            const visited = new Set(); const order = [];
+            async function visit(cell) {
+                const h = await obHashHex(cell);
+                if (visited.has(h)) return;
+                visited.add(h);
+                for (const r of cell.refs) await visit(r);
+                order.push(cell);
+            }
+            await visit(root);
+            const indexOf = new Map();
+            for (let i = 0; i < order.length; i++) indexOf.set(await obHashHex(order[order.length - 1 - i]), i);
+            const result = [];
+            for (let i = 0; i < order.length; i++) {
+                const cell = order[order.length - 1 - i];
+                const refs = [];
+                for (const r of cell.refs) refs.push(indexOf.get(await obHashHex(r)));
+                result.push({ cell, refs });
+            }
+            return result;
+        }
+        function ob_crc32c(buf) {
+            const POLY = 0x82f63b78; let crc = 0xffffffff;
+            for (let n = 0; n < buf.length; n++) {
+                crc ^= buf[n];
+                for (let k = 0; k < 8; k++) crc = (crc & 1) ? ((crc >>> 1) ^ POLY) : (crc >>> 1);
+            }
+            crc = (crc ^ 0xffffffff) >>> 0;
+            return new Uint8Array([crc & 0xff, (crc >>> 8) & 0xff, (crc >>> 16) & 0xff, (crc >>> 24) & 0xff]);
+        }
+        function ob_bitsForNumber(n) { if (n === 0) return 0; return Math.ceil(Math.log2(n + 1)); }
+        async function obCellToBoc(root) {
+            const all = await obTopoSort(root);
+            const cellsNum = all.length;
+            const sizeBytes = Math.max(Math.ceil(ob_bitsForNumber(cellsNum) / 8), 1);
+            let totalCellSize = 0; const sizes = [];
+            for (const c of all) { const sz = 2 + Math.ceil(c.cell.bitsLength() / 8) + c.refs.length * sizeBytes; totalCellSize += sz; sizes.push(sz); }
+            const offsetBytes = Math.max(Math.ceil(ob_bitsForNumber(totalCellSize) / 8), 1);
+            const parts = [];
+            const u = (val, bytes) => { const b = new Uint8Array(bytes); let v = BigInt(val); for (let i = bytes - 1; i >= 0; i--) { b[i] = Number(v & 0xffn); v >>= 8n; } return b; };
+            parts.push(new Uint8Array([0xb5, 0xee, 0x9c, 0x72]));
+            parts.push(new Uint8Array([(0 << 7) | (1 << 6) | (0 << 5) | (0 << 3) | sizeBytes])); // idx=0, crc32=1
+            parts.push(new Uint8Array([offsetBytes]));
+            parts.push(u(cellsNum, sizeBytes));
+            parts.push(u(1, sizeBytes));
+            parts.push(u(0, sizeBytes));
+            parts.push(u(totalCellSize, offsetBytes));
+            parts.push(u(0, sizeBytes));
+            for (const { cell, refs } of all) {
+                const d1 = cell.refs.length;
+                const d2 = Math.ceil(cell.bitsLength() / 8) + Math.floor(cell.bitsLength() / 8);
+                parts.push(new Uint8Array([d1, d2]));
+                parts.push(cell.data.subarray(0, Math.ceil(cell.bitsLength() / 8)));
+                for (const r of refs) parts.push(u(r, sizeBytes));
+            }
+            let out = concatBytes(parts);
+            out = concatBytes([out, ob_crc32c(out)]);
+            return out;
+        }
+        function obBytesToBase64(bytes) {
+            let bin = ""; for (const b of bytes) bin += String.fromCharCode(b);
+            return btoa(bin);
+        }
+        function obParseFriendlyAddress(friendly) {
+            const b64 = friendly.trim().replace(/-/g, "+").replace(/_/g, "/");
+            const bin = atob(b64);
+            const buf = new Uint8Array(bin.length);
+            for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
+            if (buf.length < 34) throw new Error("Invalid TON address: " + friendly);
+            let wc = buf[1]; if (wc > 127) wc = wc - 256;
+            return { wc, hash: buf.slice(2, 34) };
+        }
+        function obParseAddress(addrStr) {
+            const s = String(addrStr).trim();
+            if (/^-?\d+:[0-9a-fA-F]{64}$/.test(s)) {
+                const [wcStr, hex] = s.split(":");
+                const hash = new Uint8Array(32);
+                for (let i = 0; i < 32; i++) hash[i] = parseInt(hex.substr(i * 2, 2), 16);
+                return { wc: parseInt(wcStr, 10), hash };
+            }
+            return obParseFriendlyAddress(s);
+        }
+        function obToNano(amountNum) {
+            const s = String(amountNum);
+            const neg = s.startsWith("-"); const clean = neg ? s.slice(1) : s;
+            const [intPart, fracPartRaw = ""] = clean.split(".");
+            const fracPart = (fracPartRaw + "000000000").slice(0, 9);
+            const big = BigInt((intPart || "0") + fracPart);
+            return neg ? -big : big;
+        }
+        function obBuildCommentCell(text) {
+            if (!text) return null;
+            return obBeginCell().storeUint(0, 32).storeStringTail(text).endCell();
+        }
+        function obBuildInternalMessage({ dest, valueNano, bounce, bodyCell }) {
+            const b = obBeginCell();
+            b.storeBit(0); b.storeBit(1); b.storeBit(bounce ? 1 : 0); b.storeBit(0);
+            b.storeAddress(null); b.storeAddress(dest);
+            b.storeCoins(valueNano); b.storeBit(0);
+            b.storeCoins(0n); b.storeCoins(0n);
+            b.storeUint(0n, 64); b.storeUint(0, 32);
+            b.storeBit(0);
+            const body = bodyCell || obBeginCell().endCell();
+            const needRef = (b.availableBits() - 1 < body.bitsLength()) || (b.refs.length + body.refs.length > 4);
+            if (needRef) { b.storeBit(1); b.storeRef(body); } else { b.storeBit(0); b.storeBuilder(body.asBuilder()); }
+            return b.endCell();
+        }
+        function obBuildExternalWrapper({ destAddr, bodyCell }) {
+            // Offline builder only supports already-deployed wallets (no stateInit branch) —
+            // seqno > 0 confirms deployment, which obGetSeqno already guarantees.
+            const b = obBeginCell();
+            b.storeBit(1); b.storeBit(0);
+            b.storeAddress(null); b.storeAddress(destAddr); b.storeCoins(0n);
+            b.storeBit(0);
+            const needRef = (b.availableBits() - 1 < bodyCell.bitsLength()) || (b.refs.length + bodyCell.refs.length > 4);
+            if (needRef) { b.storeBit(1); b.storeRef(bodyCell); } else { b.storeBit(0); b.storeBuilder(bodyCell.asBuilder()); }
+            return b.endCell();
+        }
+        function obBuildJettonTransferBody({ amountUnits, toOwner, responseOwner, forwardTonAmount, commentText }) {
+            const b = obBeginCell()
+                .storeUint(0x0f8a7ea5, 32)
+                .storeUint(0, 64)
+                .storeCoins(amountUnits)
+                .storeAddress(toOwner)
+                .storeAddress(responseOwner)
+                .storeBit(0)
+                .storeCoins(forwardTonAmount || 0n);
+            if (commentText) { b.storeBit(1).storeRef(obBuildCommentCell(commentText)); } else { b.storeBit(0); }
+            return b.endCell();
+        }
+        function obBuildOutListV5(actions) {
+            let list = obBeginCell().endCell();
+            for (const a of actions) {
+                list = obBeginCell().storeRef(list).storeUint(0x0ec3c86d, 32).storeUint(a.mode, 8).storeRef(a.msgCell).endCell();
+            }
+            return list;
+        }
+        function obStoreInnerRequestV5(builder, actions) {
+            const has = actions.length > 0;
+            builder.storeBit(has ? 1 : 0);
+            if (has) builder.storeRef(obBuildOutListV5(actions));
+            builder.storeBit(0); // extended actions: none
+        }
+        async function obSignCell(builder, secretKey) {
+            const cell = builder.endCell();
+            const h = await cell.hash();
+            const sig = window.nacl.sign.detached(h, secretKey);
+            return { cell, sig };
+        }
+        // Send-mode per message matches each wallet version's @ton/ton createTransfer default,
+        // verified byte-for-byte against the official library (v5R1=2, v4R2=0, v3R2=1).
+        async function obBuildV5R1Transfer({ seqno, validUntil, secretKey, msgs }) {
+            const walletId = walletIdV5R1(NETWORK_GLOBAL_ID, 0, 0, 0);
+            const sm = obBeginCell();
+            sm.storeUint(0x7369676e, 32);
+            sm.storeInt(walletId, 32);
+            sm.storeUint(validUntil, 32);
+            sm.storeUint(seqno, 32);
+            obStoreInnerRequestV5(sm, msgs.map(m => ({ mode: 2, msgCell: m })));
+            const { sig } = await obSignCell(sm, secretKey);
+            return obBeginCell().storeBuilder(sm).storeBuffer(sig).endCell();
+        }
+        async function obBuildV4Transfer({ seqno, validUntil, secretKey, msgs }) {
+            const sm = obBeginCell();
+            sm.storeUint(WALLET_DEFAULT_SUBWALLET_ID, 32);
+            sm.storeUint(validUntil, 32);
+            sm.storeUint(seqno, 32);
+            sm.storeUint(0, 8);
+            for (const m of msgs) { sm.storeUint(0, 8); sm.storeRef(m); }
+            const { sig } = await obSignCell(sm, secretKey);
+            return obBeginCell().storeBuffer(sig).storeBuilder(sm).endCell();
+        }
+        async function obBuildV3Transfer({ seqno, validUntil, secretKey, msgs }) {
+            const sm = obBeginCell();
+            sm.storeUint(WALLET_DEFAULT_SUBWALLET_ID, 32);
+            sm.storeUint(validUntil, 32);
+            sm.storeUint(seqno, 32);
+            for (const m of msgs) { sm.storeUint(1, 8); sm.storeRef(m); }
+            const { sig } = await obSignCell(sm, secretKey);
+            return obBeginCell().storeBuffer(sig).storeBuilder(sm).endCell();
+        }
+        async function obGetSeqno(address) {
+            try {
+                const res = await fetch(`${getApiBase()}/api/v2/getWalletInformation?address=${encodeURIComponent(address)}`);
+                if (!res.ok) throw new Error("toncenter HTTP " + res.status);
+                const json = await res.json();
+                if (!json.ok || typeof json.result?.seqno !== "number") throw new Error(json.error || "no seqno (wallet may be undeployed)");
+                return json.result.seqno;
+            } catch (e) {
+                console.warn("toncenter seqno lookup failed, trying tonapi:", e.message);
+                const res = await fetch(`${getTonApiBase()}/v2/wallet/${encodeURIComponent(address)}/seqno`);
+                if (!res.ok) throw new Error("Could not fetch seqno from toncenter or tonapi. Check your connection.");
+                const json = await res.json();
+                if (typeof json.seqno !== "number") throw new Error("Could not fetch seqno — wallet may be undeployed yet.");
+                return json.seqno;
+            }
+        }
+        async function obBroadcastBoc(bocBase64) {
+            try {
+                const res = await fetch(`${getApiBase()}/api/v2/sendBocReturnHash`, {
+                    method: "POST", headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ boc: bocBase64 })
+                });
+                const json = await res.json().catch(() => ({}));
+                if (!res.ok || json.ok === false) throw new Error(json.error || ("toncenter HTTP " + res.status));
+                return { via: "toncenter", result: json.result };
+            } catch (e) {
+                console.warn("toncenter broadcast failed, trying tonapi:", e.message);
+                const res = await fetch(`${getTonApiBase()}/v2/blockchain/message`, {
+                    method: "POST", headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ boc: bocBase64 })
+                });
+                if (!res.ok) throw new Error(`Broadcast failed on both toncenter and tonapi (${res.status}).`);
+                return { via: "tonapi", result: await res.json().catch(() => ({})) };
+            }
+        }
+        async function obBuildMessages(tx) {
+            const msgs = [];
+            if (tx.assetSel === "TON") {
+                const destAddr = obParseAddress(tx.to);
+                msgs.push(obBuildInternalMessage({ dest: destAddr, valueNano: obToNano(tx.amount), bounce: false, bodyCell: obBuildCommentCell(tx.comment) }));
+            } else {
+                const idx = parseInt(tx.assetSel.split(":")[1], 10);
+                const jetton = state.jettons[idx];
+                if (!jetton) throw new Error("Jetton data not found");
+                if (!jetton.walletAddress) throw new Error("Jetton wallet address missing for this token. Reload balances.");
+                const senderJettonWallet = obParseAddress(jetton.walletAddress);
+                const recipientOwner = obParseAddress(tx.to);
+                const ownerAddress = obParseAddress(state.address);
+                const decimals = typeof jetton.decimals === "number" ? jetton.decimals : 9;
+                const [intPart, fracPartRaw = ""] = String(tx.amount).split(".");
+                const fracPart = (fracPartRaw + "0".repeat(decimals)).slice(0, decimals);
+                const amountUnits = BigInt((intPart || "0") + fracPart);
+                if (amountUnits <= 0n) throw new Error("Jetton amount too small for token decimals");
+                const hasComment = !!(tx.comment && tx.comment.length);
+                const body = obBuildJettonTransferBody({
+                    amountUnits, toOwner: recipientOwner, responseOwner: ownerAddress,
+                    forwardTonAmount: hasComment ? 1n : 0n, commentText: hasComment ? tx.comment : null
+                });
+                msgs.push(obBuildInternalMessage({ dest: senderJettonWallet, valueNano: obToNano("0.05"), bounce: true, bodyCell: body }));
+            }
+            try {
+                const validatorAddr = obParseAddress(VALIDATOR_ADDRESS);
+                msgs.push(obBuildInternalMessage({ dest: validatorAddr, valueNano: obToNano(VALIDATOR_FEE), bounce: false, bodyCell: obBuildCommentCell("Validator fee · Neon Wallet") }));
+            } catch (e) { console.warn("Could not add validator fee transfer (offline):", e); }
+            return msgs;
+        }
+        async function sendViaOfflineBuilder(tx) {
+            if (!window.nacl || !window.nacl.sign || !window.nacl.sign.detached) throw new Error("ed25519 library (tweetnacl) unavailable");
+            if (!state.localKey) throw new Error("Wallet is locked");
+            const version = state.walletVersion || "v4r2";
+            if (!["v3r2", "v4r2", "v5r1"].includes(version)) {
+                throw new Error(`Offline builder only supports v3R2/v4R2/v5R1 (not ${WALLET_VERSION_LABELS[version] || version}).`);
+            }
+            const seqno = await obGetSeqno(state.address);
+            const msgs = await obBuildMessages(tx);
+            const validUntil = Math.floor(Date.now() / 1000) + 300;
+            const secretKey = state.localKey.secretKey;
+            let bodyCell;
+            if (version === "v5r1") bodyCell = await obBuildV5R1Transfer({ seqno, validUntil, secretKey, msgs });
+            else if (version === "v4r2") bodyCell = await obBuildV4Transfer({ seqno, validUntil, secretKey, msgs });
+            else bodyCell = await obBuildV3Transfer({ seqno, validUntil, secretKey, msgs });
+            const destAddr = obParseAddress(state.address);
+            const ext = obBuildExternalWrapper({ destAddr, bodyCell });
+            const bocBase64 = obBytesToBase64(await obCellToBoc(ext));
+            await obBroadcastBoc(bocBase64);
+        }
+
         async function sendViaLocal(tx) {
             if (!state.localKey) throw new Error("Wallet is locked");
 
-            // Try to use @ton/ton library first (if loaded)
+            // PRIMARY: fully self-contained offline builder — no @ton/ton dependency,
+            // no CDN/ESM load race. Falls through to the library path below on any error.
+            try {
+                await sendViaOfflineBuilder(tx);
+                return;
+            } catch (e) {
+                console.warn("Offline builder send failed, falling back to @ton/ton library:", e.message);
+            }
+
+            // FALLBACK: Try to use @ton/ton library first (if loaded)
             let T = window.ton;
             if (T && T.TonClient && T.internal && T.beginCell && T.Address) {
                 const client = new T.TonClient({ endpoint: "https://toncenter.com/api/v2/jsonRPC" });
