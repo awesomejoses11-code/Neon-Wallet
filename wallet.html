@@ -416,7 +416,7 @@
             <label class="text-xs text-slate-400 block mb-2 uppercase">Comment <span class="text-slate-600 normal-case">(optional)</span></label>
             <input type="text" id="send-comment" placeholder="Message attached to the transfer" />
           </div>
-          <button class="btn-gold w-full py-3" onclick="sendAsset()"><i class="fas fa-paper-plane mr-2"></i>Send</button>
+          <button id="send-btn" class="btn-gold w-full py-3" onclick="sendAsset()"><i class="fas fa-paper-plane mr-2"></i>Send</button>
         </div>
 
         <div id="receive" class="tab-content space-y-4">
@@ -760,6 +760,44 @@ function rawToFriendly(rawAddr, bounceable) {
     } catch (e) {
         console.warn("rawToFriendly failed:", e);
         return rawAddr;
+    }
+}
+// Self-contained TON friendly-address validator — does NOT depend on the
+// @ton/ton CDN bundle (window.ton). This exists because sendAsset() used to
+// call window.ton.Address.parse() directly: if the esm.sh module was still
+// loading (or blocked) at the moment "Send" was pressed, window.ton was
+// undefined and EVERY address — including perfectly valid ones — was
+// rejected with "Invalid TON address format". Reuses the same CRC16/XMODEM
+// algorithm as rawToFriendly() above so the two stay consistent.
+function _crc16Xmodem(bytes, len) {
+    let crc = 0;
+    for (let i = 0; i < len; i++) {
+        crc ^= bytes[i] << 8;
+        for (let j = 0; j < 8; j++) crc = (crc & 0x8000) ? ((crc << 1) ^ 0x1021) : (crc << 1);
+    }
+    return crc & 0xFFFF;
+}
+function isValidTonAddress(addr) {
+    if (!addr || typeof addr !== "string") return false;
+    addr = addr.trim();
+    // Raw form: "0:<64 hex chars>" (also accepts "-1:..." for masterchain)
+    if (/^-?\d+:[0-9a-fA-F]{64}$/.test(addr)) return true;
+    // Friendly form must be exactly 48 URL-safe base64 characters
+    // (EQ.../UQ.../kQ.../0Q... all decode to this shape).
+    if (!/^[A-Za-z0-9_-]{48}$/.test(addr)) return false;
+    try {
+        const b64 = addr.replace(/-/g, "+").replace(/_/g, "/");
+        const bin = atob(b64);
+        if (bin.length !== 36) return false;
+        const bytes = new Uint8Array(36);
+        for (let i = 0; i < 36; i++) bytes[i] = bin.charCodeAt(i);
+        // Valid tag bytes: 0x11 bounceable, 0x51 non-bounceable,
+        // 0x91/0xD1 the same but test-only.
+        if (![0x11, 0x51, 0x91, 0xD1].includes(bytes[0])) return false;
+        const crc = _crc16Xmodem(bytes, 34);
+        return bytes[34] === ((crc >> 8) & 0xFF) && bytes[35] === (crc & 0xFF);
+    } catch (e) {
+        return false;
     }
 }
 function getFriendlyAddress(rawAddr, bounceable = false) {
@@ -2269,19 +2307,41 @@ async function loadTransactionHistory() {
    SENDING
    ============================================================== */
 let _pendingTx = null;
-function sendAsset() {
+async function sendAsset() {
+    const sendBtn = document.getElementById("send-btn");
     const sel = document.getElementById("send-asset").value;
     const to = document.getElementById("send-address").value.trim();
     const amountStr = document.getElementById("send-amount").value.trim();
     const comment = document.getElementById("send-comment").value.trim();
     if (!to) return showToast("Enter destination address", "exclamation");
-    // Instant address validation — accepts EQ..., UQ..., and raw 0:... formats.
-    try {
-        if (!window.ton || !window.ton.Address) throw new Error("Ton library not loaded");
-        window.ton.Address.parse(to);
-    } catch (e) {
-        return showToast("Invalid TON address format (must be EQ... or UQ...)", "exclamation");
+
+    // FIX: previously this checked window.ton.Address synchronously and
+    // rejected the address instantly if the @ton/ton CDN module (loaded
+    // async from esm.sh) hadn't finished yet — which reliably happens on
+    // slower connections, since it's a real network fetch triggered on
+    // page load. That made a correctly-formatted address get rejected as
+    // "Invalid format" through no fault of the user. Now we briefly wait
+    // for the library (reusing the existing waitForTon() helper), and if
+    // it still isn't available, fall back to a self-contained validator
+    // that needs no external library at all.
+    const origLabel = sendBtn ? sendBtn.innerHTML : null;
+    if (!(window.ton && window.ton.Address) && sendBtn) {
+        sendBtn.disabled = true;
+        sendBtn.innerHTML = '<div class="loader" style="width:16px;height:16px;border-width:2px;display:inline-block;"></div> Checking address…';
     }
+    await waitForTon(5000);
+    if (sendBtn && origLabel !== null) { sendBtn.disabled = false; sendBtn.innerHTML = origLabel; }
+
+    let addrValid = false;
+    if (window.ton && window.ton.Address && typeof window.ton.Address.parse === "function") {
+        try { window.ton.Address.parse(to); addrValid = true; } catch (e) { addrValid = false; }
+    } else {
+        // Library never loaded (blocked CDN / offline) — validate format +
+        // checksum ourselves rather than blocking the user outright.
+        addrValid = isValidTonAddress(to);
+    }
+    if (!addrValid) return showToast("Invalid TON address format (must be EQ... or UQ...)", "exclamation");
+
     const amount = parseFloat(amountStr);
     if (!(amount > 0)) return showToast("Enter a valid amount", "exclamation");
     let assetLabel, max;
