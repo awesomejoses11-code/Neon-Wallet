@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover" />
-    <meta name="description" content="Neon Wallet — full-featured TON blockchain wallet with create, import, send, receive and TonConnect support." />
+    <meta name="description" content="Neon Wallet — full-featured TON blockchain wallet with create, import, send, receive, swap and TonConnect support." />
     <meta name="theme-color" content="#FFD700" />
     <meta name="color-scheme" content="dark" />
     <title>Neon Wallet · TON Wallet</title>
@@ -14,6 +14,8 @@
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Fira+Code:wght@400;500&display=swap" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="https://unpkg.com/@tonconnect/ui@2.0.9/dist/tonconnect-ui.min.js"></script>
+    <!-- StonFi Omniston Swap Widget -->
+    <script src="https://widget.ston.fi/v0/index.js"></script>
     <script type="module">
         import { Buffer } from "https://esm.sh/buffer@6.0.3";
         import * as TonCore from "https://esm.sh/@ton/ton@16.3.0";
@@ -52,16 +54,9 @@
         main {
             position: relative;
             z-index: 10;
-            padding: 1rem 1rem 4rem; /* reduced top padding */
+            padding: 1rem 1rem 4rem;
         }
-        /* ==============================================================
-           NEBULA BACKGROUND — pure CSS, no canvas/JS.
-           Three blurred, slowly-drifting color blobs (GPU-composited via
-           transform, so this is cheap even on low-end phones) plus a
-           tiled radial-gradient starfield for a bit of twinkle. Always
-           position:fixed + inset:0 + pointer-events:none, so it can never
-           push real content around the way the old unpositioned canvas did.
-           ============================================================== */
+        /* ===== NEBULA BACKGROUND ===== */
         .nebula-bg { position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; background: var(--deep-blue); }
         .nebula-blob { position: absolute; border-radius: 50%; filter: blur(60px); will-change: transform; }
         .nebula-blob--cyan { width: 70vmax; height: 70vmax; top: -30vmax; left: -15vmax; background: radial-gradient(circle, rgba(0, 210, 255, 0.20) 0%, transparent 70%); animation: nebula-float-a 32s ease-in-out infinite; }
@@ -282,6 +277,14 @@
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         .asset-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 14px; background: rgba(11, 18, 48, 0.45); border-radius: 10px; border: 1px solid rgba(255, 255, 255, 0.06); transition: all 0.3s ease; }
         .asset-item:hover { background: rgba(11, 18, 48, 0.7); border-color: rgba(0, 210, 255, 0.3); }
+        .nft-card { display: block; background: rgba(11, 18, 48, 0.45); border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.06); overflow: hidden; transition: all 0.3s ease; text-decoration: none; color: inherit; }
+        .nft-card:hover { border-color: rgba(255, 215, 0, 0.35); background: rgba(11, 18, 48, 0.7); }
+        .nft-card-img { position: relative; width: 100%; aspect-ratio: 1 / 1; background: rgba(5, 8, 22, 0.6); display: flex; align-items: center; justify-content: center; }
+        .nft-card-img img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+        .nft-fallback { display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; color: #475569; font-size: 1.5rem; }
+        .nft-card-body { padding: 8px 10px; }
+        .nft-card-name { font-size: 0.8rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .nft-card-collection { font-size: 0.7rem; color: #94a3b8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
         .header-subtitle { color: #7A8BA8; font-size: 0.9rem; margin-top: 6px; letter-spacing: 0.05em; }
         .modal-backdrop { position: fixed; inset: 0; background: rgba(2, 4, 12, 0.75); backdrop-filter: blur(8px); z-index: 100; display: flex; align-items: center; justify-content: center; padding: 16px; }
         .modal { background: linear-gradient(180deg, rgba(11, 18, 48, 0.95), rgba(11, 18, 48, 0.85)); border: 1px solid rgba(255, 215, 0, 0.2); border-radius: 16px; padding: 24px; max-width: 460px; width: 100%; box-shadow: 0 30px 80px rgba(0,0,0,0.7), 0 0 40px rgba(0, 210, 255, 0.1); }
@@ -350,7 +353,7 @@
         <div class="max-w-2xl mx-auto">
             <header class="hero-header mb-4">
                 <h1 class="font-extrabold neon-blue-text tracking-wider">Neon Wallet</h1>
-                <p class="header-subtitle">Self-custodial TON wallet · Create · Import · Connect</p>
+                <p class="header-subtitle">Self-custodial TON wallet · Create · Import · Connect · Swap</p>
             </header>
             <!-- ===================== WELCOME ===================== -->
             <section id="screen-welcome" class="screen active">
@@ -537,8 +540,6 @@
             <!-- ===================== DASHBOARD ===================== -->
             <section id="screen-dashboard" class="screen">
                 <div class="glass p-6 md:p-8 rounded-2xl space-y-6">
-                    <!-- Status widget removed as requested to avoid redundant UI -->
-
                     <div id="wallet-switcher-wrap" class="flex items-center justify-between gap-2 hidden">
                         <div class="text-xs text-slate-400 uppercase shrink-0">Active Wallet</div>
                         <select id="wallet-switcher" class="wallet-switcher flex-1" onchange="switchToWallet(this.value)"></select>
@@ -576,6 +577,8 @@
                         <button class="tab-button active" onclick="switchTab('send', event)">Send</button>
                         <button class="tab-button" onclick="switchTab('receive', event)">Receive</button>
                         <button class="tab-button" onclick="switchTab('history', event)">History</button>
+                        <button class="tab-button" onclick="switchTab('nfts', event)">NFTs</button>
+                        <button class="tab-button" onclick="switchTab('swap', event)">Swap</button>
                         <button class="tab-button" onclick="switchTab('settings', event)">Settings</button>
                     </div>
 
@@ -617,22 +620,64 @@
                         </div>
                     </div>
 
+                    <!-- ===================== NFTS TAB ===================== -->
+                    <div id="nfts" class="tab-content space-y-4">
+                        <div class="glass-card p-5 rounded-xl space-y-3">
+                            <div class="flex justify-between items-center mb-2">
+                                <h3 class="text-base font-semibold gold-text">NFT Collection</h3>
+                                <button class="btn-outline px-3 py-1 text-xs" onclick="loadNfts()"><i class="fas fa-sync mr-1"></i>Refresh</button>
+                            </div>
+                            <div id="nfts-loading" class="text-sm text-slate-400 text-center py-4"><i class="fas fa-spinner fa-spin mr-2"></i>Loading NFTs...</div>
+                            <div id="nfts-grid" class="grid grid-cols-2 gap-3"></div>
+                            <div id="nfts-empty" class="text-sm text-slate-400 text-center py-4 hidden">No NFTs found in this wallet</div>
+                        </div>
+                    </div>
+
+                    <!-- ===================== SWAP TAB ===================== -->
+                    <div id="swap" class="tab-content space-y-4">
+                        <div class="glass-card p-1 md:p-2 rounded-xl overflow-hidden">
+                            <div id="omniston-widget-container" class="dark" style="
+                                width: 100%;
+                                max-width: 420px;
+                                margin: 0 auto;
+                                box-sizing: border-box;
+                                min-height: 420px;
+                                --dialog-width: min(420px, 94vw);
+                                --snackbar-width: min(420px, 94vw);
+                                --background-color: var(--card-blue);
+                                --background-hover-color: rgba(255,255,255,0.06);
+                                --border-color: var(--border-blue);
+                                --border-width: 1px;
+                                --text-primary-color: #F8FAFC;
+                                --text-secondary-color: #94a3b8;
+                                --text-accent-color: var(--gold);
+                                --icon-primary-color: #F8FAFC;
+                                --icon-secondary-color: #94a3b8;
+                                --icon-accent-color: var(--gold);
+                                --accent-9: var(--gold);
+                                --button-primary-background-color: var(--gold);
+                                --button-primary-text-color: #050816;
+                                --dialog-background-color: var(--card-blue);
+                                --snackbar-background-color: var(--card-blue);
+                                --swap-button-background-color: var(--cyan);
+                                --swap-button-icon-color: #050816;
+                            "></div>
+                        </div>
+                    </div>
+
                     <!-- ===================== SETTINGS TAB ===================== -->
                     <div id="settings" class="tab-content space-y-4">
                         <div class="glass-card p-5 rounded-xl space-y-4">
                             <h3 class="text-base font-semibold gold-text"><i class="fas fa-cog mr-2"></i>Security & Management</h3>
-                            
                             <div id="biometric-row" class="hidden mb-2">
                                 <button id="biometric-toggle-btn" class="btn-outline w-full py-2 text-sm" onclick="toggleBiometricUnlock()">
                                     <i class="fas fa-fingerprint mr-1"></i><span id="biometric-toggle-text">Enable Biometric Unlock</span>
                                 </button>
                             </div>
-                            
                             <div class="settings-btn-grid">
                                 <button class="btn-outline py-2 text-sm" onclick="showSeedModal()"><i class="fas fa-eye mr-1"></i>Reveal Seed</button>
                                 <button class="btn-outline py-2 text-sm" onclick="openExportBackupModal()"><i class="fas fa-file-export mr-1"></i>Export Backup</button>
                             </div>
-                            
                             <div class="settings-btn-grid">
                                 <button class="btn-outline py-2 text-sm" onclick="lockWallet()"><i class="fas fa-lock mr-1"></i>Lock</button>
                                 <button class="btn-danger py-2 text-sm" onclick="confirmDisconnect()"><i class="fas fa-sign-out-alt mr-1"></i>Disconnect</button>
@@ -718,8 +763,6 @@
                 <div class="flex justify-between"><span class="text-slate-400">Amount:</span><span id="cm-amount" class="font-semibold"></span></div>
                 <div class="flex flex-col"><span class="text-slate-400">To:</span><span id="cm-to" class="font-mono text-xs break-all mt-1"></span></div>
                 <div id="cm-comment-row" class="flex flex-col hidden"><span class="text-slate-400">Comment:</span><span id="cm-comment" class="text-xs mt-1"></span></div>
-
-                <!-- Fee Breakdown -->
                 <div class="fee-divider"></div>
                 <div class="text-xs text-slate-400 font-semibold mb-1">Fee Breakdown</div>
                 <div class="fee-row"><span class="label">Network fee (est.):</span><span class="value" id="cm-blockchain-fee">0.00010 TON</span></div>
@@ -731,7 +774,6 @@
                 <div class="fee-divider"></div>
                 <div class="fee-row text-xs text-slate-500"><span class="label">Your balance after:</span><span class="value" id="cm-balance-after">0.00000 TON</span></div>
             </div>
-
             <div id="cm-pw-row" class="hidden-section">
                 <label class="text-xs text-slate-400 uppercase block mb-2">Password (to sign)</label>
                 <input type="password" id="cm-pw" placeholder="Wallet password" />
@@ -2024,7 +2066,6 @@
            ============================================================== */
         function enterDashboard() {
             showScreen("dashboard");
-            // Status widget removed, so no status text or badges to update
             document.getElementById("wallet-address").value = state.nonBounceableAddress || state.address || "";
             const vBadge = document.getElementById("wallet-version-badge");
             if (state.mode === "local" && state.walletVersion) {
@@ -2056,6 +2097,45 @@
             document.getElementById(tabName).classList.add("active");
             if (event && event.target) event.target.classList.add("active");
             if (tabName === "history") loadTransactionHistory();
+            if (tabName === "nfts") loadNfts();
+            if (tabName === "swap") initStonfiWidget();
+        }
+
+        /* ==============================================================
+           STONFI (OMNISTON) SWAP WIDGET
+           ============================================================== */
+        let _stonfiWidget = null;
+        function initStonfiWidget() {
+            if (_stonfiWidget) return;
+            if (!window.OmnistonWidget) {
+                console.warn("StonFi widget script not loaded yet");
+                return;
+            }
+            if (!state.connector) {
+                console.warn("TonConnect instance not ready yet for StonFi widget");
+                return;
+            }
+            try {
+                _stonfiWidget = new window.OmnistonWidget({
+                    // Reuse the wallet's single shared TonConnectUI instance rather than
+                    // spinning up a second TonConnect session (StonFi disallows multiple instances).
+                    tonconnect: { type: "integrated", instance: state.connector },
+                    widget: {
+                        defaultBidAsset: "EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c" // TON
+                        // Optional revenue share on swaps routed through this wallet:
+                        // referrerAddress: "YOUR_TON_WALLET_ADDRESS",
+                        // referrerFeeBps: 50 // 0.5%
+                    }
+                });
+                _stonfiWidget.on("error", err => {
+                    console.error("StonFi widget error:", err);
+                    showToast("Swap widget error: " + (err?.message || err), "exclamation");
+                });
+                _stonfiWidget.mount(document.getElementById("omniston-widget-container"));
+            } catch (e) {
+                console.error("StonFi widget init failed:", e);
+                _stonfiWidget = null;
+            }
         }
 
         /* ==============================================================
@@ -2111,6 +2191,57 @@
                 });
             } catch (e) { console.error("Jettons fetch failed:", e); return []; }
         }
+        async function fetchNfts(addr) {
+            try {
+                const url = `${getTonApiBase()}/v2/accounts/${encodeURIComponent(addr)}/nfts?limit=1000&offset=0&indirect_ownership=true`;
+                const res = await fetch(url);
+                if (!res.ok) return [];
+                const data = await res.json();
+                if (!data || !Array.isArray(data.nft_items)) return [];
+                return data.nft_items.map(item => {
+                    const meta = item.metadata || {};
+                    const previews = Array.isArray(item.previews) ? item.previews : [];
+                    const preview = previews.find(p => p.resolution === "500x500") || previews[previews.length - 1];
+                    return {
+                        address: item.address,
+                        name: meta.name || "Unnamed NFT",
+                        collection: item.collection?.name || "",
+                        image: preview?.url || meta.image || "",
+                        verified: !!item.verified
+                    };
+                });
+            } catch (e) { console.error("NFT fetch failed:", e); return []; }
+        }
+        async function loadNfts() {
+            if (!state.address) return;
+            const loading = document.getElementById("nfts-loading");
+            const grid = document.getElementById("nfts-grid");
+            const empty = document.getElementById("nfts-empty");
+            loading.classList.remove("hidden");
+            empty.classList.add("hidden");
+            grid.innerHTML = "";
+            try {
+                const items = await fetchNfts(state.address);
+                loading.classList.add("hidden");
+                if (!items.length) { empty.classList.remove("hidden"); return; }
+                grid.innerHTML = items.map(n => `
+                    <a href="https://tonviewer.com/${encodeURIComponent(n.address)}" target="_blank" rel="noopener noreferrer" class="nft-card">
+                        <div class="nft-card-img">
+                            ${n.image ? `<img src="${n.image}" alt="${n.name}" loading="lazy" onerror="this.onerror=null;this.style.display='none';this.parentNode.querySelector('.nft-fallback').style.display='flex';" />` : ""}
+                            <div class="nft-fallback" style="${n.image ? "display:none;" : ""}"><i class="fas fa-image"></i></div>
+                        </div>
+                        <div class="nft-card-body">
+                            <div class="nft-card-name">${n.name}</div>
+                            ${n.collection ? `<div class="nft-card-collection">${n.collection}</div>` : ""}
+                        </div>
+                    </a>
+                `).join("");
+            } catch (e) {
+                loading.classList.add("hidden");
+                console.error(e);
+                showToast("Failed to load NFTs", "exclamation");
+            }
+        }
         async function refreshBalances() {
             if (!state.address) return;
             try {
@@ -2165,7 +2296,6 @@
                 const displaySymbol = item.symbol === 'TON' ? 'TON' : item.symbol;
                 const displayName = item.symbol === 'TON' ? 'Toncoin' : item.name;
                 
-                // Robust image fallback: if image fails to load, the fallback span becomes visible
                 const imgHtml = item.image ? `
                     <div class="relative w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-xs overflow-hidden shrink-0">
                         <img src="${item.image}" alt="${displaySymbol}" class="w-8 h-8 rounded-full absolute inset-0 object-cover" onerror="this.onerror=null; this.style.display='none'; this.parentNode.querySelector('.fallback-text').style.display='flex';" />
@@ -2647,8 +2777,6 @@
             return b.endCell();
         }
         function obBuildExternalWrapper({ destAddr, bodyCell }) {
-            // Offline builder only supports already-deployed wallets (no stateInit branch) —
-            // seqno > 0 confirms deployment, which obGetSeqno already guarantees.
             const b = obBeginCell();
             b.storeBit(1); b.storeBit(0);
             b.storeAddress(null); b.storeAddress(destAddr); b.storeCoins(0n);
@@ -2688,8 +2816,6 @@
             const sig = window.nacl.sign.detached(h, secretKey);
             return { cell, sig };
         }
-        // Send-mode per message matches each wallet version's @ton/ton createTransfer default,
-        // verified byte-for-byte against the official library (v5R1=2, v4R2=0, v3R2=1).
         async function obBuildV5R1Transfer({ seqno, validUntil, secretKey, msgs }) {
             const walletId = walletIdV5R1(NETWORK_GLOBAL_ID, 0, 0, 0);
             const sm = obBeginCell();
@@ -2994,6 +3120,12 @@
             ensureWordlist().catch(() => {});
             if (window.ton && window.ton.beginCell) verifySelfContainedFallback();
             else window.addEventListener("ton-libs-ready", () => verifySelfContainedFallback(), { once: true });
+
+            // Smart Launch: auto-redirect to unlock if a wallet exists
+            const ks = loadKeystore();
+            if (ks) {
+                setTimeout(() => goUnlock(), 150);
+            }
         });
     </script>
 </body>
