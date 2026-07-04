@@ -48,20 +48,44 @@
             font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
             overflow-x: hidden;
             min-height: 100vh;
-            background: radial-gradient(ellipse 80% 60% at 50% -10%, rgba(0, 210, 255, 0.18) 0%, transparent 60%),
-                radial-gradient(ellipse 60% 50% at 90% 20%, rgba(138, 43, 226, 0.16) 0%, transparent 65%),
-                radial-gradient(ellipse 70% 55% at 10% 80%, rgba(255, 215, 0, 0.10) 0%, transparent 60%),
-                radial-gradient(ellipse 50% 40% at 50% 110%, rgba(0, 229, 255, 0.10) 0%, transparent 60%),
-                var(--deep-blue);
-            background-attachment: fixed;
         }
-        main { position: relative; z-index: 10; }
-        .glass {
-            background: rgba(11, 18, 48, 0.45);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border: 1px solid var(--border-blue);
-            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        main {
+            position: relative;
+            z-index: 10;
+            padding: 1rem 1rem 4rem; /* reduced top padding */
+        }
+        /* ==============================================================
+           NEBULA BACKGROUND — pure CSS, no canvas/JS.
+           Three blurred, slowly-drifting color blobs (GPU-composited via
+           transform, so this is cheap even on low-end phones) plus a
+           tiled radial-gradient starfield for a bit of twinkle. Always
+           position:fixed + inset:0 + pointer-events:none, so it can never
+           push real content around the way the old unpositioned canvas did.
+           ============================================================== */
+        .nebula-bg { position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; background: var(--deep-blue); }
+        .nebula-blob { position: absolute; border-radius: 50%; filter: blur(60px); will-change: transform; }
+        .nebula-blob--cyan { width: 70vmax; height: 70vmax; top: -30vmax; left: -15vmax; background: radial-gradient(circle, rgba(0, 210, 255, 0.20) 0%, transparent 70%); animation: nebula-float-a 32s ease-in-out infinite; }
+        .nebula-blob--purple { width: 60vmax; height: 60vmax; top: 5vmax; right: -25vmax; background: radial-gradient(circle, rgba(138, 43, 226, 0.18) 0%, transparent 70%); animation: nebula-float-b 38s ease-in-out infinite; }
+        .nebula-blob--gold { width: 50vmax; height: 50vmax; bottom: -22vmax; left: 10vmax; background: radial-gradient(circle, rgba(255, 215, 0, 0.12) 0%, transparent 70%); animation: nebula-float-c 44s ease-in-out infinite; }
+        @keyframes nebula-float-a { 0%, 100% { transform: translate(0, 0) scale(1); } 50% { transform: translate(6vmax, 5vmax) scale(1.08); } }
+        @keyframes nebula-float-b { 0%, 100% { transform: translate(0, 0) scale(1); } 50% { transform: translate(-6vmax, 6vmax) scale(1.1); } }
+        @keyframes nebula-float-c { 0%, 100% { transform: translate(0, 0) scale(1); } 50% { transform: translate(5vmax, -4vmax) scale(1.05); } }
+        .nebula-stars {
+            position: absolute; inset: -10%; opacity: 0.85;
+            background-repeat: repeat;
+            background-size: 220px 220px;
+            background-image:
+                radial-gradient(1.4px 1.4px at 20px 30px, rgba(255, 255, 255, 0.85), transparent),
+                radial-gradient(1px 1px at 95px 85px, rgba(255, 255, 255, 0.6), transparent),
+                radial-gradient(1.4px 1.4px at 150px 45px, rgba(255, 235, 150, 0.75), transparent),
+                radial-gradient(1px 1px at 60px 130px, rgba(255, 255, 255, 0.55), transparent),
+                radial-gradient(1.4px 1.4px at 185px 160px, rgba(0, 210, 255, 0.6), transparent),
+                radial-gradient(1px 1px at 130px 190px, rgba(255, 255, 255, 0.5), transparent);
+            animation: nebula-twinkle 5s ease-in-out infinite alternate;
+        }
+        @keyframes nebula-twinkle { 0% { opacity: 0.55; } 100% { opacity: 0.95; } }
+        @media (prefers-reduced-motion: reduce) {
+            .nebula-blob, .nebula-stars { animation: none; }
         }
         .glass-card {
             background: var(--glass-bg);
@@ -307,7 +331,12 @@
     </style>
 </head>
 <body>
-    <canvas id="nebula-canvas"></canvas>
+    <div class="nebula-bg" aria-hidden="true">
+      <div class="nebula-blob nebula-blob--cyan"></div>
+      <div class="nebula-blob nebula-blob--purple"></div>
+      <div class="nebula-blob nebula-blob--gold"></div>
+      <div class="nebula-stars"></div>
+    </div>
 
     <!-- ===================== LOADING OVERLAY ===================== -->
     <div id="loading-overlay" class="hidden-section">
@@ -780,8 +809,7 @@
            CONFIG & STATE
            ============================================================== */
         const CONFIG = {
-            nebula: { particleCount: 60, fps: 30 },
-            tonconnect: { manifestUrl: "https://neon--wallet.vercel.app/tonconnect-manifest.json" },
+            tonconnect: { manifestUrl: "https://neon-crypto-wallet.vercel.app/tonconnect-manifest.json" },
             storage: { keystore: "neon_wallet_keystore_v1", walletManager: "neon_wallet_manager_v1", txHistory: "neon_wallet_tx_history_v1" }
         };
 
@@ -1632,28 +1660,6 @@
                 }
             }
             return "v4r2";
-        }
-
-        /* ==============================================================
-           PASSWORD STRENGTH
-           ============================================================== */
-        function updatePwStrength() {
-            const v = document.getElementById("create-pw1").value;
-            const bar = document.getElementById("pw-strength-bar");
-            const txt = document.getElementById("pw-strength-text");
-            let score = 0;
-            if (v.length >= 8) score++;
-            if (v.length >= 12) score++;
-            if (/[A-Z]/.test(v) && /[a-z]/.test(v)) score++;
-            if (/[0-9]/.test(v)) score++;
-            if (/[^A-Za-z0-9]/.test(v)) score++;
-            const pct = [0, 20, 40, 60, 80, 100][score];
-            const colors = ["#EF4444","#EF4444","#F59E0B","#F59E0B","#22C55E","#22C55E"];
-            const labels = ["Enter a password","Very weak","Weak","Fair","Strong","Very strong"];
-            bar.style.width = pct + "%";
-            bar.style.background = colors[score];
-            txt.textContent = labels[score];
-            txt.style.color = colors[score];
         }
 
         /* ==============================================================
@@ -2983,7 +2989,6 @@
            INIT
            ============================================================== */
         window.addEventListener("DOMContentLoaded", async () => {
-            initNebula();
             setTimeout(initTonConnect, 250);
             refreshExistingBanner();
             ensureWordlist().catch(() => {});
