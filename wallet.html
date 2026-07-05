@@ -234,7 +234,7 @@
         .mnemonic-input-cell { position: relative; }
         .mnemonic-input-cell input { padding: 10px 12px 10px 36px; border-radius: 10px; font-family: 'Fira Code', monospace; font-size: 0.85rem; }
         .mnemonic-input-cell .idx { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: #7A8BA8; font-size: 0.7rem; font-family: 'Fira Code', monospace; }
-        .wallet-switcher { background: rgba(11, 18, 48, 0.6); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 4px 8px; color: #F8FAFC; font-size: 0.75rem; font-family: inherit; text-align: left; text-align-last: left; }
+        .wallet-switcher { background: rgba(11, 18, 48, 0.6) !important; border: 1px solid rgba(255,255,255,0.08) !important; border-radius: 8px !important; padding: 6px 10px !important; color: #F8FAFC; font-size: 0.75rem !important; font-family: inherit; text-align: left; text-align-last: left; min-height: 34px !important; }
         .neon-blue-text {
             color: var(--neon-blue); text-shadow: 0 0 10px rgba(0, 229, 255, 0.65), 0 0 25px rgba(0, 229, 255, 0.45), 0 0 40px rgba(0, 229, 255, 0.25);
             letter-spacing: 0.05em; font-weight: 800; animation: neon-glow 2s ease-in-out infinite;
@@ -541,6 +541,7 @@
             <section id="screen-dashboard" class="screen">
                 <div class="glass p-6 md:p-8 rounded-2xl space-y-6">
                     <div class="flex items-center justify-between gap-2">
+                        <span id="wallet-version-badge" class="mode-pill local hidden shrink-0"></span>
                         <div id="wallet-switcher-wrap" class="flex items-center gap-2 hidden flex-1 min-w-0">
                             <div class="text-xs text-slate-400 uppercase shrink-0">Active Wallet</div>
                             <select id="wallet-switcher" class="wallet-switcher flex-1" onchange="switchToWallet(this.value)"></select>
@@ -580,16 +581,6 @@
                             <div id="assets-empty" class="text-sm text-slate-400 text-center py-2 hidden">No assets found</div>
                         </div>
 
-                        <div class="glass-card p-5 rounded-xl">
-                            <div class="flex items-center justify-between mb-2">
-                                <p class="text-xs text-slate-400 uppercase">Your Address</p>
-                                <span id="wallet-version-badge" class="mode-pill local hidden"></span>
-                            </div>
-                            <div class="flex gap-2">
-                                <input type="text" id="wallet-address" readonly class="flex-1 font-mono text-xs" placeholder="Loading..." />
-                                <button class="btn-outline px-4" onclick="copyAddress()" title="Copy address"><i class="fas fa-copy"></i></button>
-                            </div>
-                        </div>
                     </div>
 
                     <div id="send" class="tab-content space-y-4">
@@ -2191,7 +2182,6 @@
            ============================================================== */
         function enterDashboard() {
             showScreen("dashboard");
-            document.getElementById("wallet-address").value = state.nonBounceableAddress || state.address || "";
             const vBadge = document.getElementById("wallet-version-badge");
             if (state.mode === "local" && state.walletVersion) {
                 vBadge.textContent = WALLET_VERSION_LABELS[state.walletVersion] || state.walletVersion;
