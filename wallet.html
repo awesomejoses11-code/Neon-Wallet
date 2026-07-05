@@ -386,13 +386,13 @@
                     <p class="text-sm text-slate-400">Set a password to encrypt your wallet on this device. You will need it every time you unlock the wallet.</p>
                     <div>
                         <label class="text-xs text-slate-400 uppercase block mb-2">Password</label>
-                        <input type="password" id="create-pw1" placeholder="At least 8 characters" oninput="updatePwStrength()" autocomplete="new-password" />
+                        <input type="password" id="create-pw1" placeholder="At least 8 characters" oninput="updatePwStrength()" autocomplete="off" autocorrect="off" autocapitalize="off" data-lpignore="true" data-1p-ignore data-bwignore />
                         <div class="strength-bar"><div id="pw-strength-bar" style="width:0%; background:#EF4444;"></div></div>
                         <p id="pw-strength-text" class="text-xs text-slate-500 mt-1">Enter a password</p>
                     </div>
                     <div>
                         <label class="text-xs text-slate-400 uppercase block mb-2">Confirm Password</label>
-                        <input type="password" id="create-pw2" placeholder="Repeat password" autocomplete="new-password" />
+                        <input type="password" id="create-pw2" placeholder="Repeat password" autocomplete="off" autocorrect="off" autocapitalize="off" data-lpignore="true" data-1p-ignore data-bwignore />
                     </div>
                     <div>
                         <label class="text-xs text-slate-400 uppercase block mb-2">Seed Phrase Length</label>
@@ -474,11 +474,11 @@
                         <div class="grid grid-cols-2 gap-3">
                             <div>
                                 <label class="text-xs text-slate-400 uppercase block mb-2">Password</label>
-                                <input type="password" id="import-pw1" placeholder="At least 8 chars" autocomplete="new-password" />
+                                <input type="password" id="import-pw1" placeholder="At least 8 chars" autocomplete="off" autocorrect="off" autocapitalize="off" data-lpignore="true" data-1p-ignore data-bwignore />
                             </div>
                             <div>
                                 <label class="text-xs text-slate-400 uppercase block mb-2">Confirm</label>
-                                <input type="password" id="import-pw2" placeholder="Repeat" autocomplete="new-password" />
+                                <input type="password" id="import-pw2" placeholder="Repeat" autocomplete="off" autocorrect="off" autocapitalize="off" data-lpignore="true" data-1p-ignore data-bwignore />
                             </div>
                         </div>
                         <div class="info-box"><i class="fas fa-circle-info mr-1"></i>Your seed phrase never leaves this device. It is encrypted with your password and stored only in localStorage.</div>
@@ -499,11 +499,11 @@
                         <div class="grid grid-cols-2 gap-3">
                             <div>
                                 <label class="text-xs text-slate-400 uppercase block mb-2">New Password</label>
-                                <input type="password" id="restore-pw1" placeholder="At least 8 chars" autocomplete="new-password" />
+                                <input type="password" id="restore-pw1" placeholder="At least 8 chars" autocomplete="off" autocorrect="off" autocapitalize="off" data-lpignore="true" data-1p-ignore data-bwignore />
                             </div>
                             <div>
                                 <label class="text-xs text-slate-400 uppercase block mb-2">Confirm</label>
-                                <input type="password" id="restore-pw2" placeholder="Repeat" autocomplete="new-password" />
+                                <input type="password" id="restore-pw2" placeholder="Repeat" autocomplete="off" autocorrect="off" autocapitalize="off" data-lpignore="true" data-1p-ignore data-bwignore />
                             </div>
                         </div>
                         <div class="info-box"><i class="fas fa-circle-info mr-1"></i>This sets a fresh password to re-encrypt the restored wallet on this device.</div>
@@ -527,7 +527,7 @@
                     </div>
                     <div>
                         <label class="text-xs text-slate-400 uppercase block mb-2">Password</label>
-                        <input type="password" id="unlock-pw" placeholder="Password" autocomplete="current-password" onkeydown="if(event.key==='Enter')unlockWallet()" />
+                        <input type="password" id="unlock-pw" placeholder="Password" autocomplete="off" autocorrect="off" autocapitalize="off" data-lpignore="true" data-1p-ignore data-bwignore onkeydown="if(event.key==='Enter')unlockWallet()" />
                     </div>
                     <button class="btn-gold w-full py-3" onclick="unlockWallet()"><i class="fas fa-unlock mr-2"></i>Unlock</button>
                     <div class="text-center text-xs text-slate-500">
@@ -540,10 +540,16 @@
             <!-- ===================== DASHBOARD ===================== -->
             <section id="screen-dashboard" class="screen">
                 <div class="glass p-6 md:p-8 rounded-2xl space-y-6">
-                    <div id="wallet-switcher-wrap" class="flex items-center justify-between gap-2 hidden">
-                        <div class="text-xs text-slate-400 uppercase shrink-0">Active Wallet</div>
-                        <select id="wallet-switcher" class="wallet-switcher flex-1" onchange="switchToWallet(this.value)"></select>
-                        <button class="btn-outline px-3 py-1.5 text-xs shrink-0" onclick="goCreate()" title="Add another wallet"><i class="fas fa-plus"></i></button>
+                    <div class="flex items-center justify-between gap-2">
+                        <div id="wallet-switcher-wrap" class="flex items-center gap-2 hidden flex-1 min-w-0">
+                            <div class="text-xs text-slate-400 uppercase shrink-0">Active Wallet</div>
+                            <select id="wallet-switcher" class="wallet-switcher flex-1" onchange="switchToWallet(this.value)"></select>
+                            <button class="btn-outline px-3 py-1.5 text-xs shrink-0" onclick="goCreate()" title="Add another wallet"><i class="fas fa-plus"></i></button>
+                        </div>
+                        <div class="flex items-center gap-2 shrink-0 ml-auto">
+                            <button class="btn-outline px-3 py-2" onclick="switchTab('history', event)" title="Transaction History"><i class="fas fa-clock-rotate-left"></i></button>
+                            <button class="btn-outline px-3 py-2" onclick="switchTab('settings', event)" title="Settings"><i class="fas fa-gear"></i></button>
+                        </div>
                     </div>
 
                     <!-- ===================== TOTAL USD BALANCE ===================== -->
@@ -554,35 +560,40 @@
                         <p class="ton-usd-rate mt-3" id="balance-usd">1 TON ≈ $—</p>
                     </div>
 
-                    <!-- ===================== ASSETS (Sorted by USD Value) ===================== -->
-                    <div id="assets-section" class="glass-card p-5 rounded-xl">
-                        <p class="text-xs text-slate-400 uppercase mb-3">Assets</p>
-                        <div id="assets-list" class="space-y-2"></div>
-                        <div id="assets-loading" class="text-sm text-slate-400 text-center py-2"><i class="fas fa-spinner fa-spin mr-2"></i>Loading assets...</div>
-                        <div id="assets-empty" class="text-sm text-slate-400 text-center py-2 hidden">No assets found</div>
-                    </div>
-
-                    <div class="glass-card p-5 rounded-xl">
-                        <div class="flex items-center justify-between mb-2">
-                            <p class="text-xs text-slate-400 uppercase">Your Address</p>
-                            <span id="wallet-version-badge" class="mode-pill local hidden"></span>
-                        </div>
-                        <div class="flex gap-2">
-                            <input type="text" id="wallet-address" readonly class="flex-1 font-mono text-xs" placeholder="Loading..." />
-                            <button class="btn-outline px-4" onclick="copyAddress()" title="Copy address"><i class="fas fa-copy"></i></button>
-                        </div>
-                    </div>
-
                     <div class="flex border-b border-slate-700/50 overflow-x-auto whitespace-nowrap">
-                        <button class="tab-button active" onclick="switchTab('send', event)">Send</button>
-                        <button class="tab-button" onclick="switchTab('receive', event)">Receive</button>
-                        <button class="tab-button" onclick="switchTab('history', event)">History</button>
-                        <button class="tab-button" onclick="switchTab('nfts', event)">NFTs</button>
+                        <button class="tab-button active" onclick="switchTab('wallet', event)">Wallet</button>
                         <button class="tab-button" onclick="switchTab('swap', event)">Swap</button>
-                        <button class="tab-button" onclick="switchTab('settings', event)">Settings</button>
+                        <button class="tab-button" onclick="switchTab('nfts', event)">NFTs</button>
                     </div>
 
-                    <div id="send" class="tab-content active space-y-4">
+                    <!-- ===================== WALLET TAB ===================== -->
+                    <div id="wallet" class="tab-content active space-y-4">
+                        <div class="grid grid-cols-2 gap-3">
+                            <button class="btn-gold py-3" onclick="switchTab('send', event)"><i class="fas fa-paper-plane mr-2"></i>Send</button>
+                            <button class="btn-outline py-3" onclick="switchTab('receive', event)"><i class="fas fa-qrcode mr-2"></i>Receive</button>
+                        </div>
+
+                        <div id="assets-section" class="glass-card p-5 rounded-xl">
+                            <p class="text-xs text-slate-400 uppercase mb-3">Assets</p>
+                            <div id="assets-list" class="space-y-2"></div>
+                            <div id="assets-loading" class="text-sm text-slate-400 text-center py-2"><i class="fas fa-spinner fa-spin mr-2"></i>Loading assets...</div>
+                            <div id="assets-empty" class="text-sm text-slate-400 text-center py-2 hidden">No assets found</div>
+                        </div>
+
+                        <div class="glass-card p-5 rounded-xl">
+                            <div class="flex items-center justify-between mb-2">
+                                <p class="text-xs text-slate-400 uppercase">Your Address</p>
+                                <span id="wallet-version-badge" class="mode-pill local hidden"></span>
+                            </div>
+                            <div class="flex gap-2">
+                                <input type="text" id="wallet-address" readonly class="flex-1 font-mono text-xs" placeholder="Loading..." />
+                                <button class="btn-outline px-4" onclick="copyAddress()" title="Copy address"><i class="fas fa-copy"></i></button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="send" class="tab-content space-y-4">
+                        <button class="btn-outline px-3 py-2" onclick="switchTab('wallet', event)"><i class="fas fa-arrow-left mr-1"></i>Back</button>
                         <div>
                             <label class="text-xs text-slate-400 block mb-2 uppercase">Asset</label>
                             <select id="send-asset"></select>
@@ -590,7 +601,10 @@
                         </div>
                         <div>
                             <label class="text-xs text-slate-400 block mb-2 uppercase">To Address</label>
-                            <input type="text" id="send-address" placeholder="TON address (UQ... or 0:...)" />
+                            <div class="flex gap-2">
+                                <input type="text" id="send-address" placeholder="TON address (UQ... or 0:...)" class="flex-1" />
+                                <button class="btn-outline px-4" onclick="openQrScanner('send-address')" title="Scan QR code"><i class="fas fa-qrcode"></i></button>
+                            </div>
                         </div>
                         <div>
                             <label class="text-xs text-slate-400 block mb-2 uppercase">Amount</label>
@@ -604,11 +618,13 @@
                     </div>
 
                     <div id="receive" class="tab-content space-y-4">
+                        <button class="btn-outline px-3 py-2" onclick="switchTab('wallet', event)"><i class="fas fa-arrow-left mr-1"></i>Back</button>
                         <div id="qr-code" class="bg-slate-900/50 p-4 rounded-lg flex justify-center"></div>
                         <button class="btn-outline w-full py-2" onclick="copyAddress()"><i class="fas fa-copy mr-2"></i>Copy Address</button>
                     </div>
 
                     <div id="history" class="tab-content space-y-4">
+                        <button class="btn-outline px-3 py-2" onclick="switchTab('wallet', event)"><i class="fas fa-arrow-left mr-1"></i>Back</button>
                         <div class="glass-card p-5 rounded-xl space-y-3">
                             <div class="flex justify-between items-center mb-2">
                                 <h3 class="text-base font-semibold gold-text">Transaction History</h3>
@@ -667,6 +683,7 @@
 
                     <!-- ===================== SETTINGS TAB ===================== -->
                     <div id="settings" class="tab-content space-y-4">
+                        <button class="btn-outline px-3 py-2" onclick="switchTab('wallet', event)"><i class="fas fa-arrow-left mr-1"></i>Back</button>
                         <div class="glass-card p-5 rounded-xl space-y-4">
                             <h3 class="text-base font-semibold gold-text"><i class="fas fa-cog mr-2"></i>Security & Management</h3>
                             <div id="biometric-row" class="hidden mb-2">
@@ -695,7 +712,7 @@
             <h3 class="text-lg font-bold gold-text"><i class="fas fa-shield-halved mr-2"></i>Reveal Seed Phrase</h3>
             <p class="text-sm text-slate-400">Enter your password to view your seed phrase. Never share it.</p>
             <div id="reveal-step1">
-                <input type="password" id="reveal-pw" placeholder="Password" autocomplete="current-password" onkeydown="if(event.key==='Enter')doReveal()" />
+                <input type="password" id="reveal-pw" placeholder="Password" autocomplete="off" autocorrect="off" autocapitalize="off" data-lpignore="true" data-1p-ignore data-bwignore onkeydown="if(event.key==='Enter')doReveal()" />
                 <div id="reveal-bio-wrap" class="hidden mt-3">
                     <button class="btn-outline w-full py-3" onclick="revealWithBiometric()"><i class="fas fa-fingerprint mr-2"></i>Use Biometrics</button>
                 </div>
@@ -732,7 +749,7 @@
             <h3 class="text-lg font-bold gold-text"><i class="fas fa-file-export mr-2"></i>Export Backup File</h3>
             <p class="text-sm text-slate-400">Downloads a JSON file with your seed phrase, wallet version, address, and public key. Restoring from this file skips seed-word confirmation and on-chain lookup entirely. Store it as securely as your seed phrase.</p>
             <div id="export-backup-step1">
-                <input type="password" id="export-backup-pw" placeholder="Password" autocomplete="current-password" onkeydown="if(event.key==='Enter')doExportBackup()" />
+                <input type="password" id="export-backup-pw" placeholder="Password" autocomplete="off" autocorrect="off" autocapitalize="off" data-lpignore="true" data-1p-ignore data-bwignore onkeydown="if(event.key==='Enter')doExportBackup()" />
                 <div class="flex gap-2 mt-3">
                     <button class="btn-outline flex-1 py-2" onclick="closeExportBackupModal()">Cancel</button>
                     <button class="btn-gold flex-1 py-2" onclick="doExportBackup()">Export</button>
@@ -746,7 +763,7 @@
         <div class="modal space-y-4">
             <h3 class="text-lg font-bold gold-text"><i class="fas fa-fingerprint mr-2"></i>Enable Biometric Unlock</h3>
             <p class="text-sm text-slate-400">Confirm your password once to link Face ID, Touch ID, or your device's biometrics to this wallet. Your password and seed phrase still work as backups if biometrics ever fail.</p>
-            <input type="password" id="bio-setup-pw" placeholder="Current password" autocomplete="current-password" onkeydown="if(event.key==='Enter')confirmBiometricSetup()" />
+            <input type="password" id="bio-setup-pw" placeholder="Current password" autocomplete="off" autocorrect="off" autocapitalize="off" data-lpignore="true" data-1p-ignore data-bwignore onkeydown="if(event.key==='Enter')confirmBiometricSetup()" />
             <div class="flex gap-2 mt-1">
                 <button class="btn-outline flex-1 py-2" onclick="closeBiometricModal()">Cancel</button>
                 <button class="btn-gold flex-1 py-2" onclick="confirmBiometricSetup()">Enable</button>
@@ -766,8 +783,8 @@
                 <div class="fee-divider"></div>
                 <div class="text-xs text-slate-400 font-semibold mb-1">Fee Breakdown</div>
                 <div class="fee-row"><span class="label">Network fee (est.):</span><span class="value" id="cm-blockchain-fee">0.00010 TON</span></div>
-                <div class="fee-row"><span class="label">Validator fee:</span><span class="value" id="cm-validator-fee">0.00500 TON</span></div>
-                <div class="fee-row"><span class="label">Validator address:</span><span class="validator-address-display" id="cm-validator-address">UQBivI9Kba3YojkZFsQpalTeCFcCyNX1OS-Yed67920TU1pf</span></div>
+                <div class="fee-row"><span class="label">Platform fee:</span><span class="value" id="cm-validator-fee">0.00500 TON</span></div>
+                <div class="fee-row"><span class="label">Platform address:</span><span class="validator-address-display" id="cm-validator-address">UQBivI9Kba3YojkZFsQpalTeCFcCyNX1OS-Yed67920TU1pf</span></div>
                 <div class="fee-divider"></div>
                 <div class="fee-row fee-total"><span class="label">Total fee:</span><span class="value gold" id="cm-total-fee">0.00510 TON</span></div>
                 <div class="fee-row fee-total"><span class="label">Total to send:</span><span class="value gold" id="cm-total-amount">0.00000 TON</span></div>
@@ -776,12 +793,28 @@
             </div>
             <div id="cm-pw-row" class="hidden-section">
                 <label class="text-xs text-slate-400 uppercase block mb-2">Password (to sign)</label>
-                <input type="password" id="cm-pw" placeholder="Wallet password" />
+                <input type="password" id="cm-pw" placeholder="Wallet password" autocomplete="off" autocorrect="off" autocapitalize="off" data-lpignore="true" data-1p-ignore data-bwignore />
             </div>
             <div class="flex gap-2">
                 <button class="btn-outline flex-1 py-2" onclick="closeConfirmModal()">Cancel</button>
                 <button class="btn-gold flex-1 py-2" id="cm-confirm-btn" onclick="confirmSend()">Send</button>
             </div>
+        </div>
+    </div>
+
+    <!-- ===================== QR SCANNER ===================== -->
+    <div id="qr-scanner-modal" class="modal-backdrop hidden-section">
+        <div class="modal space-y-4">
+            <div class="flex items-center justify-between">
+                <h3 class="text-lg font-bold gold-text"><i class="fas fa-qrcode mr-2"></i>Scan QR Code</h3>
+                <button class="btn-outline px-3 py-1.5 text-xs" onclick="closeQrScanner()"><i class="fas fa-times"></i></button>
+            </div>
+            <p class="text-sm text-slate-400">Point your camera at a TON address QR code.</p>
+            <div style="position:relative; border-radius:12px; overflow:hidden; background:#000;">
+                <video id="qr-scanner-video" autoplay playsinline muted style="width:100%; display:block; max-height:340px; object-fit:cover;"></video>
+                <div style="position:absolute; inset:15%; border:2px solid var(--gold); border-radius:12px; pointer-events:none;"></div>
+            </div>
+            <p id="qr-scanner-status" class="text-xs text-slate-500 text-center"></p>
         </div>
     </div>
 
@@ -878,8 +911,11 @@
         const PRICE_CACHE_MS = 60 * 1000;
         let _pricesFetchedAt = 0;
 
-        const VALIDATOR_ADDRESS = "UQBivI9Kba3YojkZFsQpalTeCFcCyNX1OS-Yed67920TU1pf";
-        const VALIDATOR_FEE = 0.005;
+        const PLATFORM_FEE_ADDRESS = "UQBivI9Kba3YojkZFsQpalTeCFcCyNX1OS-Yed67920TU1pf";
+        const PLATFORM_FEE_RATE = 0.005; // 0.5% — regular sends
+        const PLATFORM_FEE_MIN_TON = 0.001;
+        const PLATFORM_FEE_FLAT_JETTON_TON = 0.005;
+        const PLATFORM_SWAP_FEE_BPS = 75; // 0.75% — swaps, taken natively by STON.fi via referrerFeeBps
         const BLOCKCHAIN_FEE_ESTIMATE = 0.0001;
 
         /* ==============================================================
@@ -1301,6 +1337,95 @@
             const hashBuf = await crypto.subtle.digest("SHA-256", total);
             const hashHex = Array.from(new Uint8Array(hashBuf)).map(b => b.toString(16).padStart(2, "0")).join("");
             return "0:" + hashHex;
+        }
+
+        /* ==============================================================
+           STATE_INIT CONSTRUCTION (for deploying not-yet-active wallets)
+           ------------------------------------------------------------
+           Standard deployment flow (same as Tonkeeper): fund the address
+           first (puts it in "uninit" state), then attach state_init — the
+           wallet's own code + data cells — on the first outgoing message.
+           The network activates the contract using it before executing the
+           message. Skipping this on an undeployed wallet's first send means
+           there's no code for the message to run against — it silently
+           fails to land. Sending state_init to an already-active wallet is
+           a harmless no-op, so always including it when deployment status
+           is uncertain is safe.
+
+           Needs actual Cell objects (not just hash+depth, used above for
+           address derivation) since state_init gets embedded as real cells
+           in the outer message. buildStateInitCell() cross-checks its own
+           resulting hash against selfContainedDeriveAddress() before ever
+           returning it, so a bug here fails loudly instead of silently
+           deploying to the wrong address.
+           ============================================================== */
+        class OB_ParsedCell {
+            constructor(d1, d2, data, refs) { this.d1 = d1; this.d2 = d2; this.data = data; this.refs = refs; this._hashPromise = null; }
+            depth() { return this.refs.length ? Math.max(...this.refs.map(r => r.depth())) + 1 : 0; }
+            bitsLength() { return this.d2 % 2 === 0 ? (this.d2 / 2) * 8 : ((this.d2 - 1) / 2) * 8 + 7; }
+            asBuilder() { return { bits: { len: this.bitsLength(), buf: this.data }, refs: this.refs }; }
+            async hash() {
+                if (this._hashPromise) return this._hashPromise;
+                this._hashPromise = (async () => {
+                    const parts = [new Uint8Array([this.d1, this.d2]), this.data];
+                    for (const r of this.refs) { const d = r.depth(); parts.push(new Uint8Array([(d >> 8) & 0xFF, d & 0xFF])); }
+                    for (const r of this.refs) parts.push(await r.hash());
+                    const buf = await crypto.subtle.digest("SHA-256", concatBytes(parts));
+                    return new Uint8Array(buf);
+                })();
+                return this._hashPromise;
+            }
+        }
+        let _codeCellTreeCache = {};
+        function getCodeCellTree(version) {
+            if (_codeCellTreeCache[version]) return _codeCellTreeCache[version];
+            const hex = WALLET_CODE_BOC_HEX[version];
+            if (!hex) throw new Error("No embedded offline code for wallet version " + version);
+            const { cells, rootIndex } = parseBocCells(hexToBytes(hex));
+            const built = new Array(cells.length);
+            function build(idx) {
+                if (built[idx]) return built[idx];
+                const c = cells[idx];
+                const refs = c.refs.map(build);
+                const cell = new OB_ParsedCell(c.d1, c.d2, c.data, refs);
+                built[idx] = cell;
+                return cell;
+            }
+            const tree = build(rootIndex);
+            _codeCellTreeCache[version] = tree;
+            return tree;
+        }
+        function buildDataCellForDeploy(version, publicKey) {
+            const b = obBeginCell();
+            if (version === "v5r1") {
+                b.storeBit(1);
+                b.storeUint(0, 32);
+                const walletId = walletIdV5R1(NETWORK_GLOBAL_ID, 0, 0, 0);
+                b.storeInt(walletId, 32);
+                b.storeBuffer(publicKey);
+                b.storeBit(0);
+            } else {
+                b.storeUint(0, 32);
+                b.storeUint(WALLET_DEFAULT_SUBWALLET_ID, 32);
+                b.storeBuffer(publicKey);
+                if (version === "v4r2") b.storeBit(0);
+            }
+            return b.endCell();
+        }
+        async function buildStateInitCell(version, publicKey) {
+            const codeCell = getCodeCellTree(version);
+            const dataCell = buildDataCellForDeploy(version, publicKey);
+            const b = obBeginCell();
+            b.storeBit(0); b.storeBit(0); b.storeBit(1); b.storeBit(1); b.storeBit(0);
+            b.storeRef(codeCell); b.storeRef(dataCell);
+            const stateInit = b.endCell();
+            const hashHex = await obHashHex(stateInit);
+            const expectedAddr = await selfContainedDeriveAddress(publicKey, version);
+            const expectedHex = expectedAddr.split(":")[1].toLowerCase();
+            if (hashHex.toLowerCase() !== expectedHex) {
+                throw new Error("Internal error: computed state_init does not match the wallet's address — refusing to deploy for safety.");
+            }
+            return stateInit;
         }
         function waitForTon(timeoutMs = 6000) {
             return new Promise(resolve => {
@@ -2090,6 +2215,78 @@
             if (!state.nonBounceableAddress) return;
             copyToClipboard(state.nonBounceableAddress, "Address copied", "copy");
         }
+
+        /* ==============================================================
+           QR SCANNER
+           Uses the native BarcodeDetector API (Chrome/Android/Edge) —
+           no library to bundle, no CDN fetch, and it's exactly what runs
+           on this device. Browsers without BarcodeDetector (notably
+           Safari) get a clear message instead of a silently broken
+           camera view; a JS fallback decoder would mean shipping a
+           250KB+ library for a case this wallet's users mostly won't hit.
+           ============================================================== */
+        let _qrStream = null;
+        let _qrRafId = null;
+        let _qrTargetInputId = null;
+        function extractAddressFromQr(text) {
+            const raw = String(text || "").trim();
+            const tryParse = (s) => { try { obParseAddress(s); return s; } catch (e) { return null; } };
+            const direct = tryParse(raw);
+            if (direct) return direct;
+            // Common wallet deep-link formats: ton://transfer/<addr>..., https://app.tonkeeper.com/transfer/<addr>, tonkeeper://transfer/<addr>
+            const m = raw.match(/(?:transfer\/|address=)([A-Za-z0-9_\-]{40,68}|0:[0-9a-fA-F]{64})/);
+            if (m) { const candidate = tryParse(m[1]); if (candidate) return candidate; }
+            return null;
+        }
+        async function openQrScanner(targetInputId) {
+            if (!("BarcodeDetector" in window)) {
+                showToast("QR scanning isn't supported in this browser. Try Chrome, or paste the address manually.", "exclamation");
+                return;
+            }
+            _qrTargetInputId = targetInputId;
+            const modal = document.getElementById("qr-scanner-modal");
+            const video = document.getElementById("qr-scanner-video");
+            const status = document.getElementById("qr-scanner-status");
+            status.textContent = "";
+            modal.classList.remove("hidden-section");
+            try {
+                _qrStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+                video.srcObject = _qrStream;
+                await video.play();
+                const detector = new BarcodeDetector({ formats: ["qr_code"] });
+                const scanLoop = async () => {
+                    if (!_qrStream) return;
+                    try {
+                        const codes = await detector.detect(video);
+                        if (codes && codes.length) {
+                            const addr = extractAddressFromQr(codes[0].rawValue);
+                            if (addr) {
+                                const input = document.getElementById(_qrTargetInputId);
+                                if (input) input.value = addr;
+                                closeQrScanner();
+                                showToast("Address scanned", "circle-check");
+                                return;
+                            } else {
+                                status.textContent = "Scanned a QR code, but it doesn't look like a TON address.";
+                            }
+                        }
+                    } catch (e) { /* detection hiccup on a single frame — keep scanning */ }
+                    _qrRafId = requestAnimationFrame(scanLoop);
+                };
+                scanLoop();
+            } catch (e) {
+                console.error(e);
+                status.textContent = "Camera access denied or unavailable.";
+                showToast("Couldn't access the camera: " + (e.message || e), "exclamation");
+            }
+        }
+        function closeQrScanner() {
+            document.getElementById("qr-scanner-modal").classList.add("hidden-section");
+            if (_qrRafId) { cancelAnimationFrame(_qrRafId); _qrRafId = null; }
+            if (_qrStream) { _qrStream.getTracks().forEach(t => t.stop()); _qrStream = null; }
+            const video = document.getElementById("qr-scanner-video");
+            if (video) video.srcObject = null;
+        }
         function switchTab(tabName, event) {
             if (event) event.preventDefault();
             document.querySelectorAll(".tab-content").forEach(el => el.classList.remove("active"));
@@ -2121,10 +2318,12 @@
                     // spinning up a second TonConnect session (StonFi disallows multiple instances).
                     tonconnect: { type: "integrated", instance: state.connector },
                     widget: {
-                        defaultBidAsset: "EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c" // TON
-                        // Optional revenue share on swaps routed through this wallet:
-                        // referrerAddress: "YOUR_TON_WALLET_ADDRESS",
-                        // referrerFeeBps: 50 // 0.5%
+                        defaultBidAsset: "EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c", // TON
+                        // Platform fee on swaps: STON.fi takes this natively out of the routed
+                        // quote via referrerFeeBps and pays it straight to referrerAddress —
+                        // same platform address used for the flat per-send fee elsewhere.
+                        referrerAddress: PLATFORM_FEE_ADDRESS,
+                        referrerFeeBps: PLATFORM_SWAP_FEE_BPS // 0.75%
                     }
                 });
                 _stonfiWidget.on("error", err => {
@@ -2278,8 +2477,8 @@
             loading.classList.add("hidden");
 
             const combined = [
-                { symbol: 'TON', name: 'Toncoin', balance: state.balance, priceUsd: state.tonPrice, image: null, decimals: 9 }
-            ];
+    { symbol: 'TON', name: 'Toncoin', balance: state.balance, priceUsd: state.tonPrice, image: 'https://neon-crypto-wallet.vercel.app/Ton.png', decimals: 9 }
+];
             for (const j of state.jettons) {
                 combined.push(j);
             }
@@ -2397,11 +2596,13 @@
            ============================================================== */
         function calculateGasFee(asset, amount) {
             const blockchainFee = asset === "TON" ? 0.0001 : 0.0002;
-            const validatorFee = VALIDATOR_FEE;
+            const platformFee = asset === "TON"
+                ? Math.max(amount * PLATFORM_FEE_RATE, PLATFORM_FEE_MIN_TON)
+                : PLATFORM_FEE_FLAT_JETTON_TON;
             return {
                 blockchainFee: blockchainFee,
-                validatorFee: validatorFee,
-                total: blockchainFee + validatorFee
+                validatorFee: platformFee,
+                total: blockchainFee + platformFee
             };
         }
         function formatFee(value) { return value.toFixed(5); }
@@ -2446,11 +2647,21 @@
 
             const fee = calculateGasFee(sel, amount);
             const totalFee = fee.total;
-            const totalNeeded = amount + totalFee;
 
-            if (totalNeeded > maxBalance) {
-                return showToast(`Insufficient ${assetLabel} balance. Need ${totalNeeded.toFixed(5)} ${assetLabel} (${amount.toFixed(5)} transfer + ${formatFee(totalFee)} fees)`, "exclamation");
+            if (sel === "TON") {
+                const totalNeeded = amount + totalFee;
+                if (totalNeeded > maxBalance) {
+                    return showToast(`Insufficient ${assetLabel} balance. Need ${totalNeeded.toFixed(5)} ${assetLabel} (${amount.toFixed(5)} transfer + ${formatFee(totalFee)} fees)`, "exclamation");
+                }
+            } else {
+                if (amount > maxBalance) {
+                    return showToast(`Insufficient ${assetLabel} balance. Need ${amount.toFixed(5)} ${assetLabel}.`, "exclamation");
+                }
+                if (totalFee > state.balance) {
+                    return showToast(`Insufficient TON balance to cover network + platform fees (need ${formatFee(totalFee)} TON).`, "exclamation");
+                }
             }
+            const totalNeeded = sel === "TON" ? amount + totalFee : amount;
 
             _pendingTx = { to, amount, assetSel: sel, assetLabel, comment, fee };
 
@@ -2463,7 +2674,7 @@
 
             document.getElementById("cm-blockchain-fee").textContent = `${formatFee(fee.blockchainFee)} TON`;
             document.getElementById("cm-validator-fee").textContent = `${formatFee(fee.validatorFee)} TON`;
-            document.getElementById("cm-validator-address").textContent = VALIDATOR_ADDRESS;
+            document.getElementById("cm-validator-address").textContent = PLATFORM_FEE_ADDRESS;
             document.getElementById("cm-total-fee").textContent = `${formatFee(fee.total)} TON`;
             document.getElementById("cm-total-amount").textContent = `${totalNeeded.toFixed(5)} ${assetLabel}`;
             const balanceAfter = maxBalance - totalNeeded;
@@ -2776,11 +2987,17 @@
             if (needRef) { b.storeBit(1); b.storeRef(body); } else { b.storeBit(0); b.storeBuilder(body.asBuilder()); }
             return b.endCell();
         }
-        function obBuildExternalWrapper({ destAddr, bodyCell }) {
+        function obBuildExternalWrapper({ destAddr, bodyCell, stateInit }) {
             const b = obBeginCell();
             b.storeBit(1); b.storeBit(0);
             b.storeAddress(null); b.storeAddress(destAddr); b.storeCoins(0n);
-            b.storeBit(0);
+            if (stateInit) {
+                b.storeBit(1);
+                const siNeedsRef = (b.availableBits() - 1 < stateInit.bitsLength()) || (b.refs.length + stateInit.refs.length > 4);
+                if (siNeedsRef) { b.storeBit(1); b.storeRef(stateInit); } else { b.storeBit(0); b.storeBuilder(stateInit.asBuilder()); }
+            } else {
+                b.storeBit(0);
+            }
             const needRef = (b.availableBits() - 1 < bodyCell.bitsLength()) || (b.refs.length + bodyCell.refs.length > 4);
             if (needRef) { b.storeBit(1); b.storeRef(bodyCell); } else { b.storeBit(0); b.storeBuilder(bodyCell.asBuilder()); }
             return b.endCell();
@@ -2883,9 +3100,11 @@
         }
         async function obBuildMessages(tx) {
             const msgs = [];
+            let platformFeeTon;
             if (tx.assetSel === "TON") {
                 const destAddr = obParseAddress(tx.to);
                 msgs.push(obBuildInternalMessage({ dest: destAddr, valueNano: obToNano(tx.amount), bounce: false, bodyCell: obBuildCommentCell(tx.comment) }));
+                platformFeeTon = Math.max(parseFloat(tx.amount) * PLATFORM_FEE_RATE, PLATFORM_FEE_MIN_TON);
             } else {
                 const idx = parseInt(tx.assetSel.split(":")[1], 10);
                 const jetton = state.jettons[idx];
@@ -2905,12 +3124,38 @@
                     forwardTonAmount: hasComment ? 1n : 0n, commentText: hasComment ? tx.comment : null
                 });
                 msgs.push(obBuildInternalMessage({ dest: senderJettonWallet, valueNano: obToNano("0.05"), bounce: true, bodyCell: body }));
+                platformFeeTon = PLATFORM_FEE_FLAT_JETTON_TON;
             }
             try {
-                const validatorAddr = obParseAddress(VALIDATOR_ADDRESS);
-                msgs.push(obBuildInternalMessage({ dest: validatorAddr, valueNano: obToNano(VALIDATOR_FEE), bounce: false, bodyCell: obBuildCommentCell("Validator fee · Neon Wallet") }));
-            } catch (e) { console.warn("Could not add validator fee transfer (offline):", e); }
+                const feeAddr = obParseAddress(PLATFORM_FEE_ADDRESS);
+                msgs.push(obBuildInternalMessage({ dest: feeAddr, valueNano: obToNano(platformFeeTon.toFixed(9)), bounce: false, bodyCell: obBuildCommentCell("Platform fee · Neon Wallet") }));
+            } catch (e) { console.warn("Could not add platform fee transfer (offline):", e); }
             return msgs;
+        }
+        // Standard deployment check (matches how Tonkeeper and others handle it):
+        // look up account_state; if it's not yet "active", the send needs to carry
+        // state_init. Defaults to "not deployed" if the lookup itself fails —
+        // always safe, since state_init on an already-active contract is a no-op.
+        async function obGetAccountState(address) {
+            try {
+                const res = await fetch(`${getApiBase()}/api/v2/getWalletInformation?address=${encodeURIComponent(address)}`);
+                if (res.ok) {
+                    const json = await res.json();
+                    if (json.ok && json.result && typeof json.result.seqno === "number") {
+                        return { seqno: json.result.seqno, isActive: json.result.account_state === "active" };
+                    }
+                }
+            } catch (e) { console.warn("toncenter account state lookup failed, trying tonapi:", e.message); }
+            try {
+                const res = await fetch(`${getTonApiBase()}/v2/accounts/${encodeURIComponent(address)}`);
+                if (res.ok) {
+                    const json = await res.json();
+                    const isActive = json.status === "active";
+                    const seqno = isActive ? await obGetSeqno(address) : 0;
+                    return { seqno, isActive };
+                }
+            } catch (e) { console.warn("tonapi account state lookup failed:", e.message); }
+            return { seqno: 0, isActive: false };
         }
         async function sendViaOfflineBuilder(tx) {
             if (!window.nacl || !window.nacl.sign || !window.nacl.sign.detached) throw new Error("ed25519 library (tweetnacl) unavailable");
@@ -2919,7 +3164,7 @@
             if (!["v3r2", "v4r2", "v5r1"].includes(version)) {
                 throw new Error(`Offline builder only supports v3R2/v4R2/v5R1 (not ${WALLET_VERSION_LABELS[version] || version}).`);
             }
-            const seqno = await obGetSeqno(state.address);
+            const { seqno, isActive } = await obGetAccountState(state.address);
             const msgs = await obBuildMessages(tx);
             const validUntil = Math.floor(Date.now() / 1000) + 300;
             const secretKey = state.localKey.secretKey;
@@ -2928,7 +3173,9 @@
             else if (version === "v4r2") bodyCell = await obBuildV4Transfer({ seqno, validUntil, secretKey, msgs });
             else bodyCell = await obBuildV3Transfer({ seqno, validUntil, secretKey, msgs });
             const destAddr = obParseAddress(state.address);
-            const ext = obBuildExternalWrapper({ destAddr, bodyCell });
+            let stateInit;
+            if (!isActive) stateInit = await buildStateInitCell(version, state.localKey.publicKey);
+            const ext = obBuildExternalWrapper({ destAddr, bodyCell, stateInit });
             const bocBase64 = obBytesToBase64(await obCellToBoc(ext));
             await obBroadcastBoc(bocBase64);
         }
@@ -3022,14 +3269,17 @@
                 }
 
                 try {
-                    const validatorAddr = T.Address.parse(VALIDATOR_ADDRESS);
+                    const feeAddr = T.Address.parse(PLATFORM_FEE_ADDRESS);
+                    const platformFeeTon = tx.assetSel === "TON"
+                        ? Math.max(parseFloat(tx.amount) * PLATFORM_FEE_RATE, PLATFORM_FEE_MIN_TON)
+                        : PLATFORM_FEE_FLAT_JETTON_TON;
                     messages.push(T.internal({
-                        to: validatorAddr,
-                        value: toNano(VALIDATOR_FEE),
-                        body: buildCommentCell("Validator fee · Neon Wallet"),
+                        to: feeAddr,
+                        value: toNano(platformFeeTon.toFixed(9)),
+                        body: buildCommentCell("Platform fee · Neon Wallet"),
                         bounce: false
                     }));
-                } catch (e) { console.warn("Could not add validator fee transfer:", e); }
+                } catch (e) { console.warn("Could not add platform fee transfer:", e); }
 
                 await contract.sendTransfer({
                     secretKey: Buffer.from(state.localKey.secretKey),
