@@ -2153,6 +2153,7 @@
                             state.balance = 0;
                             state.jettons = [];
                             state.mode = null;
+                            resetStonfiWidget();
                             goWelcome();
                         }
                     }
@@ -2168,6 +2169,7 @@
             if (state.mode === "tonconnect" && state.connector) {
                 try { await state.connector.disconnect(); } catch (e) { console.error(e); }
             }
+            resetStonfiWidget();
             state.connected = false;
             state.address = null;
             state.balance = 0;
@@ -2292,21 +2294,74 @@
            STONFI (OMNISTON) SWAP WIDGET
            ============================================================== */
         let _stonfiWidget = null;
+        function resetStonfiWidget() {
+            if (!_stonfiWidget) return;
+            try { _stonfiWidget.destroy?.(); } catch (e) { /* not fatal */ }
+            _stonfiWidget = null;
+            const c = document.getElementById("omniston-widget-container");
+            if (c) c.innerHTML = "";
+        }
+        // Local wallets never go through a TonConnect handshake — sends are signed
+        // directly via sendRawMessagesViaLocal(). Omniston's widget only knows how
+        // to talk to a TonConnect-shaped instance, so this shim presents the local
+        // wallet as one: it reports the current account and routes sendTransaction
+        // straight into local signing instead of a real bridge round-trip. Reads
+        // `state` live via getters, so it stays correct across local wallet switches.
+        let _localTcAdapter = null;
+        function getLocalTonConnectAdapter() {
+            if (_localTcAdapter) return _localTcAdapter;
+            const listeners = new Set();
+            _localTcAdapter = {
+                get connected() { return state.mode === "local" && !!state.localKey; },
+                get account() {
+                    if (!(state.mode === "local" && state.localKey && state.address)) return null;
+                    const pkHex = Array.from(state.localKey.publicKey).map(b => b.toString(16).padStart(2, "0")).join("");
+                    return { address: state.address, chain: "-239", walletStateInit: "", publicKey: pkHex };
+                },
+                get wallet() {
+                    const account = _localTcAdapter.account;
+                    if (!account) return null;
+                    return { device: { appName: "neon-wallet", appVersion: "1.0", platform: "browser" }, provider: "local", account };
+                },
+                onStatusChange(cb) {
+                    listeners.add(cb);
+                    try { cb(_localTcAdapter.wallet); } catch (e) { /* ignore */ }
+                    return () => listeners.delete(cb);
+                },
+                async connectionRestored() { return _localTcAdapter.connected; },
+                async sendTransaction(tx) {
+                    if (!_localTcAdapter.connected) throw new Error("Local wallet is locked");
+                    return await sendRawMessagesViaLocal(tx.messages);
+                },
+                openModal() { /* local wallet has no connect flow — already "connected" */ },
+                closeModal() {},
+                disconnect() { /* no-op: disconnecting the app wallet isn't meaningful here */ }
+            };
+            return _localTcAdapter;
+        }
         function initStonfiWidget() {
             if (_stonfiWidget) return;
             if (!window.OmnistonWidget) {
                 console.warn("StonFi widget script not loaded yet");
                 return;
             }
-            if (!state.connector) {
-                console.warn("TonConnect instance not ready yet for StonFi widget");
-                return;
+            let tcInstance;
+            if (state.mode === "local") {
+                if (!state.localKey) { console.warn("Local wallet is locked — can't init StonFi widget yet"); return; }
+                tcInstance = getLocalTonConnectAdapter();
+            } else {
+                if (!state.connector) {
+                    console.warn("TonConnect instance not ready yet for StonFi widget");
+                    return;
+                }
+                tcInstance = state.connector;
             }
             try {
                 _stonfiWidget = new window.OmnistonWidget({
-                    // Reuse the wallet's single shared TonConnectUI instance rather than
-                    // spinning up a second TonConnect session (StonFi disallows multiple instances).
-                    tonconnect: { type: "integrated", instance: state.connector },
+                    // Local wallets get the shim above so swaps sign locally; TonConnect
+                    // sessions reuse the wallet's single shared TonConnectUI instance
+                    // rather than spinning up a second session (StonFi disallows multiple).
+                    tonconnect: { type: "integrated", instance: tcInstance },
                     widget: {
                         defaultBidAsset: "EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c", // TON
                         // Platform fee on swaps: STON.fi takes this natively out of the routed
@@ -2933,6 +2988,28 @@
             let bin = ""; for (const b of bytes) bin += String.fromCharCode(b);
             return btoa(bin);
         }
+        function obBase64ToBytes(b64) {
+            const bin = atob(b64);
+            const buf = new Uint8Array(bin.length);
+            for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
+            return buf;
+        }
+        // Decodes an arbitrary base64 BOC (e.g. a TonConnect SendTransactionRequest's
+        // message.payload / message.stateInit) into the same OB_ParsedCell tree shape
+        // used elsewhere, so it can be dropped straight into obBuildInternalMessage.
+        function obBocBase64ToCell(b64) {
+            const { cells, rootIndex } = parseBocCells(obBase64ToBytes(b64));
+            const built = new Array(cells.length);
+            function build(idx) {
+                if (built[idx]) return built[idx];
+                const c = cells[idx];
+                const refs = c.refs.map(build);
+                const cell = new OB_ParsedCell(c.d1, c.d2, c.data, refs);
+                built[idx] = cell;
+                return cell;
+            }
+            return build(rootIndex);
+        }
         function obParseFriendlyAddress(friendly) {
             const b64 = friendly.trim().replace(/-/g, "+").replace(/_/g, "/");
             const bin = atob(b64);
@@ -2964,14 +3041,20 @@
             if (!text) return null;
             return obBeginCell().storeUint(0, 32).storeStringTail(text).endCell();
         }
-        function obBuildInternalMessage({ dest, valueNano, bounce, bodyCell }) {
+        function obBuildInternalMessage({ dest, valueNano, bounce, bodyCell, stateInit }) {
             const b = obBeginCell();
             b.storeBit(0); b.storeBit(1); b.storeBit(bounce ? 1 : 0); b.storeBit(0);
             b.storeAddress(null); b.storeAddress(dest);
             b.storeCoins(valueNano); b.storeBit(0);
             b.storeCoins(0n); b.storeCoins(0n);
             b.storeUint(0n, 64); b.storeUint(0, 32);
-            b.storeBit(0);
+            if (stateInit) {
+                b.storeBit(1);
+                const siNeedsRef = (b.availableBits() - 1 < stateInit.bitsLength()) || (b.refs.length + stateInit.refs.length > 4);
+                if (siNeedsRef) { b.storeBit(1); b.storeRef(stateInit); } else { b.storeBit(0); b.storeBuilder(stateInit.asBuilder()); }
+            } else {
+                b.storeBit(0);
+            }
             const body = bodyCell || obBeginCell().endCell();
             const needRef = (b.availableBits() - 1 < body.bitsLength()) || (b.refs.length + body.refs.length > 4);
             if (needRef) { b.storeBit(1); b.storeRef(body); } else { b.storeBit(0); b.storeBuilder(body.asBuilder()); }
@@ -3168,6 +3251,43 @@
             const ext = obBuildExternalWrapper({ destAddr, bodyCell, stateInit });
             const bocBase64 = obBytesToBase64(await obCellToBoc(ext));
             await obBroadcastBoc(bocBase64);
+        }
+
+        // Signs and broadcasts a raw TonConnect-shaped SendTransactionRequest
+        // (messages: [{address, amount, payload?, stateInit?}], all base64/nano-string
+        // per the TonConnect spec) using the unlocked local wallet — same offline
+        // builder pipeline as sendViaOfflineBuilder, but for messages we didn't
+        // construct ourselves (e.g. built by StonFi's Omniston widget).
+        async function sendRawMessagesViaLocal(rawMessages) {
+            if (!window.nacl || !window.nacl.sign || !window.nacl.sign.detached) throw new Error("ed25519 library (tweetnacl) unavailable");
+            if (!state.localKey) throw new Error("Wallet is locked");
+            const version = state.walletVersion || "v4r2";
+            if (!["v3r2", "v4r2", "v5r1"].includes(version)) {
+                throw new Error(`Local signing only supports v3R2/v4R2/v5R1 (not ${WALLET_VERSION_LABELS[version] || version}).`);
+            }
+            if (!Array.isArray(rawMessages) || !rawMessages.length) throw new Error("No messages to send");
+            if (rawMessages.length > 4) throw new Error("A single transaction can carry at most 4 messages.");
+            const { seqno, isActive } = await obGetAccountState(state.address);
+            const msgs = rawMessages.map(m => obBuildInternalMessage({
+                dest: obParseAddress(m.address),
+                valueNano: BigInt(m.amount),
+                bounce: true,
+                bodyCell: m.payload ? obBocBase64ToCell(m.payload) : null,
+                stateInit: m.stateInit ? obBocBase64ToCell(m.stateInit) : undefined
+            }));
+            const validUntil = Math.floor(Date.now() / 1000) + 300;
+            const secretKey = state.localKey.secretKey;
+            let bodyCell;
+            if (version === "v5r1") bodyCell = await obBuildV5R1Transfer({ seqno, validUntil, secretKey, msgs });
+            else if (version === "v4r2") bodyCell = await obBuildV4Transfer({ seqno, validUntil, secretKey, msgs });
+            else bodyCell = await obBuildV3Transfer({ seqno, validUntil, secretKey, msgs });
+            const destAddr = obParseAddress(state.address);
+            let stateInit;
+            if (!isActive) stateInit = await buildStateInitCell(version, state.localKey.publicKey);
+            const ext = obBuildExternalWrapper({ destAddr, bodyCell, stateInit });
+            const bocBase64 = obBytesToBase64(await obCellToBoc(ext));
+            await obBroadcastBoc(bocBase64);
+            return { boc: bocBase64 };
         }
 
         async function sendViaLocal(tx) {
