@@ -2198,11 +2198,11 @@
             renderBiometricRow();
             renderQR();
             refreshBalances();
-            // Pre-warm the StonFi swap widget now (it stays hidden behind the
-            // "swap" tab's display:none until clicked) so its own internal
-            // price/quote fetching has already finished by the time the user
-            // opens the Swap tab, instead of cold-starting there.
-            setTimeout(initStonfiWidget, 300);
+            // Pre-warm the StonFi swap widget now (it's parked off-screen with
+            // real dimensions — see getStonfiWarmHolder()) so it's already
+            // loaded and correctly sized by the time the user opens the Swap
+            // tab, instead of cold-starting there.
+            scheduleStonfiPrewarm();
         }
         function renderQR() {
             const target = document.getElementById("qr-code");
@@ -2295,7 +2295,7 @@
             if (event && event.target) event.target.classList.add("active");
             if (tabName === "history") loadTransactionHistory();
             if (tabName === "nfts") loadNfts();
-            if (tabName === "swap") initStonfiWidget();
+            if (tabName === "swap") { initStonfiWidget(); revealStonfiWidget(); }
         }
 
         /* ==============================================================
@@ -2303,6 +2303,33 @@
            ============================================================== */
         let _stonfiWidget = null;
         let _stonfiResizeObs = null;
+        let _stonfiWarmHolder = null;
+        // The Swap tab is hidden via `display:none` until clicked, and a
+        // display:none ancestor forces every descendant's box metrics
+        // (offsetWidth/scrollWidth/getBoundingClientRect, etc.) to read as 0 —
+        // regardless of that element's own explicit width/height styles.
+        // Mounting Omniston straight into the hidden tab (to pre-warm it) was
+        // exactly what broke the destination-asset picker: it measured itself
+        // against a 0x0 box at mount time and never recovers once later made
+        // visible. Instead we park the real mount container in this always-
+        // rendered, visibility:hidden (not display:none) off-screen holder
+        // while warming, so it gets real, final dimensions from the start —
+        // then relocate the same live node into its visible slot once the
+        // Swap tab is actually opened.
+        function getStonfiWarmHolder() {
+            if (_stonfiWarmHolder && document.body.contains(_stonfiWarmHolder)) return _stonfiWarmHolder;
+            const holder = document.createElement("div");
+            holder.id = "stonfi-warm-holder";
+            holder.style.position = "fixed";
+            holder.style.top = "0";
+            holder.style.left = "-9999px";
+            holder.style.visibility = "hidden";
+            holder.style.pointerEvents = "none";
+            holder.style.zIndex = "-1";
+            document.body.appendChild(holder);
+            _stonfiWarmHolder = holder;
+            return holder;
+        }
         function teardownStonfiAutoFit() {
             if (_stonfiResizeObs) { try { _stonfiResizeObs.disconnect(); } catch (e) {} _stonfiResizeObs = null; }
             const inner = document.getElementById("omniston-widget-container");
@@ -2335,7 +2362,20 @@
             window.addEventListener("resize", fit);
             fit();
         }
+        // Moves the (already-mounted, already-warmed) widget container from the
+        // off-screen holder into its real visible slot inside the Swap tab. This
+        // is a plain DOM relocation of the same live node — the widget's internal
+        // component state and any open picker logic survive the move untouched —
+        // and re-runs the fit calculation now that it has its true final size.
+        function revealStonfiWidget() {
+            const container = document.getElementById("omniston-widget-container");
+            const wrap = document.getElementById("omniston-widget-scale-wrap");
+            if (!container || !wrap) return;
+            if (container.parentElement !== wrap) wrap.appendChild(container);
+            setupStonfiAutoFit();
+        }
         function resetStonfiWidget() {
+            if (_stonfiWarmTimer) { clearTimeout(_stonfiWarmTimer); _stonfiWarmTimer = null; }
             if (!_stonfiWidget) return;
             try { _stonfiWidget.destroy?.(); } catch (e) { /* not fatal */ }
             _stonfiWidget = null;
@@ -2398,6 +2438,12 @@
                 }
                 tcInstance = state.connector;
             }
+            const container = document.getElementById("omniston-widget-container");
+            if (!container) return;
+            // Park the mount container in the always-real-dimensioned holder
+            // before mounting — see comment on getStonfiWarmHolder() above.
+            const holder = getStonfiWarmHolder();
+            if (container.parentElement !== holder) holder.appendChild(container);
             try {
                 _stonfiWidget = new window.OmnistonWidget({
                     // Local wallets get the shim above so swaps sign locally; TonConnect
@@ -2417,12 +2463,42 @@
                     console.error("StonFi widget error:", err);
                     showToast("Swap widget error: " + (err?.message || err), "exclamation");
                 });
-                _stonfiWidget.mount(document.getElementById("omniston-widget-container"));
-                setupStonfiAutoFit();
+                _stonfiWidget.mount(container);
+                // If the Swap tab happens to already be the active tab when this
+                // fires (e.g. a retry landing after the user already clicked in),
+                // move straight to the visible slot instead of staying parked.
+                if (document.getElementById("swap")?.classList.contains("active")) {
+                    revealStonfiWidget();
+                } else {
+                    setupStonfiAutoFit();
+                }
             } catch (e) {
                 console.error("StonFi widget init failed:", e);
                 _stonfiWidget = null;
             }
+        }
+        // Pre-warming can race the widget script (loaded synchronously in <head>,
+        // but a slow CDN can still delay it), TonConnect's async restore, or a
+        // local wallet unlock — any of which make initStonfiWidget() bail out
+        // silently. A single one-shot attempt would then leave the widget cold
+        // for the rest of the session. This retries every 250ms (up to ~12s)
+        // until it succeeds, so pre-warming is reliable regardless of timing.
+        let _stonfiWarmAttempts = 0;
+        let _stonfiWarmTimer = null;
+        function scheduleStonfiPrewarm() {
+            if (_stonfiWarmTimer) { clearTimeout(_stonfiWarmTimer); _stonfiWarmTimer = null; }
+            _stonfiWarmAttempts = 0;
+            const attempt = () => {
+                if (!state.mode) { _stonfiWarmTimer = null; return; } // session ended mid-retry
+                _stonfiWarmAttempts++;
+                initStonfiWidget();
+                if (!_stonfiWidget && _stonfiWarmAttempts < 48) {
+                    _stonfiWarmTimer = setTimeout(attempt, 250);
+                } else {
+                    _stonfiWarmTimer = null;
+                }
+            };
+            attempt();
         }
 
         /* ==============================================================
