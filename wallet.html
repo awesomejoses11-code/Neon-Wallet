@@ -15,7 +15,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="https://unpkg.com/@tonconnect/ui@2.0.9/dist/tonconnect-ui.min.js"></script>
     <!-- StonFi Omniston Swap Widget -->
-    <script src="https://widget.ston.fi/v0/index.js"></script>
+    <script src="https://swap.ston.fi/widget/v0/index.js"></script>
     <script type="module">
         import { Buffer } from "https://esm.sh/buffer@6.0.3";
         import * as TonCore from "https://esm.sh/@ton/ton@16.3.0";
@@ -643,12 +643,14 @@
                     <!-- ===================== SWAP TAB ===================== -->
                     <div id="swap" class="tab-content space-y-4">
                         <div class="glass-card p-1 md:p-2 rounded-xl overflow-hidden">
+                            <div id="omniston-widget-scale-wrap" style="width: 100%; display: flex; justify-content: center; overflow: hidden;">
                             <div id="omniston-widget-container" class="dark" style="
                                 width: 100%;
                                 max-width: 420px;
                                 margin: 0 auto;
                                 box-sizing: border-box;
                                 min-height: 420px;
+                                transform-origin: top center;
                                 --dialog-width: min(420px, 94vw);
                                 --snackbar-width: min(420px, 94vw);
                                 --background-color: var(--card-blue);
@@ -669,6 +671,7 @@
                                 --swap-button-background-color: var(--cyan);
                                 --swap-button-icon-color: #050816;
                             "></div>
+                            </div>
                         </div>
                     </div>
 
@@ -2195,6 +2198,11 @@
             renderBiometricRow();
             renderQR();
             refreshBalances();
+            // Pre-warm the StonFi swap widget now (it stays hidden behind the
+            // "swap" tab's display:none until clicked) so its own internal
+            // price/quote fetching has already finished by the time the user
+            // opens the Swap tab, instead of cold-starting there.
+            setTimeout(initStonfiWidget, 300);
         }
         function renderQR() {
             const target = document.getElementById("qr-code");
@@ -2294,10 +2302,44 @@
            STONFI (OMNISTON) SWAP WIDGET
            ============================================================== */
         let _stonfiWidget = null;
+        let _stonfiResizeObs = null;
+        function teardownStonfiAutoFit() {
+            if (_stonfiResizeObs) { try { _stonfiResizeObs.disconnect(); } catch (e) {} _stonfiResizeObs = null; }
+            const inner = document.getElementById("omniston-widget-container");
+            const wrap = document.getElementById("omniston-widget-scale-wrap");
+            if (inner) inner.style.transform = "none";
+            if (wrap) wrap.style.height = "";
+        }
+        // Omniston's internal layout is opinionated and doesn't reflow below its
+        // own min width, so instead of guessing a breakpoint we measure the
+        // rendered widget against the space we actually have and scale it down
+        // to fit — keeps it centered and un-cropped on any screen width.
+        function setupStonfiAutoFit() {
+            const wrap = document.getElementById("omniston-widget-scale-wrap");
+            const inner = document.getElementById("omniston-widget-container");
+            if (!wrap || !inner || typeof ResizeObserver === "undefined") return;
+            const fit = () => {
+                inner.style.transform = "none";
+                wrap.style.height = "";
+                const available = wrap.clientWidth;
+                const needed = inner.scrollWidth;
+                if (available > 0 && needed > available) {
+                    const scale = available / needed;
+                    inner.style.transform = `scale(${scale})`;
+                    wrap.style.height = Math.ceil(inner.scrollHeight * scale) + "px";
+                }
+            };
+            if (_stonfiResizeObs) _stonfiResizeObs.disconnect();
+            _stonfiResizeObs = new ResizeObserver(fit);
+            _stonfiResizeObs.observe(inner);
+            window.addEventListener("resize", fit);
+            fit();
+        }
         function resetStonfiWidget() {
             if (!_stonfiWidget) return;
             try { _stonfiWidget.destroy?.(); } catch (e) { /* not fatal */ }
             _stonfiWidget = null;
+            teardownStonfiAutoFit();
             const c = document.getElementById("omniston-widget-container");
             if (c) c.innerHTML = "";
         }
@@ -2376,6 +2418,7 @@
                     showToast("Swap widget error: " + (err?.message || err), "exclamation");
                 });
                 _stonfiWidget.mount(document.getElementById("omniston-widget-container"));
+                setupStonfiAutoFit();
             } catch (e) {
                 console.error("StonFi widget init failed:", e);
                 _stonfiWidget = null;
