@@ -857,8 +857,8 @@
                 <button class="btn-outline w-8 h-8 rounded-full flex items-center justify-center p-0" onclick="closeSwapTokenPicker()"><i class="fas fa-times"></i></button>
             </div>
             <div style="position:relative;">
-                <i class="fas fa-search" style="position:absolute; left:12px; top:50%; transform:translateY(-50%); color:#64748b; font-size:0.75rem;"></i>
-                <input type="text" id="stp-search" placeholder="Search name" oninput="renderSwapTokenPickerList()" autocomplete="off" autocorrect="off" autocapitalize="off" class="w-full bg-white/5 border border-white/10 rounded-lg py-2.5 text-white text-sm focus:border-cyan focus:outline-none" style="padding-left:34px; padding-right:12px;" />
+                <i class="fas fa-search" style="position:absolute; left:12px; top:50%; transform:translateY(-50%); color:#64748b; font-size:0.75rem; width:12px; text-align:center; pointer-events:none;"></i>
+                <input type="text" id="stp-search" placeholder="Search name" oninput="debounceSwapSearch()" autocomplete="off" autocorrect="off" autocapitalize="off" class="w-full bg-white/5 border border-white/10 rounded-lg py-2.5 text-white text-sm focus:border-cyan focus:outline-none" style="padding-left:34px; padding-right:12px;" />
             </div>
             <div id="stp-list" class="space-y-1.5" style="max-height:360px; overflow-y:auto;"></div>
             <div id="stp-empty" class="text-sm text-slate-400 text-center py-4 hidden">No tokens found</div>
@@ -989,6 +989,16 @@
         const NATIVE_LOGO = "https://neon-crypto-wallet.vercel.app/Ton.png";
         const PLATFORM_SWAP_FEE_BPS = 75; // 0.75% — swaps, taken natively by STON.fi via referrerFeeBps
         const BLOCKCHAIN_FEE_ESTIMATE = 0.0001;
+
+        // --- Swap token picker perf: cached normalized list + O(1) address lookup + debounce
+        let _stonfiNormalizedCache = [];
+        let _stonfiAddressMap = {};
+        let _swapCachedOptions = null;
+        let _swapSearchDebounceTimer = null;
+        // STON.fi's manifest runs into the thousands of tokens. Capping how
+        // many rows we paint into the DOM per render is what keeps the
+        // picker from janking on open and on every keystroke.
+        const SWAP_PICKER_RENDER_LIMIT = 150;
 
         /* ==============================================================
            TOAST
@@ -2423,10 +2433,27 @@
                     // Drop deprecated/blacklisted entries so the swap dropdown isn't
                     // flooded with delisted duplicates or known scam tokens.
                     _stonfiCache = list.filter(t => !t.deprecated && !t.blacklisted);
+                    // Pre-normalize once + build an O(1) address map so the token
+                    // picker doesn't re-normalize/re-scan the full list per keystroke.
+                    // Also precompute each token's addrKey here, once, up front —
+                    // jettonAddrKey() does a base64 decode + CRC16 check per call,
+                    // and buildSwapAssetOptions() was re-running that over the
+                    // *entire* multi-thousand-token manifest on every swap-tab
+                    // switch and every token-picker open. That synchronous re-parse
+                    // was the main source of swap-tab lag.
+                    _stonfiNormalizedCache = _stonfiCache.map(normalizeStonfiAsset);
+                    _stonfiAddressMap = {};
+                    for (const n of _stonfiNormalizedCache) {
+                        if (!n.address) continue;
+                        n.addrKey = jettonAddrKey(n.address);
+                        _stonfiAddressMap[n.addrKey] = n;
+                    }
                     return _stonfiCache;
                 } catch (e) {
                     console.warn("Could not fetch STON.fi token list, falling back to wallet assets.", e);
                     _stonfiCache = [];
+                    _stonfiNormalizedCache = [];
+                    _stonfiAddressMap = {};
                     return _stonfiCache;
                 }
             })();
@@ -2447,8 +2474,10 @@
         }
         // Shared lookup used anywhere we need a STON.fi manifest entry by address
         // (swap quoting for tokens the wallet doesn't hold, and the token picker).
+        // O(1) via the prebuilt address map instead of scanning the raw cache.
         function findStonfiManifestAsset(address) {
-            return (_stonfiCache || []).find(t => jettonAddrKey(t.contract_address || t.contractAddress || t.address) === jettonAddrKey(address));
+            if (!address) return null;
+            return _stonfiAddressMap[jettonAddrKey(address)] || null;
         }
 
         // --- PRIMARY: headless SDK path -------------------------------------
@@ -2683,9 +2712,8 @@
             // A token from the full STON.fi manifest that the user doesn't hold yet.
             if (String(kind).startsWith("STONFI:")) {
                 const addr = String(kind).slice("STONFI:".length);
-                const found = findStonfiManifestAsset(addr);
-                if (found) {
-                    const n = normalizeStonfiAsset(found);
+                const n = findStonfiManifestAsset(addr);
+                if (n) {
                     return { symbol: n.symbol, name: n.name, decimals: n.decimals, balance: 0, omAddress: n.address, priceUsd: 0 };
                 }
                 return null;
@@ -2703,8 +2731,7 @@
                 if (j.jettonAddress) seen.add(jettonAddrKey(j.jettonAddress));
             });
             if (!findHeldAssetKindForAddress(STONFI_STON_ASSET)) {
-                const stonManifest = findStonfiManifestAsset(STONFI_STON_ASSET);
-                const n = stonManifest ? normalizeStonfiAsset(stonManifest) : null;
+                const n = findStonfiManifestAsset(STONFI_STON_ASSET);
                 combined.push({ kind: "STON_DEFAULT", symbol: "STON", name: n?.name || "STON", balance: 0, priceUsd: 0, image: n?.image || "" });
             }
             seen.add(jettonAddrKey(STONFI_STON_ASSET));
@@ -2712,14 +2739,15 @@
 
             // Append every other STON.fi-listed token the user doesn't hold, so
             // the Receive side isn't limited to just what's already in the wallet.
-            (_stonfiCache || []).forEach(t => {
-                const n = normalizeStonfiAsset(t);
-                if (!n.address) return;
-                const key = jettonAddrKey(n.address);
-                if (seen.has(key)) return;
-                seen.add(key);
+            // Uses the pre-normalized cache built once in fetchStonfiTokens().
+            for (const n of _stonfiNormalizedCache) {
+                // Use the addrKey precomputed once in fetchStonfiTokens() instead
+                // of re-parsing the address here (this loop runs on every tab
+                // switch and every picker open).
+                if (!n.address || seen.has(n.addrKey)) continue;
+                seen.add(n.addrKey);
                 combined.push({ kind: `STONFI:${n.address}`, symbol: n.symbol, name: n.name, balance: 0, priceUsd: 0, image: n.image });
-            });
+            }
             return combined;
         }
         // Updates the pay/receive button labels to reflect current selection.
@@ -2770,6 +2798,7 @@
             document.getElementById("stp-search").value = "";
             document.getElementById("swap-token-picker-modal").classList.remove("hidden-section");
             await fetchStonfiTokens();
+            _swapCachedOptions = buildSwapAssetOptions();
             renderSwapTokenPickerList();
             document.getElementById("stp-search").focus();
         }
@@ -2777,13 +2806,19 @@
             document.getElementById("swap-token-picker-modal").classList.add("hidden-section");
             _swapPickerSide = null;
         }
+        function debounceSwapSearch() {
+            clearTimeout(_swapSearchDebounceTimer);
+            _swapSearchDebounceTimer = setTimeout(renderSwapTokenPickerList, 200);
+        }
         function renderSwapTokenPickerList() {
             const side = _swapPickerSide;
             if (!side) return;
             const query = (document.getElementById("stp-search").value || "").trim().toLowerCase();
             const selectedKind = side === "pay" ? _swapState.payKind : _swapState.receiveKind;
             const otherKind = side === "pay" ? _swapState.receiveKind : _swapState.payKind;
-            const options = buildSwapAssetOptions().filter(o => o.kind !== otherKind);
+            // Use the cache built in openSwapTokenPicker/initSwapTab rather than
+            // rebuilding the full (potentially thousand-token) list per keystroke.
+            const options = (_swapCachedOptions || buildSwapAssetOptions()).filter(o => o.kind !== otherKind);
             const filtered = query
                 ? options.filter(o => o.symbol.toLowerCase().includes(query) || (o.name || "").toLowerCase().includes(query))
                 : options;
@@ -2791,7 +2826,12 @@
             const empty = document.getElementById("stp-empty");
             if (!filtered.length) { list.innerHTML = ""; empty.classList.remove("hidden"); return; }
             empty.classList.add("hidden");
-            list.innerHTML = filtered.map(o => {
+            // Painting the full (unfiltered, multi-thousand-token) manifest into
+            // the DOM in one innerHTML shot — on open, and again on every
+            // keystroke — was the other big source of swap-tab jank. Cap the
+            // paint and let typing narrow it down instead.
+            const capped = filtered.slice(0, SWAP_PICKER_RENDER_LIMIT);
+            const rowsHtml = capped.map(o => {
                 const initial = (o.symbol || "?")[0] || "?";
                 const imgHtml = o.image ? `
                     <div class="relative w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-xs overflow-hidden shrink-0">
@@ -2815,6 +2855,10 @@
                     </div>
                 `;
             }).join("");
+            const moreHint = filtered.length > capped.length
+                ? `<div class="text-xs text-slate-500 text-center py-2">Showing ${capped.length} of ${filtered.length} — keep typing to narrow down</div>`
+                : "";
+            list.innerHTML = rowsHtml + moreHint;
         }
         function selectSwapToken(kind) {
             const side = _swapPickerSide;
@@ -2896,6 +2940,7 @@
             if (!state.address) return;
             await fetchStonfiTokens();
             if (!state.address) return; // wallet could have been reset while awaiting
+            _swapCachedOptions = buildSwapAssetOptions();
             if (!_swapState.receiveKind) {
                 _swapState.payKind = "TON";
                 _swapState.receiveKind = findHeldAssetKindForAddress(STONFI_STON_ASSET) || "STON_DEFAULT";
@@ -3140,6 +3185,9 @@
                 updateBalanceDisplay();
                 renderAssets();
                 renderSendAssetOptions();
+                if (document.getElementById("swap")?.classList.contains("active")) {
+                    _swapCachedOptions = buildSwapAssetOptions();
+                }
             } catch (e) {
                 console.error(e);
                 showToast("Failed to refresh balances", "exclamation");
