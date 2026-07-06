@@ -14,8 +14,6 @@
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Fira+Code:wght@400;500&display=swap" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="https://unpkg.com/@tonconnect/ui@2.0.9/dist/tonconnect-ui.min.js"></script>
-    <!-- StonFi Omniston Swap Widget -->
-    <script src="https://swap.ston.fi/widget/v0/index.js"></script>
     <script type="module">
         import { Buffer } from "https://esm.sh/buffer@6.0.3";
         import * as TonCore from "https://esm.sh/@ton/ton@16.3.0";
@@ -294,6 +292,12 @@
         .strength-bar { height: 4px; border-radius: 2px; background: rgba(255,255,255,0.06); overflow: hidden; margin-top: 6px; }
         .strength-bar > div { height: 100%; transition: all 0.3s ease; }
         .hidden-section { display: none; }
+        #swap-pay-amount, #swap-receive-amount {
+            position: relative;
+            z-index: 2 !important;
+            pointer-events: auto !important;
+        }
+        .token-pick-item { cursor: pointer; }
         #loading-overlay {
             position: fixed; inset: 0; background: rgba(2, 4, 12, 0.8); backdrop-filter: blur(10px);
             z-index: 200; display: flex; align-items: center; justify-content: center; flex-direction: column;
@@ -558,7 +562,7 @@
                         <p class="text-sm text-slate-400 uppercase mb-2 tracking-widest">Total Balance</p>
                         <p class="balance-display" id="total-usd-display">$0.00</p>
                         <p class="text-sm text-slate-400 mt-2">USD</p>
-                        <p class="ton-usd-rate mt-3" id="balance-usd">1 TON ≈ $—</p>
+                        <p class="ton-usd-rate mt-3" id="balance-usd">1 GRAM ≈ $—</p>
                     </div>
 
                     <div class="flex border-b border-slate-700/50 overflow-x-auto whitespace-nowrap">
@@ -642,36 +646,61 @@
 
                     <!-- ===================== SWAP TAB ===================== -->
                     <div id="swap" class="tab-content space-y-4">
-                        <div class="glass-card p-1 md:p-2 rounded-xl overflow-hidden">
-                            <div id="omniston-widget-scale-wrap" style="width: 100%; display: flex; justify-content: center; overflow: hidden;">
-                            <div id="omniston-widget-container" class="dark" style="
-                                width: 100%;
-                                max-width: 420px;
-                                margin: 0 auto;
-                                box-sizing: border-box;
-                                min-height: 420px;
-                                transform-origin: top center;
-                                --dialog-width: min(420px, 94vw);
-                                --snackbar-width: min(420px, 94vw);
-                                --background-color: var(--card-blue);
-                                --background-hover-color: rgba(255,255,255,0.06);
-                                --border-color: var(--border-blue);
-                                --border-width: 1px;
-                                --text-primary-color: #F8FAFC;
-                                --text-secondary-color: #94a3b8;
-                                --text-accent-color: var(--gold);
-                                --icon-primary-color: #F8FAFC;
-                                --icon-secondary-color: #94a3b8;
-                                --icon-accent-color: var(--gold);
-                                --accent-9: var(--gold);
-                                --button-primary-background-color: var(--gold);
-                                --button-primary-text-color: #050816;
-                                --dialog-background-color: var(--card-blue);
-                                --snackbar-background-color: var(--card-blue);
-                                --swap-button-background-color: var(--cyan);
-                                --swap-button-icon-color: #050816;
-                            "></div>
+                        <div class="glass-card p-4 rounded-xl space-y-3">
+                            <!-- PAY side -->
+                            <div>
+                                <div class="flex justify-between items-center mb-1">
+                                    <label class="text-xs text-slate-400 uppercase">You pay</label>
+                                    <span id="swap-pay-balance" class="text-xs text-slate-500"></span>
+                                </div>
+                                <div class="flex gap-2">
+                                    <input type="number" id="swap-pay-amount" placeholder="0.0" min="0" step="any" class="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-white text-sm focus:border-cyan focus:outline-none" oninput="onSwapAmountInput()" />
+                                    <button id="swap-pay-asset-button" onclick="openSwapTokenPicker('pay')" class="w-32 flex items-center justify-between px-3 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white text-sm hover:bg-white/10 transition-colors">
+                                        <span id="swap-pay-symbol">TON</span>
+                                        <i class="fas fa-chevron-down text-xs"></i>
+                                    </button>
+                                </div>
+                                <button class="text-xs gold-text mt-1" onclick="setSwapMax()">MAX</button>
                             </div>
+
+                            <!-- Flip button -->
+                            <div class="flex justify-center">
+                                <button id="swap-flip-btn" class="btn-outline w-9 h-9 rounded-full flex items-center justify-center p-0" onclick="flipSwapAssets()" title="Reverse pair">
+                                    <i class="fas fa-arrow-down"></i>
+                                </button>
+                            </div>
+
+                            <!-- RECEIVE side -->
+                            <div>
+                                <div class="flex justify-between items-center mb-1">
+                                    <label class="text-xs text-slate-400 uppercase">You receive (estimated)</label>
+                                    <span id="swap-receive-balance" class="text-xs text-slate-500"></span>
+                                </div>
+                                <div class="flex gap-2">
+                                    <input type="text" id="swap-receive-amount" placeholder="0.0" readonly class="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-white text-sm" />
+                                    <button id="swap-receive-asset-button" onclick="openSwapTokenPicker('receive')" class="w-32 flex items-center justify-between px-3 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white text-sm hover:bg-white/10 transition-colors">
+                                        <span id="swap-receive-symbol">STON</span>
+                                        <i class="fas fa-chevron-down text-xs"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Quote status / details -->
+                            <div id="swap-quote-status" class="text-xs text-slate-400 text-center py-1"></div>
+                            <div id="swap-quote-details" class="space-y-1.5 text-xs text-slate-300 hidden">
+                                <div class="flex justify-between"><span class="text-slate-400">Rate:</span><span id="swap-rate"></span></div>
+                                <div class="flex justify-between"><span class="text-slate-400">Minimum received:</span><span id="swap-min-received"></span></div>
+                                <div class="flex justify-between"><span class="text-slate-400">Route:</span><span id="swap-route"></span></div>
+                                <div class="flex justify-between"><span class="text-slate-400">Est. network fee:</span><span id="swap-network-fee"></span></div>
+                            </div>
+
+                            <button id="swap-review-btn" class="btn-gold w-full py-2.5 mt-1" onclick="reviewSwap()" disabled>Enter an amount</button>
+                        </div>
+
+                        <!-- Fee disclosure — required for transparent monetization. -->
+                        <div class="glass-card p-3 rounded-xl text-xs text-slate-300 flex items-start gap-2">
+                            <i class="fas fa-circle-info text-yellow-400 mt-0.5"></i>
+                            <div>Swaps are routed through <strong class="gold-text">Omniston</strong> — STON.fi's cross-DEX aggregator (STON.fi, DeDust, Tonco). A <strong>0.75% platform fee</strong> is included in the quoted rate; network gas fees are separate and auto-deducted. Quotes are fetched directly and signed with your own wallet — no embedded widget.</div>
                         </div>
                     </div>
 
@@ -776,14 +805,14 @@
                 <div id="cm-comment-row" class="flex flex-col hidden"><span class="text-slate-400">Comment:</span><span id="cm-comment" class="text-xs mt-1"></span></div>
                 <div class="fee-divider"></div>
                 <div class="text-xs text-slate-400 font-semibold mb-1">Fee Breakdown</div>
-                <div class="fee-row"><span class="label">Network fee (est.):</span><span class="value" id="cm-blockchain-fee">0.00010 TON</span></div>
-                <div class="fee-row"><span class="label">Platform fee:</span><span class="value" id="cm-validator-fee">0.00500 TON</span></div>
+                <div class="fee-row"><span class="label">Network fee (est.):</span><span class="value" id="cm-blockchain-fee">0.00010 GRAM</span></div>
+                <div class="fee-row"><span class="label">Platform fee:</span><span class="value" id="cm-validator-fee">0.00500 GRAM</span></div>
                 <div class="fee-row"><span class="label">Platform address:</span><span class="validator-address-display" id="cm-validator-address">UQBivI9Kba3YojkZFsQpalTeCFcCyNX1OS-Yed67920TU1pf</span></div>
                 <div class="fee-divider"></div>
-                <div class="fee-row fee-total"><span class="label">Total fee:</span><span class="value gold" id="cm-total-fee">0.00510 TON</span></div>
-                <div class="fee-row fee-total"><span class="label">Total to send:</span><span class="value gold" id="cm-total-amount">0.00000 TON</span></div>
+                <div class="fee-row fee-total"><span class="label">Total fee:</span><span class="value gold" id="cm-total-fee">0.00510 GRAM</span></div>
+                <div class="fee-row fee-total"><span class="label">Total to send:</span><span class="value gold" id="cm-total-amount">0.00000 GRAM</span></div>
                 <div class="fee-divider"></div>
-                <div class="fee-row text-xs text-slate-500"><span class="label">Your balance after:</span><span class="value" id="cm-balance-after">0.00000 TON</span></div>
+                <div class="fee-row text-xs text-slate-500"><span class="label">Your balance after:</span><span class="value" id="cm-balance-after">0.00000 GRAM</span></div>
             </div>
             <div id="cm-pw-row" class="hidden-section">
                 <label class="text-xs text-slate-400 uppercase block mb-2">Password (to sign)</label>
@@ -793,6 +822,46 @@
                 <button class="btn-outline flex-1 py-2" onclick="closeConfirmModal()">Cancel</button>
                 <button class="btn-gold flex-1 py-2" id="cm-confirm-btn" onclick="confirmSend()">Send</button>
             </div>
+        </div>
+    </div>
+
+    <div id="swap-confirm-modal" class="modal-backdrop hidden-section">
+        <div class="modal space-y-4">
+            <h3 class="text-lg font-bold gold-text"><i class="fas fa-right-left mr-2"></i>Confirm Swap</h3>
+            <div class="space-y-2 text-sm">
+                <div class="flex justify-between"><span class="text-slate-400">You pay:</span><span id="scm-pay" class="font-semibold"></span></div>
+                <div class="flex justify-between"><span class="text-slate-400">You receive (est.):</span><span id="scm-receive" class="font-semibold"></span></div>
+                <div class="fee-divider"></div>
+                <div class="fee-row"><span class="label">Rate:</span><span class="value" id="scm-rate"></span></div>
+                <div class="fee-row"><span class="label">Minimum received:</span><span class="value" id="scm-min-received"></span></div>
+                <div class="fee-row"><span class="label">Route:</span><span class="value" id="scm-route"></span></div>
+                <div class="fee-row"><span class="label">Platform fee:</span><span class="value">0.75% (in quote)</span></div>
+                <div class="fee-divider"></div>
+                <div class="fee-row text-xs text-slate-500"><span class="label">Quote may update if it goes stale</span><span class="value" id="scm-quote-age"></span></div>
+            </div>
+            <div id="scm-pw-row" class="hidden-section">
+                <label class="text-xs text-slate-400 uppercase block mb-2">Password (to sign)</label>
+                <input type="password" id="scm-pw" placeholder="Wallet password" autocomplete="off" autocorrect="off" autocapitalize="off" data-lpignore="true" data-1p-ignore data-bwignore />
+            </div>
+            <div class="flex gap-2">
+                <button class="btn-outline flex-1 py-2" onclick="closeSwapConfirmModal()">Cancel</button>
+                <button class="btn-gold flex-1 py-2" id="scm-confirm-btn" onclick="confirmSwap()">Swap</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="swap-token-picker-modal" class="modal-backdrop hidden-section">
+        <div class="modal space-y-3">
+            <div class="flex items-center justify-between">
+                <h3 id="stp-title" class="text-lg font-bold gold-text">Select token</h3>
+                <button class="btn-outline w-8 h-8 rounded-full flex items-center justify-center p-0" onclick="closeSwapTokenPicker()"><i class="fas fa-times"></i></button>
+            </div>
+            <div style="position:relative;">
+                <i class="fas fa-search" style="position:absolute; left:12px; top:50%; transform:translateY(-50%); color:#64748b; font-size:0.75rem;"></i>
+                <input type="text" id="stp-search" placeholder="Search name" oninput="renderSwapTokenPickerList()" autocomplete="off" autocorrect="off" autocapitalize="off" class="w-full bg-white/5 border border-white/10 rounded-lg py-2.5 text-white text-sm focus:border-cyan focus:outline-none" style="padding-left:34px; padding-right:12px;" />
+            </div>
+            <div id="stp-list" class="space-y-1.5" style="max-height:360px; overflow-y:auto;"></div>
+            <div id="stp-empty" class="text-sm text-slate-400 text-center py-4 hidden">No tokens found</div>
         </div>
     </div>
 
@@ -909,6 +978,15 @@
         const PLATFORM_FEE_RATE = 0.005; // 0.5% — regular sends
         const PLATFORM_FEE_MIN_TON = 0.001;
         const PLATFORM_FEE_FLAT_JETTON_TON = 0.005;
+        // The native coin was rebranded from Toncoin (TON) to Gram (GRAM) on June 15,
+        // 2026 — same chain, same balances, ticker/name only. This is the single place
+        // that controls the DISPLAY label; internal logic still keys off "TON" as the
+        // asset-selector sentinel (unrelated to on-screen text) and network/protocol
+        // strings (addresses, seed derivation, RPC) correctly still say "TON" since
+        // the chain itself is still called The Open Network.
+        const NATIVE_TICKER = "GRAM";
+        const NATIVE_NAME = "Gram";
+        const NATIVE_LOGO = "https://neon-crypto-wallet.vercel.app/Ton.png";
         const PLATFORM_SWAP_FEE_BPS = 75; // 0.75% — swaps, taken natively by STON.fi via referrerFeeBps
         const BLOCKCHAIN_FEE_ESTIMATE = 0.0001;
 
@@ -1953,7 +2031,7 @@
                 const recommended = c.active || (!anyActive && c.version === "v4r2");
                 let status;
                 if (c.error) status = `<span class="text-red-400 text-xs"><i class="fas fa-triangle-exclamation mr-1"></i>${escapeHtml(c.error)}</span>`;
-                else if (c.active) status = `<span class="text-emerald-400 text-xs"><i class="fas fa-circle-check mr-1"></i>Active on-chain · ${c.balance.toFixed(4)} TON</span>`;
+                else if (c.active) status = `<span class="text-emerald-400 text-xs"><i class="fas fa-circle-check mr-1"></i>Active on-chain · ${c.balance.toFixed(4)} ${NATIVE_TICKER}</span>`;
                 else status = `<span class="text-slate-500 text-xs">No on-chain activity yet</span>`;
                 return `<button class="glass-card p-3 rounded-xl w-full text-left" ${c.rawAddr ? `onclick="finalizeImportWithVersion('${c.version}')"` : "disabled style=\"opacity:.5;\""}>
                   <div class="flex justify-between items-center gap-2"><span class="font-semibold text-sm">${label}</span>${recommended ? `<span class="mode-pill" style="background:rgba(34,197,94,.15);color:#4ADE80;">Recommended</span>` : ""}</div>
@@ -2156,7 +2234,7 @@
                             state.balance = 0;
                             state.jettons = [];
                             state.mode = null;
-                            resetStonfiWidget();
+                            resetSwapState();
                             goWelcome();
                         }
                     }
@@ -2172,7 +2250,7 @@
             if (state.mode === "tonconnect" && state.connector) {
                 try { await state.connector.disconnect(); } catch (e) { console.error(e); }
             }
-            resetStonfiWidget();
+            resetSwapState();
             state.connected = false;
             state.address = null;
             state.balance = 0;
@@ -2198,11 +2276,10 @@
             renderBiometricRow();
             renderQR();
             refreshBalances();
-            // Pre-warm the StonFi swap widget now (it's parked off-screen with
-            // real dimensions — see getStonfiWarmHolder()) so it's already
-            // loaded and correctly sized by the time the user opens the Swap
-            // tab, instead of cold-starting there.
-            scheduleStonfiPrewarm();
+            // Wallet identity may have changed (switched account, reconnected) —
+            // drop any stale quote so a stray "Swap" tap can't sign against the
+            // wrong sender. The swap tab re-quotes fresh the next time it's opened.
+            resetSwapState();
         }
         function renderQR() {
             const target = document.getElementById("qr-code");
@@ -2295,210 +2372,632 @@
             if (event && event.target) event.target.classList.add("active");
             if (tabName === "history") loadTransactionHistory();
             if (tabName === "nfts") loadNfts();
-            if (tabName === "swap") { initStonfiWidget(); revealStonfiWidget(); }
+            if (tabName === "swap") {
+                initSwapTab();
+            }
         }
 
         /* ==============================================================
-           STONFI (OMNISTON) SWAP WIDGET
+           SWAP — Omniston quote/build API, no embedded widget.
+
+           Instead of mounting STON.fi's iframe/component, we talk to
+           Omniston's own aggregation service directly:
+             1. quote  — ask for a price across STON.fi v1/v2, DeDust, Tonco
+             2. build  — turn the accepted quote into ready-to-sign messages
+             3. sign & send — through this wallet's OWN pipeline: the same
+                sendRawMessagesViaLocal() used for regular sends, or
+                state.connector.sendTransaction() for TonConnect sessions.
+           No widget lifecycle, no CDN component to babysit, no shim
+           pretending to be a TonConnect instance.
+
+           Two backends, tried in order (mirrors the offline-builder-then-
+           @ton/ton fallback pattern used for regular sends):
+             PRIMARY  — headless @ston-fi/omniston-sdk loaded from esm.sh.
+                        Small (no UI), handles the WebSocket/RxJS plumbing.
+             FALLBACK — a hand-rolled raw WebSocket JSON-RPC client speaking
+                        the documented v1beta7 wire protocol directly
+                        (docs.ston.fi/developer-section/omniston/swap/overview).
+                        Zero dependency; used only if the SDK fails to load
+                        or times out.
            ============================================================== */
-        let _stonfiWidget = null;
-        let _stonfiResizeObs = null;
-        let _stonfiWarmHolder = null;
-        // The Swap tab is hidden via `display:none` until clicked, and a
-        // display:none ancestor forces every descendant's box metrics
-        // (offsetWidth/scrollWidth/getBoundingClientRect, etc.) to read as 0 —
-        // regardless of that element's own explicit width/height styles.
-        // Mounting Omniston straight into the hidden tab (to pre-warm it) was
-        // exactly what broke the destination-asset picker: it measured itself
-        // against a 0x0 box at mount time and never recovers once later made
-        // visible. Instead we park the real mount container in this always-
-        // rendered, visibility:hidden (not display:none) off-screen holder
-        // while warming, so it gets real, final dimensions from the start —
-        // then relocate the same live node into its visible slot once the
-        // Swap tab is actually opened.
-        function getStonfiWarmHolder() {
-            if (_stonfiWarmHolder && document.body.contains(_stonfiWarmHolder)) return _stonfiWarmHolder;
-            const holder = document.createElement("div");
-            holder.id = "stonfi-warm-holder";
-            holder.style.position = "fixed";
-            holder.style.top = "0";
-            holder.style.left = "-9999px";
-            holder.style.visibility = "hidden";
-            holder.style.pointerEvents = "none";
-            holder.style.zIndex = "-1";
-            document.body.appendChild(holder);
-            _stonfiWarmHolder = holder;
-            return holder;
-        }
-        function teardownStonfiAutoFit() {
-            if (_stonfiResizeObs) { try { _stonfiResizeObs.disconnect(); } catch (e) {} _stonfiResizeObs = null; }
-            const inner = document.getElementById("omniston-widget-container");
-            const wrap = document.getElementById("omniston-widget-scale-wrap");
-            if (inner) inner.style.transform = "none";
-            if (wrap) wrap.style.height = "";
-        }
-        // Omniston's internal layout is opinionated and doesn't reflow below its
-        // own min width, so instead of guessing a breakpoint we measure the
-        // rendered widget against the space we actually have and scale it down
-        // to fit — keeps it centered and un-cropped on any screen width.
-        function setupStonfiAutoFit() {
-            const wrap = document.getElementById("omniston-widget-scale-wrap");
-            const inner = document.getElementById("omniston-widget-container");
-            if (!wrap || !inner || typeof ResizeObserver === "undefined") return;
-            const fit = () => {
-                inner.style.transform = "none";
-                wrap.style.height = "";
-                const available = wrap.clientWidth;
-                const needed = inner.scrollWidth;
-                if (available > 0 && needed > available) {
-                    const scale = available / needed;
-                    inner.style.transform = `scale(${scale})`;
-                    wrap.style.height = Math.ceil(inner.scrollHeight * scale) + "px";
+        const STONFI_TON_ASSET  = "EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c"; // native TON pseudo-asset
+        const STONFI_STON_ASSET = "EQA2kCVNwVsil2EM2mB0SkXytxCqQjS4mttjDpnXmwG9T6bO"; // STON
+        const OMNISTON_WS_URL = "wss://omni-ws.ston.fi";
+        const OMNISTON_SDK_URL = "https://esm.sh/@ston-fi/omniston-sdk";
+        const OMNISTON_PROTOCOL_NAMES = { 1: "STON.fi v1", 2: "STON.fi v2", 3: "DeDust", 4: "Tonco" };
+
+        // --- STON.fi full token manifest (for the swap asset dropdowns) -----
+        const STONFI_ASSET_URL = "https://api.ston.fi/v1/assets";
+        let _stonfiCache = null;
+        let _stonfiCachePromise = null;
+        function fetchStonfiTokens() {
+            if (_stonfiCache) return _stonfiCache;
+            if (_stonfiCachePromise) return _stonfiCachePromise;
+            _stonfiCachePromise = (async () => {
+                try {
+                    const res = await fetch(STONFI_ASSET_URL);
+                    if (!res.ok) throw new Error("HTTP " + res.status);
+                    const data = await res.json();
+                    const list = Array.isArray(data?.asset_list) ? data.asset_list : (Array.isArray(data?.assets) ? data.assets : null);
+                    if (!list) throw new Error("Invalid format from STON.fi API");
+                    // Drop deprecated/blacklisted entries so the swap dropdown isn't
+                    // flooded with delisted duplicates or known scam tokens.
+                    _stonfiCache = list.filter(t => !t.deprecated && !t.blacklisted);
+                    return _stonfiCache;
+                } catch (e) {
+                    console.warn("Could not fetch STON.fi token list, falling back to wallet assets.", e);
+                    _stonfiCache = [];
+                    return _stonfiCache;
                 }
+            })();
+            return _stonfiCachePromise;
+        }
+        // STON.fi's raw REST payload nests display fields under `meta` with
+        // snake_case keys; this normalizes a raw asset record to a flat shape
+        // regardless of which variant the API returns.
+        function normalizeStonfiAsset(t) {
+            const meta = t.meta || t;
+            return {
+                address: t.contract_address || t.contractAddress || t.address,
+                symbol: meta.symbol || meta.display_name || meta.displayName || "?",
+                name: meta.display_name || meta.displayName || meta.symbol || "Unknown",
+                decimals: typeof meta.decimals === "number" ? meta.decimals : 9,
+                image: meta.image_url || meta.imageUrl || meta.image || ""
             };
-            if (_stonfiResizeObs) _stonfiResizeObs.disconnect();
-            _stonfiResizeObs = new ResizeObserver(fit);
-            _stonfiResizeObs.observe(inner);
-            window.addEventListener("resize", fit);
-            fit();
         }
-        // Moves the (already-mounted, already-warmed) widget container from the
-        // off-screen holder into its real visible slot inside the Swap tab. This
-        // is a plain DOM relocation of the same live node — the widget's internal
-        // component state and any open picker logic survive the move untouched —
-        // and re-runs the fit calculation now that it has its true final size.
-        function revealStonfiWidget() {
-            const container = document.getElementById("omniston-widget-container");
-            const wrap = document.getElementById("omniston-widget-scale-wrap");
-            if (!container || !wrap) return;
-            if (container.parentElement !== wrap) wrap.appendChild(container);
-            setupStonfiAutoFit();
+        // Shared lookup used anywhere we need a STON.fi manifest entry by address
+        // (swap quoting for tokens the wallet doesn't hold, and the token picker).
+        function findStonfiManifestAsset(address) {
+            return (_stonfiCache || []).find(t => jettonAddrKey(t.contract_address || t.contractAddress || t.address) === jettonAddrKey(address));
         }
-        function resetStonfiWidget() {
-            if (_stonfiWarmTimer) { clearTimeout(_stonfiWarmTimer); _stonfiWarmTimer = null; }
-            if (!_stonfiWidget) return;
-            try { _stonfiWidget.destroy?.(); } catch (e) { /* not fatal */ }
-            _stonfiWidget = null;
-            teardownStonfiAutoFit();
-            const c = document.getElementById("omniston-widget-container");
-            if (c) c.innerHTML = "";
+
+        // --- PRIMARY: headless SDK path -------------------------------------
+        let _omnistonSdkPromise = null;
+        let _omnistonInstance = null;
+        function loadOmnistonSdk() {
+            if (!_omnistonSdkPromise) _omnistonSdkPromise = import(OMNISTON_SDK_URL);
+            return _omnistonSdkPromise;
         }
-        // Local wallets never go through a TonConnect handshake — sends are signed
-        // directly via sendRawMessagesViaLocal(). Omniston's widget only knows how
-        // to talk to a TonConnect-shaped instance, so this shim presents the local
-        // wallet as one: it reports the current account and routes sendTransaction
-        // straight into local signing instead of a real bridge round-trip. Reads
-        // `state` live via getters, so it stays correct across local wallet switches.
-        let _localTcAdapter = null;
-        function getLocalTonConnectAdapter() {
-            if (_localTcAdapter) return _localTcAdapter;
-            const listeners = new Set();
-            _localTcAdapter = {
-                get connected() { return state.mode === "local" && !!state.localKey; },
-                get account() {
-                    if (!(state.mode === "local" && state.localKey && state.address)) return null;
-                    const pkHex = Array.from(state.localKey.publicKey).map(b => b.toString(16).padStart(2, "0")).join("");
-                    return { address: state.address, chain: "-239", walletStateInit: "", publicKey: pkHex };
-                },
-                get wallet() {
-                    const account = _localTcAdapter.account;
-                    if (!account) return null;
-                    return { device: { appName: "neon-wallet", appVersion: "1.0", platform: "browser" }, provider: "local", account };
-                },
-                onStatusChange(cb) {
-                    listeners.add(cb);
-                    try { cb(_localTcAdapter.wallet); } catch (e) { /* ignore */ }
-                    return () => listeners.delete(cb);
-                },
-                async connectionRestored() { return _localTcAdapter.connected; },
-                async sendTransaction(tx) {
-                    if (!_localTcAdapter.connected) throw new Error("Local wallet is locked");
-                    return await sendRawMessagesViaLocal(tx.messages);
-                },
-                openModal() { /* local wallet has no connect flow — already "connected" */ },
-                closeModal() {},
-                disconnect() { /* no-op: disconnecting the app wallet isn't meaningful here */ }
-            };
-            return _localTcAdapter;
+        function getOmnistonInstance(sdk) {
+            if (!_omnistonInstance) _omnistonInstance = new sdk.Omniston({ apiUrl: OMNISTON_WS_URL });
+            return _omnistonInstance;
         }
-        function initStonfiWidget() {
-            if (_stonfiWidget) return;
-            if (!window.OmnistonWidget) {
-                console.warn("StonFi widget script not loaded yet");
-                return;
-            }
-            let tcInstance;
-            if (state.mode === "local") {
-                if (!state.localKey) { console.warn("Local wallet is locked — can't init StonFi widget yet"); return; }
-                tcInstance = getLocalTonConnectAdapter();
-            } else {
-                if (!state.connector) {
-                    console.warn("TonConnect instance not ready yet for StonFi widget");
-                    return;
-                }
-                tcInstance = state.connector;
-            }
-            const container = document.getElementById("omniston-widget-container");
-            if (!container) return;
-            // Park the mount container in the always-real-dimensioned holder
-            // before mounting — see comment on getStonfiWarmHolder() above.
-            const holder = getStonfiWarmHolder();
-            if (container.parentElement !== holder) holder.appendChild(container);
-            try {
-                _stonfiWidget = new window.OmnistonWidget({
-                    // Local wallets get the shim above so swaps sign locally; TonConnect
-                    // sessions reuse the wallet's single shared TonConnectUI instance
-                    // rather than spinning up a second session (StonFi disallows multiple).
-                    tonconnect: { type: "integrated", instance: tcInstance },
-                    widget: {
-                        defaultBidAsset: "EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c", // TON
-                        // Platform fee on swaps: STON.fi takes this natively out of the routed
-                        // quote via referrerFeeBps and pays it straight to referrerAddress —
-                        // same platform address used for the flat per-send fee elsewhere.
-                        referrerAddress: PLATFORM_FEE_ADDRESS,
-                        referrerFeeBps: PLATFORM_SWAP_FEE_BPS // 0.75%
+        // Omniston streams quote_updated events as better prices arrive; we
+        // only need one fresh snapshot to quote against, so resolve on the
+        // first event and unsubscribe rather than staying subscribed.
+        function firstQuoteFromObservable(observable, timeoutMs) {
+            return new Promise((resolve, reject) => {
+                let settled = false;
+                let sub;
+                const timer = setTimeout(() => {
+                    if (settled) return;
+                    settled = true;
+                    try { sub?.unsubscribe?.(); } catch (e) { /* not fatal */ }
+                    reject(new Error("Quote timed out"));
+                }, timeoutMs);
+                sub = observable.subscribe({
+                    next(event) {
+                        const q = event?.quoteUpdated?.quote || event?.quoteUpdated;
+                        if (q && !settled) {
+                            settled = true;
+                            clearTimeout(timer);
+                            try { sub.unsubscribe(); } catch (e) { /* not fatal */ }
+                            resolve(q);
+                        }
+                    },
+                    error(err) {
+                        if (settled) return;
+                        settled = true;
+                        clearTimeout(timer);
+                        reject(err);
                     }
                 });
-                _stonfiWidget.on("error", err => {
-                    console.error("StonFi widget error:", err);
-                    showToast("Swap widget error: " + (err?.message || err), "exclamation");
-                });
-                _stonfiWidget.mount(container);
-                // If the Swap tab happens to already be the active tab when this
-                // fires (e.g. a retry landing after the user already clicked in),
-                // move straight to the visible slot instead of staying parked.
-                if (document.getElementById("swap")?.classList.contains("active")) {
-                    revealStonfiWidget();
-                } else {
-                    setupStonfiAutoFit();
-                }
-            } catch (e) {
-                console.error("StonFi widget init failed:", e);
-                _stonfiWidget = null;
-            }
+            });
         }
-        // Pre-warming can race the widget script (loaded synchronously in <head>,
-        // but a slow CDN can still delay it), TonConnect's async restore, or a
-        // local wallet unlock — any of which make initStonfiWidget() bail out
-        // silently. A single one-shot attempt would then leave the widget cold
-        // for the rest of the session. This retries every 250ms (up to ~12s)
-        // until it succeeds, so pre-warming is reliable regardless of timing.
-        let _stonfiWarmAttempts = 0;
-        let _stonfiWarmTimer = null;
-        function scheduleStonfiPrewarm() {
-            if (_stonfiWarmTimer) { clearTimeout(_stonfiWarmTimer); _stonfiWarmTimer = null; }
-            _stonfiWarmAttempts = 0;
-            const attempt = () => {
-                if (!state.mode) { _stonfiWarmTimer = null; return; } // session ended mid-retry
-                _stonfiWarmAttempts++;
-                initStonfiWidget();
-                if (!_stonfiWidget && _stonfiWarmAttempts < 48) {
-                    _stonfiWarmTimer = setTimeout(attempt, 250);
-                } else {
-                    _stonfiWarmTimer = null;
+        async function omnistonQuoteViaSdk({ bidAddress, askAddress, amountUnits }) {
+            const sdk = await loadOmnistonSdk();
+            const omniston = getOmnistonInstance(sdk);
+            const observable = omniston.requestForQuote({
+                settlementMethods: [sdk.SettlementMethod.SETTLEMENT_METHOD_SWAP],
+                bidAssetAddress: { blockchain: sdk.Blockchain.TON, address: bidAddress },
+                askAssetAddress: { blockchain: sdk.Blockchain.TON, address: askAddress },
+                amount: { bidUnits: amountUnits },
+                referrerAddress: { blockchain: sdk.Blockchain.TON, address: PLATFORM_FEE_ADDRESS },
+                referrerFeeBps: PLATFORM_SWAP_FEE_BPS,
+                settlementParams: {
+                    maxPriceSlippageBps: 100,
+                    maxOutgoingMessages: 4,
+                    gaslessSettlement: sdk.GaslessSettlement.GASLESS_SETTLEMENT_PROHIBITED,
+                    flexibleReferrerFee: false
+                }
+            });
+            const quote = await firstQuoteFromObservable(observable, 9000);
+            return { backend: "sdk", quote };
+        }
+        async function omnistonBuildViaSdk({ quote, walletAddress }) {
+            const sdk = await loadOmnistonSdk();
+            const omniston = getOmnistonInstance(sdk);
+            const tx = await omniston.buildTransfer({
+                quote,
+                sourceAddress: { blockchain: sdk.Blockchain.TON, address: walletAddress },
+                destinationAddress: { blockchain: sdk.Blockchain.TON, address: walletAddress },
+                gasExcessAddress: { blockchain: sdk.Blockchain.TON, address: walletAddress },
+                useRecommendedSlippage: true
+            });
+            return tx?.ton?.messages || [];
+        }
+
+        // --- FALLBACK: raw WebSocket JSON-RPC (zero dependency) -------------
+        let _omRawIdCounter = 1;
+        function omnistonRawCall(method, params, { waitForEvent = false, timeoutMs = 12000 } = {}) {
+            return new Promise((resolve, reject) => {
+                let settled = false, ws;
+                const id = _omRawIdCounter++;
+                const timer = setTimeout(() => {
+                    if (settled) return;
+                    settled = true;
+                    try { ws?.close(); } catch (e) { /* not fatal */ }
+                    reject(new Error(`Omniston request timed out (${method})`));
+                }, timeoutMs);
+                const finish = (fn, arg) => {
+                    if (settled) return;
+                    settled = true;
+                    clearTimeout(timer);
+                    try { ws.close(); } catch (e) { /* not fatal */ }
+                    fn(arg);
+                };
+                try { ws = new WebSocket(OMNISTON_WS_URL); }
+                catch (e) { clearTimeout(timer); reject(e); return; }
+                ws.onopen = () => ws.send(JSON.stringify({ jsonrpc: "2.0", id, method: `v1beta7.${method}`, params }));
+                ws.onmessage = (msg) => {
+                    let data;
+                    try { data = JSON.parse(msg.data); } catch (e) { return; }
+                    if (data.error) { finish(reject, new Error(data.error.message || "Omniston RPC error")); return; }
+                    if (!waitForEvent) {
+                        if (data.id === id && data.result !== undefined) finish(resolve, data.result);
+                        return;
+                    }
+                    // Subscription-style reply: an ack arrives first (ignored), then a
+                    // notification carrying the actual event. This connection only
+                    // ever has one outstanding subscription, so the first
+                    // quote_updated we see is unambiguously ours.
+                    const quoteUpdated = data?.params?.result?.event?.quote_updated;
+                    if (quoteUpdated) finish(resolve, quoteUpdated);
+                };
+                ws.onerror = () => finish(reject, new Error("Omniston WebSocket error"));
+                ws.onclose = () => { if (!settled) finish(reject, new Error("Omniston connection closed unexpectedly")); };
+            });
+        }
+        async function omnistonQuoteRaw({ bidAddress, askAddress, amountUnits }) {
+            const params = {
+                bid_asset_address: { blockchain: 607, address: bidAddress },
+                ask_asset_address: { blockchain: 607, address: askAddress },
+                amount: { bid_units: amountUnits },
+                referrer_address: { blockchain: 607, address: PLATFORM_FEE_ADDRESS },
+                referrer_fee_bps: PLATFORM_SWAP_FEE_BPS,
+                settlement_methods: [0],
+                settlement_params: {
+                    max_price_slippage_bps: 100,
+                    max_outgoing_messages: 4,
+                    gasless_settlement: 0,
+                    flexible_referrer_fee: false
                 }
             };
-            attempt();
+            const quote = await omnistonRawCall("quote", params, { waitForEvent: true, timeoutMs: 12000 });
+            return { backend: "raw", quote };
+        }
+        // build_transfer's payload is documented as hex- or base64-encoded;
+        // normalize to base64 (what obBocBase64ToCell / TonConnect both expect).
+        function normalizeOmnistonPayload(payloadStr) {
+            if (!payloadStr) return undefined;
+            if (/^[0-9a-fA-F]+$/.test(payloadStr) && payloadStr.length % 2 === 0) {
+                const bytes = new Uint8Array(payloadStr.length / 2);
+                for (let i = 0; i < bytes.length; i++) bytes[i] = parseInt(payloadStr.substr(i * 2, 2), 16);
+                return obBytesToBase64(bytes);
+            }
+            return payloadStr; // already base64
+        }
+        async function omnistonBuildRaw({ quote, walletAddress }) {
+            const addr = { blockchain: 607, address: walletAddress };
+            const params = { source_address: addr, destination_address: addr, gas_excess_address: addr, quote, use_recommended_slippage: true };
+            const result = await omnistonRawCall("transaction.build_transfer", params, { waitForEvent: false, timeoutMs: 12000 });
+            const messages = result?.ton?.messages || [];
+            return messages.map(m => ({
+                address: m.target_address,
+                amount: m.send_amount,
+                payload: normalizeOmnistonPayload(m.payload)
+            }));
+        }
+
+        // --- Unified entry points: SDK first, raw WebSocket on any failure --
+        async function omnistonQuote(params) {
+            try {
+                return await Promise.race([
+                    omnistonQuoteViaSdk(params),
+                    new Promise((_, rej) => setTimeout(() => rej(new Error("SDK load timed out")), 9000))
+                ]);
+            } catch (e) {
+                console.warn("Omniston SDK quote path failed, falling back to raw WebSocket:", e.message || e);
+                return await omnistonQuoteRaw(params);
+            }
+        }
+        async function omnistonBuild(normalizedQuote, addrParams) {
+            if (normalizedQuote.backend === "sdk") return await omnistonBuildViaSdk({ quote: normalizedQuote.quote, ...addrParams });
+            return await omnistonBuildRaw({ quote: normalizedQuote.quote, ...addrParams });
+        }
+        // Reads fields defensively in both the SDK's camelCase shape and the
+        // raw wire's snake_case shape, since we don't know in advance which
+        // backend answered.
+        function normalizeQuoteFields(quote) {
+            const askUnits = quote.askUnits ?? quote.ask_units;
+            const swapParams = quote.params?.swap ?? {};
+            const minAskUnits = swapParams.minAskAmount ?? swapParams.min_ask_amount ?? askUnits;
+            const recommendedSlippageBps = swapParams.recommendedSlippageBps ?? swapParams.recommended_slippage_bps ?? 100;
+            const routes = swapParams.routes || [];
+            const protocols = [];
+            let gasBudget = 0n;
+            for (const route of routes) {
+                try { gasBudget += BigInt(route.gasBudget ?? route.gas_budget ?? 0); } catch (e) { /* not fatal */ }
+                for (const step of (route.steps || [])) {
+                    for (const chunk of (step.chunks || [])) {
+                        const p = chunk.protocol;
+                        protocols.push(typeof p === "string" ? p : (OMNISTON_PROTOCOL_NAMES[p] || `#${p}`));
+                    }
+                }
+            }
+            return { askUnits, minAskUnits, recommendedSlippageBps, protocols: [...new Set(protocols)], gasBudget: gasBudget.toString() };
+        }
+
+        /* ==============================================================
+           SWAP TAB UI CONTROLLER
+           ============================================================== */
+        let _swapState = { payKind: "TON", receiveKind: null, quote: null, quoting: false, quoteRequestToken: 0 };
+        let _swapQuoteTimer = null;
+        let _swapAutoRefreshTimer = null;
+
+        function swapToBaseUnits(amount, decimals) {
+            const factor = BigInt(10) ** BigInt(decimals);
+            const [intPart, fracPartRaw = ""] = String(amount).split(".");
+            const fracPart = (fracPartRaw + "0".repeat(decimals)).slice(0, decimals);
+            return (BigInt(intPart || "0") * factor + BigInt(fracPart || "0")).toString();
+        }
+        function swapFromBaseUnits(units, decimals) { return Number(units) / Math.pow(10, decimals); }
+
+        function findHeldAssetKindForAddress(omAddress) {
+            const idx = state.jettons.findIndex(j => j.jettonAddress && jettonAddrKey(j.jettonAddress) === jettonAddrKey(omAddress));
+            return idx >= 0 ? `JETTON:${idx}` : null;
+        }
+        function swapAssetInfo(kind) {
+            if (kind === "TON") return { symbol: NATIVE_TICKER, name: NATIVE_NAME, decimals: 9, balance: state.balance, omAddress: STONFI_TON_ASSET, priceUsd: state.tonPrice };
+            if (kind === "STON_DEFAULT") {
+                const stonJetton = state.jettons.find(j => j.jettonAddress && jettonAddrKey(j.jettonAddress) === jettonAddrKey(STONFI_STON_ASSET));
+                if (stonJetton) return { symbol: "STON", name: "STON", decimals: typeof stonJetton.decimals === "number" ? stonJetton.decimals : 9, balance: stonJetton.balance, omAddress: STONFI_STON_ASSET, priceUsd: stonJetton.priceUsd || 0 };
+                return { symbol: "STON", name: "STON", decimals: 9, balance: 0, omAddress: STONFI_STON_ASSET, priceUsd: 0 };
+            }
+            if (String(kind).startsWith("JETTON:")) {
+                const idx = parseInt(String(kind).split(":")[1], 10);
+                const j = state.jettons[idx];
+                if (!j) return null;
+                return { symbol: j.symbol, name: j.name, decimals: typeof j.decimals === "number" ? j.decimals : 9, balance: j.balance, omAddress: j.jettonAddress, priceUsd: j.priceUsd || 0 };
+            }
+            // A token from the full STON.fi manifest that the user doesn't hold yet.
+            if (String(kind).startsWith("STONFI:")) {
+                const addr = String(kind).slice("STONFI:".length);
+                const found = findStonfiManifestAsset(addr);
+                if (found) {
+                    const n = normalizeStonfiAsset(found);
+                    return { symbol: n.symbol, name: n.name, decimals: n.decimals, balance: 0, omAddress: n.address, priceUsd: 0 };
+                }
+                return null;
+            }
+            return null;
+        }
+        // Assets you hold, plus STON as an always-available default receive
+        // target, plus the rest of the STON.fi manifest — this is the full
+        // list the token picker modal searches and renders.
+        function buildSwapAssetOptions() {
+            const combined = [{ kind: "TON", symbol: NATIVE_TICKER, name: NATIVE_NAME, balance: state.balance, priceUsd: state.tonPrice, image: NATIVE_LOGO }];
+            const seen = new Set([jettonAddrKey(STONFI_TON_ASSET)]);
+            state.jettons.forEach((j, i) => {
+                combined.push({ kind: `JETTON:${i}`, symbol: j.symbol, name: j.name, balance: j.balance, priceUsd: j.priceUsd || 0, image: j.image || "" });
+                if (j.jettonAddress) seen.add(jettonAddrKey(j.jettonAddress));
+            });
+            if (!findHeldAssetKindForAddress(STONFI_STON_ASSET)) {
+                const stonManifest = findStonfiManifestAsset(STONFI_STON_ASSET);
+                const n = stonManifest ? normalizeStonfiAsset(stonManifest) : null;
+                combined.push({ kind: "STON_DEFAULT", symbol: "STON", name: n?.name || "STON", balance: 0, priceUsd: 0, image: n?.image || "" });
+            }
+            seen.add(jettonAddrKey(STONFI_STON_ASSET));
+            combined.sort((a, b) => (b.balance * b.priceUsd) - (a.balance * a.priceUsd));
+
+            // Append every other STON.fi-listed token the user doesn't hold, so
+            // the Receive side isn't limited to just what's already in the wallet.
+            (_stonfiCache || []).forEach(t => {
+                const n = normalizeStonfiAsset(t);
+                if (!n.address) return;
+                const key = jettonAddrKey(n.address);
+                if (seen.has(key)) return;
+                seen.add(key);
+                combined.push({ kind: `STONFI:${n.address}`, symbol: n.symbol, name: n.name, balance: 0, priceUsd: 0, image: n.image });
+            });
+            return combined;
+        }
+        // Updates the pay/receive button labels to reflect current selection.
+        function updateSwapAssetButtons() {
+            const payInfo = swapAssetInfo(_swapState.payKind);
+            const recInfo = swapAssetInfo(_swapState.receiveKind);
+            document.getElementById("swap-pay-symbol").textContent = payInfo ? payInfo.symbol : "Select";
+            document.getElementById("swap-receive-symbol").textContent = recInfo ? recInfo.symbol : "Select";
+        }
+        function updateSwapBalanceLabels() {
+            const pay = swapAssetInfo(_swapState.payKind), rec = swapAssetInfo(_swapState.receiveKind);
+            document.getElementById("swap-pay-balance").textContent = pay ? `Balance: ${pay.balance.toLocaleString(undefined,{maximumFractionDigits:4})} ${pay.symbol}` : "";
+            document.getElementById("swap-receive-balance").textContent = rec ? `Balance: ${rec.balance.toLocaleString(undefined,{maximumFractionDigits:4})} ${rec.symbol}` : "";
+        }
+        function updateSwapReviewButton() {
+            const btn = document.getElementById("swap-review-btn");
+            const amt = parseFloat(document.getElementById("swap-pay-amount").value);
+            if (!amt || amt <= 0) { btn.disabled = true; btn.textContent = "Enter an amount"; return; }
+            if (_swapState.payKind === _swapState.receiveKind) { btn.disabled = true; btn.textContent = "Choose two different assets"; return; }
+            if (_swapState.quoting) { btn.disabled = true; btn.textContent = "Fetching quote…"; return; }
+            if (!_swapState.quote) { btn.disabled = true; btn.textContent = "Waiting for quote…"; return; }
+            btn.disabled = false; btn.textContent = "Review Swap";
+        }
+        function onSwapAmountInput() {
+            updateSwapReviewButton();
+            if (_swapQuoteTimer) clearTimeout(_swapQuoteTimer);
+            _swapQuoteTimer = setTimeout(runSwapQuote, 500);
+        }
+        function flipSwapAssets() {
+            if (!_swapState.receiveKind) return;
+            [_swapState.payKind, _swapState.receiveKind] = [_swapState.receiveKind, _swapState.payKind];
+            updateSwapAssetButtons();
+            updateSwapBalanceLabels();
+            document.getElementById("swap-pay-amount").value = "";
+            document.getElementById("swap-receive-amount").value = "";
+            _swapState.quote = null;
+            document.getElementById("swap-quote-details").classList.add("hidden");
+            document.getElementById("swap-quote-status").textContent = "";
+            updateSwapReviewButton();
+        }
+
+        /* ---- Token picker modal (pay/receive) --------------------------- */
+        let _swapPickerSide = null; // "pay" | "receive" | null
+
+        async function openSwapTokenPicker(side) {
+            _swapPickerSide = side;
+            document.getElementById("stp-title").textContent = side === "pay" ? "You pay" : "You receive";
+            document.getElementById("stp-search").value = "";
+            document.getElementById("swap-token-picker-modal").classList.remove("hidden-section");
+            await fetchStonfiTokens();
+            renderSwapTokenPickerList();
+            document.getElementById("stp-search").focus();
+        }
+        function closeSwapTokenPicker() {
+            document.getElementById("swap-token-picker-modal").classList.add("hidden-section");
+            _swapPickerSide = null;
+        }
+        function renderSwapTokenPickerList() {
+            const side = _swapPickerSide;
+            if (!side) return;
+            const query = (document.getElementById("stp-search").value || "").trim().toLowerCase();
+            const selectedKind = side === "pay" ? _swapState.payKind : _swapState.receiveKind;
+            const otherKind = side === "pay" ? _swapState.receiveKind : _swapState.payKind;
+            const options = buildSwapAssetOptions().filter(o => o.kind !== otherKind);
+            const filtered = query
+                ? options.filter(o => o.symbol.toLowerCase().includes(query) || (o.name || "").toLowerCase().includes(query))
+                : options;
+            const list = document.getElementById("stp-list");
+            const empty = document.getElementById("stp-empty");
+            if (!filtered.length) { list.innerHTML = ""; empty.classList.remove("hidden"); return; }
+            empty.classList.add("hidden");
+            list.innerHTML = filtered.map(o => {
+                const initial = (o.symbol || "?")[0] || "?";
+                const imgHtml = o.image ? `
+                    <div class="relative w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-xs overflow-hidden shrink-0">
+                        <img src="${o.image}" alt="${o.symbol}" loading="lazy" class="w-8 h-8 rounded-full absolute inset-0 object-cover" onerror="this.onerror=null; this.style.display='none'; this.parentNode.querySelector('.fallback-text').style.display='flex';" />
+                        <span class="fallback-text hidden flex items-center justify-center w-full h-full">${initial}</span>
+                    </div>
+                ` : `<div class="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-xs shrink-0">${initial}</div>`;
+                const trailing = o.kind === selectedKind
+                    ? '<i class="fas fa-check gold-text"></i>'
+                    : (o.balance > 0 ? `<span class="text-xs text-slate-400">${o.balance.toLocaleString(undefined,{maximumFractionDigits:4})}</span>` : "");
+                return `
+                    <div class="asset-item token-pick-item" onclick="selectSwapToken('${o.kind}')">
+                        <div class="flex items-center gap-3">
+                            ${imgHtml}
+                            <div>
+                                <div class="font-semibold text-sm">${o.symbol}</div>
+                                ${o.name && o.name !== o.symbol ? `<div class="text-xs text-slate-400">${o.name}</div>` : ""}
+                            </div>
+                        </div>
+                        ${trailing}
+                    </div>
+                `;
+            }).join("");
+        }
+        function selectSwapToken(kind) {
+            const side = _swapPickerSide;
+            if (!side) return;
+            if (side === "pay") _swapState.payKind = kind; else _swapState.receiveKind = kind;
+            closeSwapTokenPicker();
+            updateSwapAssetButtons();
+            updateSwapBalanceLabels();
+            _swapState.quote = null;
+            document.getElementById("swap-receive-amount").value = "";
+            document.getElementById("swap-quote-details").classList.add("hidden");
+            document.getElementById("swap-quote-status").textContent = "";
+            const amt = parseFloat(document.getElementById("swap-pay-amount").value);
+            if (amt > 0) runSwapQuote(); else updateSwapReviewButton();
+        }
+        function setSwapMax() {
+            const info = swapAssetInfo(_swapState.payKind);
+            if (!info) return;
+            // Leave a small TON buffer for gas when paying in TON.
+            const amount = _swapState.payKind === "TON" ? Math.max(0, info.balance - 0.05) : info.balance;
+            document.getElementById("swap-pay-amount").value = amount > 0 ? String(amount) : "0";
+            onSwapAmountInput();
+        }
+        async function runSwapQuote() {
+            const statusEl = document.getElementById("swap-quote-status");
+            const detailsEl = document.getElementById("swap-quote-details");
+            const amount = parseFloat(document.getElementById("swap-pay-amount").value);
+            _swapState.quote = null;
+            document.getElementById("swap-receive-amount").value = "";
+            if (!amount || amount <= 0 || _swapState.payKind === _swapState.receiveKind) {
+                statusEl.textContent = "";
+                detailsEl.classList.add("hidden");
+                updateSwapReviewButton();
+                return;
+            }
+            const payInfo = swapAssetInfo(_swapState.payKind), recInfo = swapAssetInfo(_swapState.receiveKind);
+            if (!payInfo || !recInfo) return;
+            const token = ++_swapState.quoteRequestToken;
+            _swapState.quoting = true;
+            statusEl.textContent = "Fetching quote…";
+            detailsEl.classList.add("hidden");
+            updateSwapReviewButton();
+            try {
+                const bidUnits = swapToBaseUnits(amount, payInfo.decimals);
+                const result = await omnistonQuote({ bidAddress: payInfo.omAddress, askAddress: recInfo.omAddress, amountUnits: bidUnits });
+                if (token !== _swapState.quoteRequestToken) return; // inputs changed mid-flight
+                const fields = normalizeQuoteFields(result.quote);
+                _swapState.quote = { ...result, fields };
+                const receiveAmount = swapFromBaseUnits(fields.askUnits, recInfo.decimals);
+                const minReceived = swapFromBaseUnits(fields.minAskUnits, recInfo.decimals);
+                const rate = amount > 0 ? (receiveAmount / amount) : 0;
+                document.getElementById("swap-receive-amount").value = receiveAmount.toLocaleString(undefined, { maximumFractionDigits: 6 });
+                document.getElementById("swap-rate").textContent = `1 ${payInfo.symbol} ≈ ${rate.toLocaleString(undefined,{maximumFractionDigits:6})} ${recInfo.symbol}`;
+                document.getElementById("swap-min-received").textContent = `${minReceived.toLocaleString(undefined,{maximumFractionDigits:6})} ${recInfo.symbol}`;
+                document.getElementById("swap-route").textContent = fields.protocols.length ? fields.protocols.join(" + ") : "—";
+                document.getElementById("swap-network-fee").textContent = `~${(fields.gasBudget && fields.gasBudget !== "0" ? swapFromBaseUnits(fields.gasBudget, 9) : 0.3).toFixed(2)} ${NATIVE_TICKER}`;
+                statusEl.textContent = "";
+                detailsEl.classList.remove("hidden");
+            } catch (e) {
+                if (token !== _swapState.quoteRequestToken) return;
+                console.error("Swap quote failed:", e);
+                statusEl.textContent = "Couldn't get a quote: " + (e.message || e);
+                detailsEl.classList.add("hidden");
+            } finally {
+                if (token === _swapState.quoteRequestToken) _swapState.quoting = false;
+                updateSwapReviewButton();
+            }
+        }
+        function startSwapAutoRefresh() {
+            stopSwapAutoRefresh();
+            _swapAutoRefreshTimer = setInterval(() => {
+                if (!document.getElementById("swap")?.classList.contains("active")) { stopSwapAutoRefresh(); return; }
+                const amt = parseFloat(document.getElementById("swap-pay-amount").value);
+                if (amt > 0 && _swapState.payKind !== _swapState.receiveKind) runSwapQuote();
+            }, 15000);
+        }
+        function stopSwapAutoRefresh() { if (_swapAutoRefreshTimer) { clearInterval(_swapAutoRefreshTimer); _swapAutoRefreshTimer = null; } }
+        async function initSwapTab() {
+            if (!state.address) return;
+            await fetchStonfiTokens();
+            if (!state.address) return; // wallet could have been reset while awaiting
+            if (!_swapState.receiveKind) {
+                _swapState.payKind = "TON";
+                _swapState.receiveKind = findHeldAssetKindForAddress(STONFI_STON_ASSET) || "STON_DEFAULT";
+            }
+            updateSwapAssetButtons();
+            updateSwapBalanceLabels();
+            const amt = document.getElementById("swap-pay-amount").value;
+            if (amt && parseFloat(amt) > 0) runSwapQuote(); else updateSwapReviewButton();
+            startSwapAutoRefresh();
+        }
+        function resetSwapState() {
+            stopSwapAutoRefresh();
+            _swapState.quote = null;
+            _swapState.quoting = false;
+            _swapState.quoteRequestToken++;
+            const amt = document.getElementById("swap-pay-amount");
+            const rec = document.getElementById("swap-receive-amount");
+            if (amt) amt.value = "";
+            if (rec) rec.value = "";
+            const statusEl = document.getElementById("swap-quote-status");
+            const detailsEl = document.getElementById("swap-quote-details");
+            if (statusEl) statusEl.textContent = "";
+            if (detailsEl) detailsEl.classList.add("hidden");
+            updateSwapReviewButton();
+        }
+        function reviewSwap() {
+            if (!_swapState.quote) return;
+            const payInfo = swapAssetInfo(_swapState.payKind), recInfo = swapAssetInfo(_swapState.receiveKind);
+            const amount = document.getElementById("swap-pay-amount").value;
+            const receiveText = document.getElementById("swap-receive-amount").value;
+            document.getElementById("scm-pay").textContent = `${amount} ${payInfo.symbol}`;
+            document.getElementById("scm-receive").textContent = `${receiveText} ${recInfo.symbol}`;
+            document.getElementById("scm-rate").textContent = document.getElementById("swap-rate").textContent;
+            document.getElementById("scm-min-received").textContent = document.getElementById("swap-min-received").textContent;
+            document.getElementById("scm-route").textContent = document.getElementById("swap-route").textContent;
+            document.getElementById("scm-quote-age").textContent = "";
+            const pwRow = document.getElementById("scm-pw-row");
+            if (state.mode === "local" && !state.localKey) {
+                pwRow.classList.remove("hidden-section");
+                document.getElementById("scm-pw").value = "";
+                setTimeout(() => document.getElementById("scm-pw")?.focus(), 50);
+            } else {
+                pwRow.classList.add("hidden-section");
+            }
+            document.getElementById("swap-confirm-modal").classList.remove("hidden-section");
+        }
+        function closeSwapConfirmModal() { document.getElementById("swap-confirm-modal").classList.add("hidden-section"); }
+        async function confirmSwap() {
+            if (!_swapState.quote) return;
+            const btn = document.getElementById("scm-confirm-btn");
+            btn.disabled = true;
+            btn.innerHTML = '<div class="loader" style="width:16px;height:16px;border-width:2px;"></div> Swapping...';
+            showLoading("Preparing swap…", "Building the transaction from your quote");
+            try {
+                if (state.mode === "local" && !state.localKey) {
+                    const pw = document.getElementById("scm-pw").value;
+                    if (!pw) {
+                        hideLoading();
+                        showToast("Enter your password to sign", "exclamation");
+                        btn.disabled = false; btn.textContent = "Swap";
+                        return;
+                    }
+                    try {
+                        updateLoadingStatus("Decrypting wallet…", "Verifying your password");
+                        const ks = loadKeystore();
+                        const mnemonic = await decryptKeystore(ks, pw);
+                        const kp = await mnemonicToKeypair(mnemonic);
+                        state.localKey = { publicKey: kp.publicKey, secretKey: kp.secretKey, mnemonic };
+                    } catch (e) {
+                        hideLoading();
+                        showToast("Wrong password", "exclamation");
+                        btn.disabled = false; btn.textContent = "Swap";
+                        return;
+                    }
+                }
+
+                updateLoadingStatus("Building transaction…", "Asking Omniston to build the swap message");
+                const messages = await omnistonBuild(_swapState.quote, { walletAddress: state.address });
+                if (!messages.length) throw new Error("Omniston returned no transfer messages");
+
+                if (state.mode === "tonconnect") {
+                    updateLoadingStatus("Sending via TonConnect…", "Waiting for wallet approval");
+                    await state.connector.sendTransaction({ validUntil: Math.floor(Date.now() / 1000) + 300, messages });
+                } else {
+                    updateLoadingStatus("Signing transaction…", "Using your local key");
+                    await sendRawMessagesViaLocal(messages);
+                }
+
+                updateLoadingProgress(100);
+                updateLoadingStatus("Swap submitted!", "Waiting for confirmation on-chain");
+                showToast("Swap submitted", "circle-check");
+                closeSwapConfirmModal();
+                resetSwapState();
+                setTimeout(() => { hideLoading(); refreshBalances(); loadTransactionHistory(); }, 2000);
+            } catch (e) {
+                console.error("Swap failed:", e);
+                hideLoading();
+                showToast("Swap failed: " + (e.message || e), "exclamation");
+            } finally {
+                btn.disabled = false;
+                btn.textContent = "Swap";
+            }
         }
 
         /* ==============================================================
@@ -2527,6 +3026,25 @@
             if (data.ok && data.result !== undefined) return parseInt(data.result, 10) / 1e9;
             return 0;
         }
+        // Known fake/scam jettons that get airdropped unsolicited to wallets — filtered
+        // out entirely so they never appear in balances, asset lists, or the STON.fi
+        // swap asset picker.
+        const BLOCKED_JETTON_ADDRESSES = [
+            "EQCKGXkHHLWnYU1cL6gh7F9c7qV5P4vgmvZ6q9_4LdjVYteR"
+        ];
+        function jettonAddrKey(addrStr) {
+            try {
+                const { wc, hash } = obParseAddress(addrStr);
+                let hex = "";
+                for (let i = 0; i < hash.length; i++) hex += hash[i].toString(16).padStart(2, "0");
+                return `${wc}:${hex}`;
+            } catch (e) { return String(addrStr).trim().toLowerCase(); }
+        }
+        const BLOCKED_JETTON_KEYS = new Set(BLOCKED_JETTON_ADDRESSES.map(jettonAddrKey));
+        function isBlockedJetton(addrStr) {
+            if (!addrStr) return false;
+            return BLOCKED_JETTON_KEYS.has(jettonAddrKey(addrStr));
+        }
         async function fetchJettonBalances(addr) {
             try {
                 const url = `${getTonApiBase()}/v2/accounts/${encodeURIComponent(addr)}/jettons?currencies=usd`;
@@ -2534,7 +3052,9 @@
                 if (!res.ok) return [];
                 const data = await res.json();
                 if (!data || !Array.isArray(data.balances)) return [];
-                return data.balances.map(item => {
+                return data.balances
+                    .filter(item => !isBlockedJetton(item.jetton?.address))
+                    .map(item => {
                     const info = item.jetton || {};
                     const decimals = parseInt(info.decimals ?? 9, 10);
                     const rawBal = item.balance || "0";
@@ -2631,7 +3151,7 @@
                 totalUsd += j.balance * j.priceUsd;
             }
             document.getElementById("total-usd-display").textContent = `$${totalUsd.toFixed(2)}`;
-            document.getElementById("balance-usd").textContent = `1 TON ≈ $${state.tonPrice ? state.tonPrice.toFixed(2) : "—"}`;
+            document.getElementById("balance-usd").textContent = `1 ${NATIVE_TICKER} ≈ $${state.tonPrice ? state.tonPrice.toFixed(2) : "—"}`;
         }
         function renderAssets() {
             const section = document.getElementById("assets-section");
@@ -2641,7 +3161,7 @@
             loading.classList.add("hidden");
 
             const combined = [
-    { symbol: 'TON', name: 'Toncoin', balance: state.balance, priceUsd: state.tonPrice, image: 'https://neon-crypto-wallet.vercel.app/Ton.png', decimals: 9 }
+    { symbol: 'TON', name: NATIVE_NAME, balance: state.balance, priceUsd: state.tonPrice, image: NATIVE_LOGO, decimals: 9 }
 ];
             for (const j of state.jettons) {
                 combined.push(j);
@@ -2656,8 +3176,8 @@
             empty.classList.add("hidden");
             list.innerHTML = combined.map(item => {
                 const usdValue = item.balance * item.priceUsd;
-                const displaySymbol = item.symbol === 'TON' ? 'TON' : item.symbol;
-                const displayName = item.symbol === 'TON' ? 'Toncoin' : item.name;
+                const displaySymbol = item.symbol === 'TON' ? NATIVE_TICKER : item.symbol;
+                const displayName = item.symbol === 'TON' ? NATIVE_NAME : item.name;
                 
                 const imgHtml = item.image ? `
                     <div class="relative w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-xs overflow-hidden shrink-0">
@@ -2688,13 +3208,14 @@
             const sel = document.getElementById("send-asset");
             const prev = sel.value;
             const combined = [
-                { symbol: 'TON', balance: state.balance, priceUsd: state.tonPrice, name: 'Toncoin' },
+                { symbol: 'TON', balance: state.balance, priceUsd: state.tonPrice, name: NATIVE_NAME },
                 ...state.jettons
             ];
             combined.sort((a, b) => (b.balance * b.priceUsd) - (a.balance * a.priceUsd));
             sel.innerHTML = combined.map((item, i) => {
                 const val = item.symbol === 'TON' ? 'TON' : `JETTON:${i-1}`;
-                return `<option value="${val}">${item.symbol} · ${item.balance.toLocaleString(undefined,{maximumFractionDigits:4})}</option>`;
+                const displaySym = item.symbol === 'TON' ? NATIVE_TICKER : item.symbol;
+                return `<option value="${val}">${displaySym} · ${item.balance.toLocaleString(undefined,{maximumFractionDigits:4})}</option>`;
             }).join("");
             if (prev) sel.value = prev;
             updateSendBalanceInfo();
@@ -2704,7 +3225,7 @@
             const sel = document.getElementById("send-asset");
             const v = sel.value;
             const info = document.getElementById("send-balance-info");
-            if (v === "TON") info.textContent = `Balance: ${state.balance.toLocaleString(undefined,{maximumFractionDigits:4})} TON`;
+            if (v === "TON") info.textContent = `Balance: ${state.balance.toLocaleString(undefined,{maximumFractionDigits:4})} ${NATIVE_TICKER}`;
             else {
                 const idx = parseInt(v.split(":")[1], 10);
                 const j = state.jettons[idx];
@@ -2745,7 +3266,7 @@
                         comment = inMsg.decoded_body?.text || "";
                     }
                     const ts = tx.utime ? new Date(tx.utime * 1000).toLocaleString() : "";
-                    return `<div class="tx-item"><div class="tx-item-header"><span class="tx-type ${type}">${type === "in" ? "Received" : "Sent"}</span><span class="tx-amount ${amount >= 0 ? "positive" : "negative"}">${amount.toFixed(4)} TON</span></div><div class="tx-details">${type === "in" ? "From" : "To"}: <span class="tx-hash">${peer.slice(0,8)}...${peer.slice(-6)}</span></div><div class="tx-details">${ts}</div>${comment ? `<div class="tx-details mt-1 italic">"${comment}"</div>` : ""}</div>`;
+                    return `<div class="tx-item"><div class="tx-item-header"><span class="tx-type ${type}">${type === "in" ? "Received" : "Sent"}</span><span class="tx-amount ${amount >= 0 ? "positive" : "negative"}">${amount.toFixed(4)} ${NATIVE_TICKER}</span></div><div class="tx-details">${type === "in" ? "From" : "To"}: <span class="tx-hash">${peer.slice(0,8)}...${peer.slice(-6)}</span></div><div class="tx-details">${ts}</div>${comment ? `<div class="tx-details mt-1 italic">"${comment}"</div>` : ""}</div>`;
                 }).join("");
             } catch (e) {
                 console.error(e);
@@ -2802,7 +3323,7 @@
             const amount = parseFloat(amountStr);
             if (!(amount > 0)) return showToast("Enter a valid amount", "exclamation");
             let assetLabel, maxBalance;
-            if (sel === "TON") { assetLabel = "TON"; maxBalance = state.balance; }
+            if (sel === "TON") { assetLabel = NATIVE_TICKER; maxBalance = state.balance; }
             else {
                 const idx = parseInt(sel.split(":")[1], 10);
                 const j = state.jettons[idx];
@@ -2822,7 +3343,7 @@
                     return showToast(`Insufficient ${assetLabel} balance. Need ${amount.toFixed(5)} ${assetLabel}.`, "exclamation");
                 }
                 if (totalFee > state.balance) {
-                    return showToast(`Insufficient TON balance to cover network + platform fees (need ${formatFee(totalFee)} TON).`, "exclamation");
+                    return showToast(`Insufficient ${NATIVE_TICKER} balance to cover network + platform fees (need ${formatFee(totalFee)} ${NATIVE_TICKER}).`, "exclamation");
                 }
             }
             const totalNeeded = sel === "TON" ? amount + totalFee : amount;
@@ -2836,10 +3357,10 @@
             if (comment) { commentRow.classList.remove("hidden"); document.getElementById("cm-comment").textContent = comment; }
             else commentRow.classList.add("hidden");
 
-            document.getElementById("cm-blockchain-fee").textContent = `${formatFee(fee.blockchainFee)} TON`;
-            document.getElementById("cm-validator-fee").textContent = `${formatFee(fee.validatorFee)} TON`;
+            document.getElementById("cm-blockchain-fee").textContent = `${formatFee(fee.blockchainFee)} ${NATIVE_TICKER}`;
+            document.getElementById("cm-validator-fee").textContent = `${formatFee(fee.validatorFee)} ${NATIVE_TICKER}`;
             document.getElementById("cm-validator-address").textContent = PLATFORM_FEE_ADDRESS;
-            document.getElementById("cm-total-fee").textContent = `${formatFee(fee.total)} TON`;
+            document.getElementById("cm-total-fee").textContent = `${formatFee(fee.total)} ${NATIVE_TICKER}`;
             document.getElementById("cm-total-amount").textContent = `${totalNeeded.toFixed(5)} ${assetLabel}`;
             const balanceAfter = maxBalance - totalNeeded;
             document.getElementById("cm-balance-after").textContent = `${balanceAfter.toFixed(5)} ${assetLabel}`;
