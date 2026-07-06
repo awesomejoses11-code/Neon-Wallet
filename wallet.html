@@ -858,7 +858,7 @@
             </div>
             <div style="position:relative;">
                 <i class="fas fa-search" style="position:absolute; left:12px; top:50%; transform:translateY(-50%); color:#64748b; font-size:0.75rem; width:12px; text-align:center; pointer-events:none;"></i>
-                <input type="text" id="stp-search" placeholder="Search name" oninput="debounceSwapSearch()" autocomplete="off" autocorrect="off" autocapitalize="off" class="w-full bg-white/5 border border-white/10 rounded-lg py-2.5 text-white text-sm focus:border-cyan focus:outline-none" style="padding-left:34px; padding-right:12px;" />
+                <input type="text" id="stp-search" placeholder="Search name" oninput="debounceSwapSearch()" autocomplete="off" autocorrect="off" autocapitalize="off" class="w-full bg-white/5 border border-white/10 rounded-lg py-2.5 text-white text-sm focus:border-cyan focus:outline-none" style="padding-left:34px !important; padding-right:12px !important;" />
             </div>
             <div id="stp-list" class="space-y-1.5" style="max-height:360px; overflow-y:auto;"></div>
             <div id="stp-empty" class="text-sm text-slate-400 text-center py-4 hidden">No tokens found</div>
@@ -978,26 +978,25 @@
         const PLATFORM_FEE_RATE = 0.005; // 0.5% — regular sends
         const PLATFORM_FEE_MIN_TON = 0.001;
         const PLATFORM_FEE_FLAT_JETTON_TON = 0.005;
-        // The native coin was rebranded from Toncoin (TON) to Gram (GRAM) on June 15,
-        // 2026 — same chain, same balances, ticker/name only. This is the single place
-        // that controls the DISPLAY label; internal logic still keys off "TON" as the
-        // asset-selector sentinel (unrelated to on-screen text) and network/protocol
-        // strings (addresses, seed derivation, RPC) correctly still say "TON" since
-        // the chain itself is still called The Open Network.
+        // The native coin was rebranded from Toncoin (TON) to Gram (GRAM) on
+        // June 15, 2026 (community vote, 81.22% in favor) — same chain, same
+        // balances, ticker + name only. These constants are the ONLY place
+        // display labels are set. Internal logic still keys off "TON" as the
+        // asset-selector sentinel and protocol strings (addresses, seed
+        // derivation, RPC) still say "TON" — the network itself is still
+        // called The Open Network.
         const NATIVE_TICKER = "GRAM";
         const NATIVE_NAME = "Gram";
         const NATIVE_LOGO = "https://neon-crypto-wallet.vercel.app/Ton.png";
         const PLATFORM_SWAP_FEE_BPS = 75; // 0.75% — swaps, taken natively by STON.fi via referrerFeeBps
-        const BLOCKCHAIN_FEE_ESTIMATE = 0.0001;
 
-        // --- Swap token picker perf: cached normalized list + O(1) address lookup + debounce
+        // Swap token picker perf: pre-normalized list + O(1) address lookup + debounce.
+        // STON.fi's manifest is thousands of tokens; capping DOM rows per render is what
+        // keeps the picker responsive on open and on every keystroke.
         let _stonfiNormalizedCache = [];
         let _stonfiAddressMap = {};
         let _swapCachedOptions = null;
         let _swapSearchDebounceTimer = null;
-        // STON.fi's manifest runs into the thousands of tokens. Capping how
-        // many rows we paint into the DOM per render is what keeps the
-        // picker from janking on open and on every keystroke.
         const SWAP_PICKER_RENDER_LIMIT = 150;
 
         /* ==============================================================
@@ -1041,18 +1040,16 @@
         async function copyTextToClipboard(text) {
             if (!text) return false;
             try {
-                if (navigator.clipboard && navigator.clipboard.writeText && window.isSecureContext) {
+                if (navigator.clipboard?.writeText && window.isSecureContext) {
                     await navigator.clipboard.writeText(text);
                     return true;
                 }
-            } catch (e) { console.warn(e); }
+            } catch { /* fall through to legacy path */ }
             try {
                 const ta = document.createElement("textarea");
                 ta.value = text;
                 ta.setAttribute("readonly", "");
-                ta.style.position = "fixed";
-                ta.style.top = "-9999px";
-                ta.style.left = "-9999px";
+                ta.style.cssText = "position:fixed;top:-9999px;left:-9999px;";
                 document.body.appendChild(ta);
                 if (/iP(hone|od|ad)/.test(navigator.userAgent)) {
                     const range = document.createRange();
@@ -1066,9 +1063,8 @@
                 }
                 const ok = document.execCommand("copy");
                 document.body.removeChild(ta);
-                if (ok) return true;
-            } catch (e) { console.warn(e); }
-            return false;
+                return ok;
+            } catch { return false; }
         }
         async function copyToClipboard(text, successMsg = "Copied to clipboard", icon = "copy") {
             const ok = await copyTextToClipboard(text);
@@ -1314,6 +1310,8 @@
             for (let i = 0; i < len; i++) v = v * 256 + bytes[offset + i];
             return v;
         }
+        // Reference-cell TL-B d2 nibble: two complete-byte counts + 1 iff partial-byte tail.
+        function cellD2(bitsLen) { return Math.floor(bitsLen / 8) * 2 + (bitsLen % 8 !== 0 ? 1 : 0); }
         class BitWriter {
             constructor() { this.bits = []; }
             writeUint(value, len) { for (let i = len - 1; i >= 0; i--) this.bits.push((value >>> i) & 1); }
@@ -1324,8 +1322,7 @@
                 const data = new Uint8Array(totalBytes);
                 for (let i = 0; i < bitsLen; i++) if (this.bits[i]) data[i >> 3] |= (0x80 >> (i & 7));
                 if (bitsLen % 8 !== 0) data[bitsLen >> 3] |= (0x80 >> (bitsLen & 7));
-                const d2 = Math.floor(bitsLen / 8) * 2 + (bitsLen % 8 !== 0 ? 1 : 0);
-                return { d2, data };
+                return { d2: cellD2(bitsLen), data };
             }
         }
         function parseBocCells(bytes) {
@@ -1425,21 +1422,14 @@
            STATE_INIT CONSTRUCTION (for deploying not-yet-active wallets)
            ------------------------------------------------------------
            Standard deployment flow (same as Tonkeeper): fund the address
-           first (puts it in "uninit" state), then attach state_init — the
-           wallet's own code + data cells — on the first outgoing message.
-           The network activates the contract using it before executing the
-           message. Skipping this on an undeployed wallet's first send means
-           there's no code for the message to run against — it silently
-           fails to land. Sending state_init to an already-active wallet is
-           a harmless no-op, so always including it when deployment status
-           is uncertain is safe.
+           first (uninit state), then attach state_init — the wallet's own
+           code + data cells — on the first outgoing message. Sending
+           state_init to an already-active wallet is a harmless no-op, so
+           always including it when deployment status is uncertain is safe.
 
-           Needs actual Cell objects (not just hash+depth, used above for
-           address derivation) since state_init gets embedded as real cells
-           in the outer message. buildStateInitCell() cross-checks its own
-           resulting hash against selfContainedDeriveAddress() before ever
-           returning it, so a bug here fails loudly instead of silently
-           deploying to the wrong address.
+           buildStateInitCell() cross-checks its resulting hash against
+           selfContainedDeriveAddress() before returning, so a bug here
+           fails loudly instead of silently deploying to the wrong address.
            ============================================================== */
         class OB_ParsedCell {
             constructor(d1, d2, data, refs) { this.d1 = d1; this.d2 = d2; this.data = data; this.refs = refs; this._hashPromise = null; }
@@ -1899,11 +1889,7 @@
             for (const version of WALLET_VERSIONS) {
                 try {
                     const raw = await deriveAddressFromKeypair(publicKey, version);
-                    if (await isAddressActive(raw)) {
-                        const contractInfo = await inspectContractCode(raw);
-                        if (contractInfo !== null) { return version; }
-                        return version;
-                    }
+                    if (await isAddressActive(raw)) return version;
                 } catch (e) {
                     console.debug(`Version ${version} unavailable or check failed:`, e.message);
                 }
@@ -1912,7 +1898,7 @@
         }
 
         /* ==============================================================
-           CREATE & IMPORT FLOWS (shortened for brevity, preserved)
+           CREATE & IMPORT FLOWS
            ============================================================== */
         function setPendingWordCount(n) {
             state.pendingWordCount = n;
@@ -2501,7 +2487,7 @@
                 const timer = setTimeout(() => {
                     if (settled) return;
                     settled = true;
-                    try { sub?.unsubscribe?.(); } catch (e) { /* not fatal */ }
+                    try { sub?.unsubscribe?.(); } catch {}
                     reject(new Error("Quote timed out"));
                 }, timeoutMs);
                 sub = observable.subscribe({
@@ -2510,7 +2496,7 @@
                         if (q && !settled) {
                             settled = true;
                             clearTimeout(timer);
-                            try { sub.unsubscribe(); } catch (e) { /* not fatal */ }
+                            try { sub.unsubscribe(); } catch {}
                             resolve(q);
                         }
                     },
@@ -2565,14 +2551,14 @@
                 const timer = setTimeout(() => {
                     if (settled) return;
                     settled = true;
-                    try { ws?.close(); } catch (e) { /* not fatal */ }
+                    try { ws?.close(); } catch {}
                     reject(new Error(`Omniston request timed out (${method})`));
                 }, timeoutMs);
                 const finish = (fn, arg) => {
                     if (settled) return;
                     settled = true;
                     clearTimeout(timer);
-                    try { ws.close(); } catch (e) { /* not fatal */ }
+                    try { ws.close(); } catch {}
                     fn(arg);
                 };
                 try { ws = new WebSocket(OMNISTON_WS_URL); }
@@ -2666,7 +2652,7 @@
             const protocols = [];
             let gasBudget = 0n;
             for (const route of routes) {
-                try { gasBudget += BigInt(route.gasBudget ?? route.gas_budget ?? 0); } catch (e) { /* not fatal */ }
+                try { gasBudget += BigInt(route.gasBudget ?? route.gas_budget ?? 0); } catch {}
                 for (const step of (route.steps || [])) {
                     for (const chunk of (step.chunks || [])) {
                         const p = chunk.protocol;
@@ -3055,21 +3041,21 @@
             if (state.tonPrice > 0 && (now - _pricesFetchedAt < PRICE_CACHE_MS)) return;
             try {
                 const res = await fetch("https://api.coingecko.com/api/v3/simple/price?ids=the-open-network&vs_currencies=usd");
-                if (!res.ok) throw new Error();
+                if (!res.ok) throw new Error("HTTP " + res.status);
                 const data = await res.json();
                 state.tonPrice = data["the-open-network"]?.usd || 0;
                 _pricesFetchedAt = now;
-            } catch (e) {
+            } catch {
+                // Rough fallback so USD totals don't render as $0 during an outage.
                 if (state.tonPrice === 0) state.tonPrice = 5.5;
             }
         }
         async function fetchTonBalance(addr) {
             const url = `${getApiBase()}/api/v2/getAddressBalance?address=${encodeURIComponent(addr)}`;
             const res = await fetch(url);
-            if (!res.ok) throw new Error("Balance request failed");
+            if (!res.ok) throw new Error("Balance request failed (HTTP " + res.status + ")");
             const data = await res.json();
-            if (data.ok && data.result !== undefined) return parseInt(data.result, 10) / 1e9;
-            return 0;
+            return (data.ok && data.result !== undefined) ? parseInt(data.result, 10) / 1e9 : 0;
         }
         // Known fake/scam jettons that get airdropped unsolicited to wallets — filtered
         // out entirely so they never appear in balances, asset lists, or the STON.fi
@@ -3195,28 +3181,24 @@
         }
         function updateBalanceDisplay() {
             let totalUsd = state.balance * state.tonPrice;
-            for (const j of state.jettons) {
-                totalUsd += j.balance * j.priceUsd;
-            }
+            for (const j of state.jettons) totalUsd += j.balance * (j.priceUsd || 0);
             document.getElementById("total-usd-display").textContent = `$${totalUsd.toFixed(2)}`;
-            document.getElementById("balance-usd").textContent = `1 ${NATIVE_TICKER} ≈ $${state.tonPrice ? state.tonPrice.toFixed(2) : "—"}`;
+            document.getElementById("balance-usd").textContent = `1 ${NATIVE_TICKER} ≈ ${state.tonPrice > 0 ? "$" + state.tonPrice.toFixed(2) : "$—"}`;
         }
         function renderAssets() {
             const section = document.getElementById("assets-section");
             const list = document.getElementById("assets-list");
             const empty = document.getElementById("assets-empty");
-            const loading = document.getElementById("assets-loading");
-            loading.classList.add("hidden");
+            document.getElementById("assets-loading").classList.add("hidden");
 
             const combined = [
-    { symbol: 'TON', name: NATIVE_NAME, balance: state.balance, priceUsd: state.tonPrice, image: NATIVE_LOGO, decimals: 9 }
-];
-            for (const j of state.jettons) {
-                combined.push(j);
-            }
+                { symbol: NATIVE_TICKER, name: NATIVE_NAME, balance: state.balance, priceUsd: state.tonPrice, image: NATIVE_LOGO, isNative: true },
+                ...state.jettons.map(j => ({ ...j, priceUsd: j.priceUsd || 0 }))
+            ];
             combined.sort((a, b) => (b.balance * b.priceUsd) - (a.balance * a.priceUsd));
 
-            if (!combined.length || combined.every(item => item.balance <= 0 && item.symbol !== 'TON')) {
+            // Always show the native asset row (even at 0) so the user can top up.
+            if (combined.every(item => item.balance <= 0 && !item.isNative)) {
                 section.classList.add("hidden");
                 return;
             }
@@ -3224,47 +3206,43 @@
             empty.classList.add("hidden");
             list.innerHTML = combined.map(item => {
                 const usdValue = item.balance * item.priceUsd;
-                const displaySymbol = item.symbol === 'TON' ? NATIVE_TICKER : item.symbol;
-                const displayName = item.symbol === 'TON' ? NATIVE_NAME : item.name;
-                
-                const imgHtml = item.image ? `
-                    <div class="relative w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-xs overflow-hidden shrink-0">
-                        <img src="${item.image}" alt="${displaySymbol}" class="w-8 h-8 rounded-full absolute inset-0 object-cover" onerror="this.onerror=null; this.style.display='none'; this.parentNode.querySelector('.fallback-text').style.display='flex';" />
-                        <span class="fallback-text hidden flex items-center justify-center w-full h-full">${displaySymbol[0] || '?'}</span>
-                    </div>
-                ` : `
-                    <div class="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-xs shrink-0">${displaySymbol[0] || '?'}</div>
-                `;
-                return `
-                    <div class="asset-item">
-                        <div class="flex items-center gap-3">
-                            ${imgHtml}
-                            <div>
-                                <div class="font-semibold text-sm">${displaySymbol}</div>
-                                <div class="text-xs text-slate-400">${displayName}</div>
-                            </div>
-                        </div>
-                        <div class="text-right">
-                            <div class="font-semibold text-sm">${item.balance.toLocaleString(undefined,{maximumFractionDigits: 4})}</div>
-                            <div class="text-xs text-slate-400">${usdValue > 0 ? '$' + usdValue.toFixed(2) : ''}</div>
+                const initial = (item.symbol || "?")[0];
+                const imgHtml = item.image
+                    ? `<div class="relative w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-xs overflow-hidden shrink-0">
+                           <img src="${item.image}" alt="${item.symbol}" class="w-8 h-8 rounded-full absolute inset-0 object-cover" onerror="this.onerror=null; this.style.display='none'; this.parentNode.querySelector('.fallback-text').style.display='flex';" />
+                           <span class="fallback-text hidden flex items-center justify-center w-full h-full">${initial}</span>
+                       </div>`
+                    : `<div class="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-xs shrink-0">${initial}</div>`;
+                return `<div class="asset-item">
+                    <div class="flex items-center gap-3">${imgHtml}
+                        <div>
+                            <div class="font-semibold text-sm">${item.symbol}</div>
+                            <div class="text-xs text-slate-400">${item.name}</div>
                         </div>
                     </div>
-                `;
+                    <div class="text-right">
+                        <div class="font-semibold text-sm">${item.balance.toLocaleString(undefined,{maximumFractionDigits:4})}</div>
+                        <div class="text-xs text-slate-400">${usdValue > 0 ? "$" + usdValue.toFixed(2) : ""}</div>
+                    </div>
+                </div>`;
             }).join("");
         }
         function renderSendAssetOptions() {
             const sel = document.getElementById("send-asset");
             const prev = sel.value;
-            const combined = [
-                { symbol: 'TON', balance: state.balance, priceUsd: state.tonPrice, name: NATIVE_NAME },
-                ...state.jettons
+            // Build entries that KEEP each jetton's original index in state.jettons
+            // (used later as JETTON:<idx>) — sorting the array by USD value would
+            // otherwise shift indices out from under the value string.
+            const entries = [
+                { value: "TON", symbol: NATIVE_TICKER, name: NATIVE_NAME, balance: state.balance, priceUsd: state.tonPrice }
             ];
-            combined.sort((a, b) => (b.balance * b.priceUsd) - (a.balance * a.priceUsd));
-            sel.innerHTML = combined.map((item, i) => {
-                const val = item.symbol === 'TON' ? 'TON' : `JETTON:${i-1}`;
-                const displaySym = item.symbol === 'TON' ? NATIVE_TICKER : item.symbol;
-                return `<option value="${val}">${displaySym} · ${item.balance.toLocaleString(undefined,{maximumFractionDigits:4})}</option>`;
-            }).join("");
+            state.jettons.forEach((j, i) => entries.push({
+                value: `JETTON:${i}`, symbol: j.symbol, name: j.name, balance: j.balance, priceUsd: j.priceUsd || 0
+            }));
+            entries.sort((a, b) => (b.balance * b.priceUsd) - (a.balance * a.priceUsd));
+            sel.innerHTML = entries.map(e =>
+                `<option value="${e.value}">${e.symbol} · ${e.balance.toLocaleString(undefined,{maximumFractionDigits:4})}</option>`
+            ).join("");
             if (prev) sel.value = prev;
             updateSendBalanceInfo();
             sel.onchange = updateSendBalanceInfo;
@@ -3314,7 +3292,9 @@
                         comment = inMsg.decoded_body?.text || "";
                     }
                     const ts = tx.utime ? new Date(tx.utime * 1000).toLocaleString() : "";
-                    return `<div class="tx-item"><div class="tx-item-header"><span class="tx-type ${type}">${type === "in" ? "Received" : "Sent"}</span><span class="tx-amount ${amount >= 0 ? "positive" : "negative"}">${amount.toFixed(4)} ${NATIVE_TICKER}</span></div><div class="tx-details">${type === "in" ? "From" : "To"}: <span class="tx-hash">${peer.slice(0,8)}...${peer.slice(-6)}</span></div><div class="tx-details">${ts}</div>${comment ? `<div class="tx-details mt-1 italic">"${comment}"</div>` : ""}</div>`;
+                    const txHash = tx.hash || "";
+                    const explorerLink = txHash ? `<div class="tx-details mt-1"><a href="https://tonviewer.com/transaction/${encodeURIComponent(txHash)}" target="_blank" rel="noopener noreferrer" style="color:var(--neon-blue); text-decoration:none;"><i class="fas fa-arrow-up-right-from-square" style="font-size:0.65rem; margin-right:4px;"></i>View on Tonviewer</a></div>` : "";
+                    return `<div class="tx-item"><div class="tx-item-header"><span class="tx-type ${type}">${type === "in" ? "Received" : "Sent"}</span><span class="tx-amount ${amount >= 0 ? "positive" : "negative"}">${amount.toFixed(4)} ${NATIVE_TICKER}</span></div><div class="tx-details">${type === "in" ? "From" : "To"}: <span class="tx-hash">${peer.slice(0,8)}...${peer.slice(-6)}</span></div><div class="tx-details">${ts}</div>${comment ? `<div class="tx-details mt-1 italic">"${comment}"</div>` : ""}${explorerLink}</div>`;
                 }).join("");
             } catch (e) {
                 console.error(e);
@@ -3380,9 +3360,9 @@
 
             const fee = calculateGasFee(sel, amount);
             const totalFee = fee.total;
+            const totalNeeded = sel === "TON" ? amount + totalFee : amount;
 
             if (sel === "TON") {
-                const totalNeeded = amount + totalFee;
                 if (totalNeeded > maxBalance) {
                     return showToast(`Insufficient ${assetLabel} balance. Need ${totalNeeded.toFixed(5)} ${assetLabel} (${amount.toFixed(5)} transfer + ${formatFee(totalFee)} fees)`, "exclamation");
                 }
@@ -3394,7 +3374,6 @@
                     return showToast(`Insufficient ${NATIVE_TICKER} balance to cover network + platform fees (need ${formatFee(totalFee)} ${NATIVE_TICKER}).`, "exclamation");
                 }
             }
-            const totalNeeded = sel === "TON" ? amount + totalFee : amount;
 
             _pendingTx = { to, amount, assetSel: sel, assetLabel, comment, fee };
 
@@ -3601,9 +3580,7 @@
             async hash() {
                 if (this._hashPromise) return this._hashPromise;
                 this._hashPromise = (async () => {
-                    const d1 = this.refs.length;
-                    const d2 = Math.ceil(this.bitsLen / 8) + Math.floor(this.bitsLen / 8);
-                    const parts = [new Uint8Array([d1, d2]), this.data];
+                    const parts = [new Uint8Array([this.refs.length, cellD2(this.bitsLen)]), this.data];
                     for (const r of this.refs) { const d = r.depth(); parts.push(new Uint8Array([(d >> 8) & 0xFF, d & 0xFF])); }
                     for (const r of this.refs) parts.push(await r.hash());
                     const buf = await crypto.subtle.digest("SHA-256", concatBytes(parts));
@@ -3662,9 +3639,7 @@
             parts.push(u(totalCellSize, offsetBytes));
             parts.push(u(0, sizeBytes));
             for (const { cell, refs } of all) {
-                const d1 = cell.refs.length;
-                const d2 = Math.ceil(cell.bitsLength() / 8) + Math.floor(cell.bitsLength() / 8);
-                parts.push(new Uint8Array([d1, d2]));
+                parts.push(new Uint8Array([cell.refs.length, cellD2(cell.bitsLength())]));
                 parts.push(cell.data.subarray(0, Math.ceil(cell.bitsLength() / 8)));
                 for (const r of refs) parts.push(u(r, sizeBytes));
             }
@@ -3918,44 +3893,45 @@
             } catch (e) { console.warn("tonapi account state lookup failed:", e.message); }
             return { seqno: 0, isActive: false };
         }
-        async function sendViaOfflineBuilder(tx) {
-            if (!window.nacl || !window.nacl.sign || !window.nacl.sign.detached) throw new Error("ed25519 library (tweetnacl) unavailable");
+        // Shared sign+wrap+broadcast pipeline: given a list of internal-message
+        // cells, produces a signed external message for the wallet's current
+        // version, attaches state_init if the account isn't active yet, encodes
+        // to a BoC, and broadcasts it. Returns { boc } for callers that want it.
+        async function obSignWrapAndSend(msgs, { context = "Local signing" } = {}) {
+            if (!window.nacl?.sign?.detached) throw new Error("ed25519 library (tweetnacl) unavailable");
             if (!state.localKey) throw new Error("Wallet is locked");
             const version = state.walletVersion || "v4r2";
             if (!["v3r2", "v4r2", "v5r1"].includes(version)) {
-                throw new Error(`Offline builder only supports v3R2/v4R2/v5R1 (not ${WALLET_VERSION_LABELS[version] || version}).`);
+                throw new Error(`${context} only supports v3R2/v4R2/v5R1 (not ${WALLET_VERSION_LABELS[version] || version}).`);
             }
+            if (!msgs.length) throw new Error("No messages to send");
+            if (msgs.length > 4) throw new Error("A single transaction can carry at most 4 messages.");
             const { seqno, isActive } = await obGetAccountState(state.address);
-            const msgs = await obBuildMessages(tx);
             const validUntil = Math.floor(Date.now() / 1000) + 300;
             const secretKey = state.localKey.secretKey;
-            let bodyCell;
-            if (version === "v5r1") bodyCell = await obBuildV5R1Transfer({ seqno, validUntil, secretKey, msgs });
-            else if (version === "v4r2") bodyCell = await obBuildV4Transfer({ seqno, validUntil, secretKey, msgs });
-            else bodyCell = await obBuildV3Transfer({ seqno, validUntil, secretKey, msgs });
+            const builder = version === "v5r1" ? obBuildV5R1Transfer
+                          : version === "v4r2" ? obBuildV4Transfer
+                                               : obBuildV3Transfer;
+            const bodyCell = await builder({ seqno, validUntil, secretKey, msgs });
             const destAddr = obParseAddress(state.address);
-            let stateInit;
-            if (!isActive) stateInit = await buildStateInitCell(version, state.localKey.publicKey);
+            const stateInit = isActive ? undefined : await buildStateInitCell(version, state.localKey.publicKey);
             const ext = obBuildExternalWrapper({ destAddr, bodyCell, stateInit });
             const bocBase64 = obBytesToBase64(await obCellToBoc(ext));
             await obBroadcastBoc(bocBase64);
+            return { boc: bocBase64 };
+        }
+
+        async function sendViaOfflineBuilder(tx) {
+            const msgs = await obBuildMessages(tx);
+            await obSignWrapAndSend(msgs, { context: "Offline builder" });
         }
 
         // Signs and broadcasts a raw TonConnect-shaped SendTransactionRequest
         // (messages: [{address, amount, payload?, stateInit?}], all base64/nano-string
-        // per the TonConnect spec) using the unlocked local wallet — same offline
-        // builder pipeline as sendViaOfflineBuilder, but for messages we didn't
-        // construct ourselves (e.g. built by StonFi's Omniston widget).
+        // per the TonConnect spec) with the unlocked local wallet — used for
+        // messages we didn't construct ourselves (e.g. Omniston-built swaps).
         async function sendRawMessagesViaLocal(rawMessages) {
-            if (!window.nacl || !window.nacl.sign || !window.nacl.sign.detached) throw new Error("ed25519 library (tweetnacl) unavailable");
-            if (!state.localKey) throw new Error("Wallet is locked");
-            const version = state.walletVersion || "v4r2";
-            if (!["v3r2", "v4r2", "v5r1"].includes(version)) {
-                throw new Error(`Local signing only supports v3R2/v4R2/v5R1 (not ${WALLET_VERSION_LABELS[version] || version}).`);
-            }
             if (!Array.isArray(rawMessages) || !rawMessages.length) throw new Error("No messages to send");
-            if (rawMessages.length > 4) throw new Error("A single transaction can carry at most 4 messages.");
-            const { seqno, isActive } = await obGetAccountState(state.address);
             const msgs = rawMessages.map(m => obBuildInternalMessage({
                 dest: obParseAddress(m.address),
                 valueNano: BigInt(m.amount),
@@ -3963,19 +3939,7 @@
                 bodyCell: m.payload ? obBocBase64ToCell(m.payload) : null,
                 stateInit: m.stateInit ? obBocBase64ToCell(m.stateInit) : undefined
             }));
-            const validUntil = Math.floor(Date.now() / 1000) + 300;
-            const secretKey = state.localKey.secretKey;
-            let bodyCell;
-            if (version === "v5r1") bodyCell = await obBuildV5R1Transfer({ seqno, validUntil, secretKey, msgs });
-            else if (version === "v4r2") bodyCell = await obBuildV4Transfer({ seqno, validUntil, secretKey, msgs });
-            else bodyCell = await obBuildV3Transfer({ seqno, validUntil, secretKey, msgs });
-            const destAddr = obParseAddress(state.address);
-            let stateInit;
-            if (!isActive) stateInit = await buildStateInitCell(version, state.localKey.publicKey);
-            const ext = obBuildExternalWrapper({ destAddr, bodyCell, stateInit });
-            const bocBase64 = obBytesToBase64(await obCellToBoc(ext));
-            await obBroadcastBoc(bocBase64);
-            return { boc: bocBase64 };
+            return obSignWrapAndSend(msgs);
         }
 
         async function sendViaLocal(tx) {
@@ -4036,7 +4000,6 @@
                     try { recipientOwner = T.Address.parse(tx.to); } catch (e) { throw new Error(`Invalid destination address: ${tx.to}`); }
                     const ownerAddress = w.address;
                     const decimals = typeof jetton.decimals === "number" ? jetton.decimals : 9;
-                    const factor = BigInt(10) ** BigInt(decimals);
                     const [intPart, fracPartRaw = ""] = String(tx.amount).split(".");
                     const fracPart = (fracPartRaw + "0".repeat(decimals)).slice(0, decimals);
                     const amountUnits = BigInt((intPart || "0") + fracPart);
@@ -4087,10 +4050,10 @@
                 return;
             }
 
-            // FALLBACK: If the library is unavailable, we inform the user.
-            // Building a full BoC without @ton/ton is extremely complex and error-prone.
-            // This fallback directs the user to refresh, which will reload the ESM library.
-            throw new Error("Transaction library (@ton/ton) not fully loaded. Please refresh the page to ensure the library loads correctly. If the issue persists, check your internet connection.");
+            // FALLBACK: the offline builder above already handles v3R2/v4R2/v5R1
+            // without @ton/ton. If we got here BOTH paths failed — tell the user
+            // to reload so the ESM library gets another chance to load.
+            throw new Error("Transaction library (@ton/ton) failed to load. Please refresh the page — if it persists, check your connection.");
         }
 
         /* ==============================================================
@@ -4176,5 +4139,6 @@
             }
         });
     </script>
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js/v4513226cdae34746b4dedf0b4dfa099e1781791509496" integrity="sha512-ZE9pZaUXND66v380QUtch/5sE9tPFh2zg45pR2PB0CVkCtOREv2AJKkSidISWkysEuQ0EH8faUU5du78bx87UQ==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79","server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
 </body>
 </html>
