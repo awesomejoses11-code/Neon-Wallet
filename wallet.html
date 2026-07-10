@@ -317,24 +317,49 @@
         .fee-total { font-weight: 700; font-size: 0.9rem; }
         .fee-total .value { color: var(--gold); text-shadow: 0 0 12px rgba(255, 215, 0, 0.2); }
         .validator-address-display { font-family: 'Fira Code', monospace; font-size: 0.65rem; color: #7A8BA8; word-break: break-all; padding: 4px 8px; background: rgba(11, 18, 48, 0.4); border-radius: 4px; border: 1px solid rgba(255, 215, 0, 0.05); }
-        .settings-btn-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 0.75rem;
-        }
+        /* When Show USD Values is off, hide any element flagged as usd-value. */
+        body.hide-usd .usd-value { display: none !important; }
+        .settings-btn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
         .settings-btn-grid .btn-outline,
-        .settings-btn-grid .btn-danger {
-            min-height: 48px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            white-space: nowrap;
-        }
+        .settings-btn-grid .btn-danger { min-height: 48px; display: flex; align-items: center; justify-content: center; white-space: nowrap; }
+        @media (max-width: 480px) { .settings-btn-grid { grid-template-columns: 1fr; } }
         @media (max-width: 480px) {
-            .settings-btn-grid {
-                grid-template-columns: 1fr;
-            }
+            .pref-row { flex-direction: column; align-items: stretch; }
+            .pref-label { margin-bottom: 6px; }
+            .pref-control { width: 100%; max-width: 100%; align-self: stretch; }
+            .pref-select { width: 100%; }
         }
+
+        /* ===== Settings preferences UI (toggle rows, action list) ===== */
+        .pref-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 12px 0; border-bottom: 1px solid rgba(255, 215, 0, 0.06); flex-wrap: wrap; }
+        .pref-row:last-child { border-bottom: none; }
+        .pref-label { flex: 1 1 auto; min-width: 150px; }
+        .pref-label .title { font-weight: 600; font-size: 0.95rem; color: #F8FAFC; display: flex; align-items: center; gap: 8px; }
+        .pref-label .title i { color: #B794F4; }
+        .pref-label .desc { font-size: 0.78rem; color: #94A3B8; margin-top: 2px; }
+        .pref-control { flex-shrink: 0; align-self: flex-start; min-width: 120px; width: auto; max-width: 180px; }
+
+        /* iOS-style switch */
+        .switch { position: relative; display: inline-block; width: 46px; height: 26px; flex-shrink: 0; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .switch .slider { position: absolute; cursor: pointer; inset: 0; background: #334155; border-radius: 999px; transition: background 0.2s; }
+        .switch .slider::before { content: ""; position: absolute; height: 20px; width: 20px; left: 3px; top: 3px; background: #fff; border-radius: 50%; transition: transform 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.4); }
+        .switch input:checked + .slider { background: linear-gradient(90deg, #A855F7, #C084FC); }
+        .switch input:checked + .slider::before { transform: translateX(20px); }
+        .switch input:disabled + .slider { opacity: 0.4; cursor: not-allowed; }
+
+        /* Compact select used inside a preference row */
+        .pref-select { width: 100%; background: rgba(11, 18, 48, 0.6); border: 1px solid var(--gold); color: #F8FAFC; padding: 8px 32px 8px 12px; border-radius: 10px; font-size: 0.85rem; cursor: pointer; appearance: none; background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23FFD700' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>"); background-repeat: no-repeat; background-position: right 10px center; }
+
+        /* Stacked action-button list (Lock / Change Password / Export / Import / Delete) */
+        .settings-action-list { display: flex; flex-direction: column; gap: 10px; }
+        .settings-action { width: 100%; padding: 12px 16px; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 0.95rem; font-weight: 500; }
+        .settings-action.primary { border: 1px solid var(--gold); background: rgba(255, 215, 0, 0.06); color: #F8FAFC; }
+        .settings-action.primary:hover { background: rgba(255, 215, 0, 0.12); }
+        .settings-action.ghost { border: 1px solid rgba(148, 163, 184, 0.3); background: transparent; color: #E2E8F0; }
+        .settings-action.ghost:hover { background: rgba(148, 163, 184, 0.08); }
+        .settings-action.danger { border: 1px solid rgba(239, 68, 68, 0.4); background: transparent; color: #F87171; }
+        .settings-action.danger:hover { background: rgba(239, 68, 68, 0.1); }
     </style>
 </head>
 <body>
@@ -560,9 +585,9 @@
                     <!-- ===================== TOTAL USD BALANCE ===================== -->
                     <div class="glass-card p-6 rounded-xl border-2 border-yellow-500/20 text-center">
                         <p class="text-sm text-slate-400 uppercase mb-2 tracking-widest">Total Balance</p>
-                        <p class="balance-display" id="total-usd-display">$0.00</p>
-                        <p class="text-sm text-slate-400 mt-2">USD</p>
-                        <p class="ton-usd-rate mt-3" id="balance-usd">1 GRAM ≈ $—</p>
+                        <p class="balance-display usd-value" id="total-usd-display">$0.00</p>
+                        <p class="text-sm text-slate-400 mt-2 usd-value">USD</p>
+                        <p class="ton-usd-rate mt-3 usd-value" id="balance-usd">1 GRAM ≈ $—</p>
                     </div>
 
                     <div class="flex border-b border-slate-700/50 overflow-x-auto whitespace-nowrap">
@@ -707,20 +732,63 @@
                     <!-- ===================== SETTINGS TAB ===================== -->
                     <div id="settings" class="tab-content space-y-4">
                         <button class="btn-outline px-3 py-2" onclick="switchTab('wallet', event)"><i class="fas fa-arrow-left mr-1"></i>Back</button>
-                        <div class="glass-card p-5 rounded-xl space-y-4">
-                            <h3 class="text-base font-semibold gold-text"><i class="fas fa-cog mr-2"></i>Security & Management</h3>
-                            <div id="biometric-row" class="hidden mb-2">
-                                <button id="biometric-toggle-btn" class="btn-outline w-full py-2 text-sm" onclick="toggleBiometricUnlock()">
-                                    <i class="fas fa-fingerprint mr-1"></i><span id="biometric-toggle-text">Enable Biometric Unlock</span>
-                                </button>
+
+                        <!-- Preferences -->
+                        <div class="glass-card p-5 rounded-xl">
+                            <div class="pref-row">
+                                <div class="pref-label">
+                                    <div class="title">Auto-refresh</div>
+                                    <div class="desc">Refresh balance every 30s</div>
+                                </div>
+                                <label class="switch pref-control">
+                                    <input type="checkbox" id="pref-auto-refresh" onchange="onPrefChange('autoRefresh', this.checked)" />
+                                    <span class="slider"></span>
+                                </label>
                             </div>
-                            <div class="settings-btn-grid">
-                                <button class="btn-outline py-2 text-sm" onclick="showSeedModal()"><i class="fas fa-eye mr-1"></i>Reveal Seed</button>
-                                <button class="btn-outline py-2 text-sm" onclick="openExportBackupModal()"><i class="fas fa-file-export mr-1"></i>Export Backup</button>
+                            <div class="pref-row">
+                                <div class="pref-label">
+                                    <div class="title">Show USD Values</div>
+                                    <div class="desc">Display balances in USD</div>
+                                </div>
+                                <label class="switch pref-control">
+                                    <input type="checkbox" id="pref-show-usd" onchange="onPrefChange('showUsd', this.checked)" />
+                                    <span class="slider"></span>
+                                </label>
                             </div>
-                            <div class="settings-btn-grid">
-                                <button class="btn-outline py-2 text-sm" onclick="lockWallet()"><i class="fas fa-lock mr-1"></i>Lock</button>
-                                <button class="btn-danger py-2 text-sm" onclick="confirmDisconnect()"><i class="fas fa-sign-out-alt mr-1"></i>Disconnect</button>
+                            <div class="pref-row" id="biometric-pref-row">
+                                <div class="pref-label">
+                                    <div class="title"><i class="fas fa-fingerprint"></i>Biometric Unlock</div>
+                                    <div class="desc">Use device biometrics (WebAuthn PRF)</div>
+                                </div>
+                                <label class="switch pref-control">
+                                    <input type="checkbox" id="pref-biometric" onchange="onBiometricSwitchChange(this)" />
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+                            <div class="pref-row">
+                                <div class="pref-label">
+                                    <div class="title"><i class="fas fa-clock"></i>Auto-Lock</div>
+                                    <div class="desc">Lock wallet after inactivity</div>
+                                </div>
+                                <select id="pref-auto-lock" class="pref-select pref-control" onchange="onPrefChange('autoLockMinutes', parseInt(this.value, 10))">
+                                    <option value="0">Never</option>
+                                    <option value="1">1 minute</option>
+                                    <option value="5">5 minutes</option>
+                                    <option value="15">15 minutes</option>
+                                    <option value="30">30 minutes</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Wallet actions -->
+                        <div class="glass-card p-5 rounded-xl">
+                            <div class="settings-action-list">
+                                <button class="settings-action primary" onclick="lockWallet()"><i class="fas fa-lock"></i>Lock Wallet Now</button>
+                                <button class="settings-action ghost" onclick="openChangePasswordModal()"><i class="fas fa-key"></i>Change Password</button>
+                                <button class="settings-action ghost" onclick="openExportBackupModal()"><i class="fas fa-download"></i>Export Wallet</button>
+                                <button class="settings-action ghost" onclick="goImportFromSettings()"><i class="fas fa-upload"></i>Import Wallet</button>
+                                <button class="settings-action ghost" onclick="showSeedModal()"><i class="fas fa-eye"></i>Reveal Seed</button>
+                                <button class="settings-action danger" onclick="confirmDeleteWallet()"><i class="fas fa-trash"></i>Delete Wallet</button>
                             </div>
                         </div>
                     </div>
@@ -777,6 +845,21 @@
                     <button class="btn-outline flex-1 py-2" onclick="closeExportBackupModal()">Cancel</button>
                     <button class="btn-gold flex-1 py-2" onclick="doExportBackup()">Export</button>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===================== CHANGE PASSWORD MODAL ===================== -->
+    <div id="change-pw-modal" class="modal-backdrop hidden-section">
+        <div class="modal space-y-4">
+            <h3 class="text-lg font-bold gold-text"><i class="fas fa-key mr-2"></i>Change Password</h3>
+            <p class="text-sm text-slate-400">Re-encrypt your local keystore with a new password. Your seed phrase and address stay the same. Biometric unlock, if enabled, will be reset.</p>
+            <input type="password" id="cpw-current" placeholder="Current password" autocomplete="off" autocorrect="off" autocapitalize="off" data-lpignore="true" data-1p-ignore data-bwignore />
+            <input type="password" id="cpw-new1" placeholder="New password (at least 8 chars)" autocomplete="off" autocorrect="off" autocapitalize="off" data-lpignore="true" data-1p-ignore data-bwignore />
+            <input type="password" id="cpw-new2" placeholder="Confirm new password" autocomplete="off" autocorrect="off" autocapitalize="off" data-lpignore="true" data-1p-ignore data-bwignore onkeydown="if(event.key==='Enter')doChangePassword()" />
+            <div class="flex gap-2 mt-1">
+                <button class="btn-outline flex-1 py-2" onclick="closeChangePasswordModal()">Cancel</button>
+                <button class="btn-gold flex-1 py-2" onclick="doChangePassword()">Update</button>
             </div>
         </div>
     </div>
@@ -948,8 +1031,64 @@
            ============================================================== */
         const CONFIG = {
             tonconnect: { manifestUrl: "https://neon-crypto-wallet.vercel.app/tonconnect-manifest.json" },
-            storage: { keystore: "neon_wallet_keystore_v1", walletManager: "neon_wallet_manager_v1", txHistory: "neon_wallet_tx_history_v1" }
+            storage: { keystore: "neon_wallet_keystore_v1", walletManager: "neon_wallet_manager_v1", txHistory: "neon_wallet_tx_history_v1", preferences: "neon_wallet_prefs_v1" }
         };
+
+        /* ==============================================================
+           USER PREFERENCES (auto-refresh, USD display, auto-lock)
+           ============================================================== */
+        const DEFAULT_PREFS = { autoRefresh: true, showUsd: true, autoLockMinutes: 5 };
+        function loadPrefs() {
+            try {
+                const raw = localStorage.getItem(CONFIG.storage.preferences);
+                return Object.assign({}, DEFAULT_PREFS, raw ? JSON.parse(raw) : {});
+            } catch { return { ...DEFAULT_PREFS }; }
+        }
+        function savePrefs(p) { localStorage.setItem(CONFIG.storage.preferences, JSON.stringify(p)); }
+        const prefs = loadPrefs();
+        let _autoRefreshTimer = null;
+        let _autoLockTimer = null;
+        function applyAutoRefresh() {
+            if (_autoRefreshTimer) { clearInterval(_autoRefreshTimer); _autoRefreshTimer = null; }
+            if (prefs.autoRefresh && state.connected && state.address) {
+                _autoRefreshTimer = setInterval(() => { refreshBalances().catch(() => {}); }, 30000);
+            }
+        }
+        function resetAutoLockTimer() {
+            if (_autoLockTimer) { clearTimeout(_autoLockTimer); _autoLockTimer = null; }
+            if (!prefs.autoLockMinutes || prefs.autoLockMinutes <= 0) return;
+            if (state.mode !== "local" || !state.connected) return;
+            _autoLockTimer = setTimeout(() => {
+                if (state.mode === "local" && state.connected) {
+                    showToast("Wallet auto-locked after inactivity", "lock");
+                    lockWallet();
+                }
+            }, prefs.autoLockMinutes * 60 * 1000);
+        }
+        function applyShowUsd() {
+            document.body.classList.toggle("hide-usd", !prefs.showUsd);
+            if (state.connected) { updateBalanceDisplay(); renderAssets(); }
+        }
+        function applyPreferences() { applyAutoRefresh(); resetAutoLockTimer(); applyShowUsd(); }
+        function onPrefChange(key, value) {
+            prefs[key] = value;
+            savePrefs(prefs);
+            if (key === "autoRefresh") applyAutoRefresh();
+            else if (key === "autoLockMinutes") resetAutoLockTimer();
+            else if (key === "showUsd") applyShowUsd();
+        }
+        function syncSettingsUI() {
+            const ar = document.getElementById("pref-auto-refresh");
+            const su = document.getElementById("pref-show-usd");
+            const al = document.getElementById("pref-auto-lock");
+            if (ar) ar.checked = !!prefs.autoRefresh;
+            if (su) su.checked = !!prefs.showUsd;
+            if (al) al.value = String(prefs.autoLockMinutes ?? 5);
+        }
+        // Any user interaction resets the inactivity timer.
+        ["click", "keydown", "touchstart", "mousemove"].forEach(evt => {
+            window.addEventListener(evt, () => { if (_autoLockTimer) resetAutoLockTimer(); }, { passive: true });
+        });
 
         const state = {
             mode: null,
@@ -1687,24 +1826,42 @@
             wrap.classList.toggle("hidden", !(active && active.biometric && await biometricCapable()));
         }
         async function renderBiometricRow() {
-            const row = document.getElementById("biometric-row");
-            const btnText = document.getElementById("biometric-toggle-text");
-            if (!row) return;
-            if (state.mode !== "local" || !(await biometricCapable())) { row.classList.add("hidden"); return; }
-            row.classList.remove("hidden");
-            const active = getActiveWalletEntry();
-            btnText.textContent = (active && active.biometric) ? "Disable Biometric Unlock" : "Enable Biometric Unlock";
-        }
-        function toggleBiometricUnlock() {
-            const active = getActiveWalletEntry();
-            if (!active) return;
-            if (active.biometric) {
-                if (!confirm("Disable biometric unlock for this wallet?")) return;
-                disableBiometricUnlock(active.id);
-                renderBiometricRow();
+            const row = document.getElementById("biometric-pref-row");
+            const sw = document.getElementById("pref-biometric");
+            if (!row || !sw) return;
+            const capable = await biometricCapable();
+            if (state.mode !== "local" || !capable) {
+                // Hide the whole row if biometrics aren't usable on this device/wallet mode.
+                row.style.display = capable ? "" : "none";
+                sw.checked = false;
+                sw.disabled = true;
                 return;
             }
-            openBiometricSetupModal();
+            row.style.display = "";
+            sw.disabled = false;
+            const active = getActiveWalletEntry();
+            sw.checked = !!(active && active.biometric);
+        }
+        function onBiometricSwitchChange(el) {
+            const active = getActiveWalletEntry();
+            if (!active) { el.checked = false; return; }
+            if (el.checked) {
+                // Turning ON — need password confirmation via the setup modal.
+                el.checked = false; // will flip to true only on success via renderBiometricRow()
+                openBiometricSetupModal();
+                return;
+            }
+            // Turning OFF
+            if (!confirm("Disable biometric unlock for this wallet?")) { el.checked = true; return; }
+            disableBiometricUnlock(active.id);
+            renderBiometricRow();
+        }
+        // Legacy shim so any lingering call sites keep working.
+        function toggleBiometricUnlock() {
+            const sw = document.getElementById("pref-biometric");
+            if (!sw) return;
+            sw.checked = !sw.checked;
+            onBiometricSwitchChange(sw);
         }
         function openBiometricSetupModal() {
             document.getElementById("bio-setup-pw").value = "";
@@ -2175,6 +2332,8 @@
                 state.connected = false;
                 state.address = null;
                 state.mode = null;
+                if (_autoRefreshTimer) { clearInterval(_autoRefreshTimer); _autoRefreshTimer = null; }
+                if (_autoLockTimer) { clearTimeout(_autoLockTimer); _autoLockTimer = null; }
                 showToast("Wallet locked", "lock");
                 goUnlock();
             } else { disconnectActive(); }
@@ -2193,12 +2352,6 @@
             const remaining = getWalletManager().wallets;
             if (remaining.length > 0) goUnlock();
             else goWelcome();
-        }
-        function confirmDisconnect() {
-            if (state.mode === "local") {
-                if (!confirm("Lock and disconnect this wallet? Your encrypted keystore stays on this device.")) return;
-                lockWallet();
-            } else { disconnectActive(); }
         }
 
         /* ==============================================================
@@ -2272,6 +2425,8 @@
             renderBiometricRow();
             renderQR();
             refreshBalances();
+            syncSettingsUI();
+            applyPreferences();
             // Wallet identity may have changed (switched account, reconnected) —
             // drop any stale quote so a stray "Swap" tap can't sign against the
             // wrong sender. The swap tab re-quotes fresh the next time it's opened.
@@ -3222,7 +3377,7 @@
                     </div>
                     <div class="text-right">
                         <div class="font-semibold text-sm">${item.balance.toLocaleString(undefined,{maximumFractionDigits:4})}</div>
-                        <div class="text-xs text-slate-400">${usdValue > 0 ? "$" + usdValue.toFixed(2) : ""}</div>
+                        <div class="text-xs text-slate-400 usd-value">${usdValue > 0 ? "$" + usdValue.toFixed(2) : ""}</div>
                     </div>
                 </div>`;
             }).join("");
@@ -4123,9 +4278,90 @@
         }
 
         /* ==============================================================
+           CHANGE PASSWORD
+           ============================================================== */
+        function openChangePasswordModal() {
+            if (state.mode !== "local") return showToast("Only available for local wallets", "circle-info");
+            ["cpw-current", "cpw-new1", "cpw-new2"].forEach(id => document.getElementById(id).value = "");
+            document.getElementById("change-pw-modal").classList.remove("hidden-section");
+            setTimeout(() => document.getElementById("cpw-current").focus(), 50);
+        }
+        function closeChangePasswordModal() { document.getElementById("change-pw-modal").classList.add("hidden-section"); }
+        async function doChangePassword() {
+            const cur = document.getElementById("cpw-current").value;
+            const p1  = document.getElementById("cpw-new1").value;
+            const p2  = document.getElementById("cpw-new2").value;
+            if (!cur || !p1 || !p2) return showToast("Fill in every field", "exclamation");
+            if (p1.length < 8) return showToast("New password must be at least 8 characters", "exclamation");
+            if (p1 !== p2) return showToast("New passwords don't match", "exclamation");
+            const active = getActiveWalletEntry();
+            if (!active) return showToast("No active wallet", "exclamation");
+            let mnemonic;
+            try { mnemonic = await decryptKeystore(active.encrypted, cur); }
+            catch { return showToast("Current password is wrong", "exclamation"); }
+            try {
+                const newKs = await encryptKeystore(mnemonic, p1);
+                const mgr = getWalletManager();
+                const w = mgr.wallets.find(w => w.id === active.id);
+                if (!w) return showToast("Wallet not found", "exclamation");
+                w.encrypted = newKs;
+                // Any previously-linked biometric credential wraps the OLD password —
+                // invalidate it so the user re-enrolls with the new one.
+                if (w.biometric) delete w.biometric;
+                saveWalletManager(mgr);
+                closeChangePasswordModal();
+                showToast("Password updated", "circle-check");
+                renderBiometricRow();
+            } catch (e) {
+                console.error(e);
+                showToast("Failed to update password", "exclamation");
+            }
+        }
+
+        /* ==============================================================
+           DELETE WALLET (from Settings)
+           ============================================================== */
+        function confirmDeleteWallet() {
+            if (state.mode !== "local") {
+                // TonConnect sessions have no local keystore to delete — just disconnect.
+                return disconnectActive();
+            }
+            const mgr = getWalletManager();
+            const msg = mgr.wallets.length > 1
+                ? "Delete this wallet from this device? You'll need its seed phrase to restore it."
+                : "Delete the locally stored wallet from this device? You'll need the seed phrase to restore it. This cannot be undone.";
+            if (!confirm(msg)) return;
+            clearKeystore();
+            state.localKey = null;
+            state.walletVersion = null;
+            state.connected = false;
+            state.address = null;
+            state.mode = null;
+            if (_autoRefreshTimer) { clearInterval(_autoRefreshTimer); _autoRefreshTimer = null; }
+            if (_autoLockTimer) { clearTimeout(_autoLockTimer); _autoLockTimer = null; }
+            showToast("Wallet deleted", "trash");
+            const remaining = getWalletManager().wallets;
+            if (remaining.length > 0) goUnlock(); else goWelcome();
+        }
+
+        /* ==============================================================
+           IMPORT WALLET (jump from Settings to the Import screen)
+           ============================================================== */
+        function goImportFromSettings() {
+            // Reach the Import screen without dropping the currently-unlocked session:
+            // the Import flow itself either adds a new wallet entry or restores from backup.
+            showScreen("import");
+        }
+
+        /* ==============================================================
            INIT
            ============================================================== */
         window.addEventListener("DOMContentLoaded", async () => {
+            // Apply persisted display prefs immediately (before any dashboard render)
+            // so USD values don't flash on if the user disabled them.
+            document.body.classList.toggle("hide-usd", !prefs.showUsd);
+            syncSettingsUI();
+
             setTimeout(initTonConnect, 250);
             refreshExistingBanner();
             ensureWordlist().catch(() => {});
@@ -4139,6 +4375,7 @@
             }
         });
     </script>
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js/v4513226cdae34746b4dedf0b4dfa099e1781791509496" integrity="sha512-ZE9pZaUXND66v380QUtch/5sE9tPFh2zg45pR2PB0CVkCtOREv2AJKkSidISWkysEuQ0EH8faUU5du78bx87UQ==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79","server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
 <script defer src="https://static.cloudflareinsights.com/beacon.min.js/v4513226cdae34746b4dedf0b4dfa099e1781791509496" integrity="sha512-ZE9pZaUXND66v380QUtch/5sE9tPFh2zg45pR2PB0CVkCtOREv2AJKkSidISWkysEuQ0EH8faUU5du78bx87UQ==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79","server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
 </body>
 </html>
