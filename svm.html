@@ -144,6 +144,167 @@
             color: rgba(255, 255, 255, 0.4);
         }
 
+        /* --- Phantom-style swap panel --- */
+        .swap-card {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 20px;
+            padding: 18px;
+        }
+        .swap-card-label {
+            color: rgba(255, 255, 255, 0.55);
+            font-size: 14px;
+        }
+        .swap-amount-input {
+            background: transparent;
+            border: none;
+            outline: none;
+            color: #fff;
+            font-size: 34px;
+            font-weight: 600;
+            width: 60%;
+            min-width: 0;
+            padding: 0;
+        }
+        .swap-amount-input::placeholder { color: rgba(255,255,255,0.3); }
+        .swap-amount-input::-webkit-outer-spin-button,
+        .swap-amount-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+        .swap-amount-input[type=number] { -moz-appearance: textfield; }
+        .swap-amount-readonly {
+            font-size: 34px;
+            font-weight: 600;
+            color: rgba(255,255,255,0.85);
+            width: 60%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .swap-card-sub {
+            text-align: right;
+            font-size: 13px;
+            color: rgba(255,255,255,0.4);
+            margin-top: 6px;
+        }
+        .token-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(255, 255, 255, 0.08);
+            border: none;
+            border-radius: 999px;
+            padding: 8px 14px 8px 8px;
+            color: #fff;
+            font-weight: 600;
+            cursor: pointer;
+            flex-shrink: 0;
+            transition: background 0.2s ease;
+        }
+        .token-pill:hover { background: rgba(255, 255, 255, 0.14); }
+        .token-pill-symbol { font-size: 15px; }
+        .token-verified-badge {
+            color: #b06bff;
+            font-size: 13px;
+        }
+        .token-icon-wrap {
+            border-radius: 50%;
+            overflow: hidden;
+            position: relative;
+            flex-shrink: 0;
+            background: rgba(255,255,255,0.12);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .token-icon-fallback {
+            font-weight: 700;
+            color: rgba(255,255,255,0.8);
+        }
+        .swap-flip-wrap {
+            display: flex;
+            justify-content: center;
+            position: relative;
+            height: 0;
+            z-index: 2;
+        }
+        .swap-flip-btn {
+            position: relative;
+            top: -18px;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: 4px solid #24243e;
+            background: linear-gradient(135deg, #b06bff 0%, #7b3ff2 100%);
+            color: #fff;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.2s ease;
+        }
+        .swap-flip-btn:hover { transform: translateY(1px) scale(1.05); }
+        .swap-max-btn {
+            background: rgba(176, 107, 255, 0.15);
+            color: #b06bff;
+            border: none;
+            border-radius: 999px;
+            padding: 4px 12px;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+        .swap-max-btn:hover { background: rgba(176, 107, 255, 0.28); }
+        .token-picker-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 50;
+            padding: 20px;
+        }
+        .token-picker-modal {
+            background: #1c1a33;
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 20px;
+            padding: 20px;
+            width: 100%;
+            max-width: 380px;
+            max-height: 70vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .token-picker-list {
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .token-picker-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: transparent;
+            border: none;
+            border-radius: 12px;
+            padding: 10px;
+            text-align: left;
+            cursor: pointer;
+            color: #fff;
+            transition: background 0.2s ease;
+        }
+        .token-picker-item:hover { background: rgba(255,255,255,0.06); }
+        .token-picker-item-symbol {
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .token-picker-item-name {
+            font-size: 12px;
+            color: rgba(255,255,255,0.45);
+        }
+
         /* Native <select> popups render with the OS's own background, not this
            page's dark glass background — so options inherited color:white with
            no explicit background just vanish (white text on the OS's white
@@ -408,9 +569,8 @@
             </div>
 
             <div class="glass-card p-5 rounded-xl mb-6">
-                <p class="text-xs text-slate-400 uppercase mb-3">Total Balance (SOL)</p>
-                <div id="totalBalance" class="balance-display">0.00 SOL</div>
-                <p id="usdBalance" class="text-lg text-slate-400 mt-2">$0.00 USD</p>
+                <p class="text-xs text-slate-400 uppercase mb-3">Total Balance</p>
+                <div id="totalBalance" class="balance-display">$0.00</div>
             </div>
 
             <div class="glass-card p-5 rounded-xl">
@@ -424,78 +584,79 @@
         </div>
 
         <div id="swap" class="tab-content">
-            <div class="glass-card p-6 rounded-xl">
-                <div class="flex items-start justify-between gap-3 flex-wrap mb-6">
-                    <div>
-                        <h2 class="text-xl font-bold">Jupiter Swap</h2>
-                        <p class="text-sm text-slate-400">Mainnet token swaps with quote, route preview, signing, and broadcast.</p>
-                    </div>
-                    <button class="btn-outline text-sm px-3 py-2" onclick="flipSwapTokens()">
-                        <i class="fas fa-right-left mr-2"></i>Flip
+            <div class="glass-card p-6 rounded-xl max-w-md mx-auto">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-xl font-bold">Swap</h2>
+                    <button class="btn-outline text-sm px-3 py-2" onclick="document.getElementById('swapSettingsPanel').classList.toggle('hidden')" title="Slippage settings">
+                        <i class="fas fa-sliders"></i>
                     </button>
                 </div>
 
                 <div id="swapNetworkNotice" class="glass-card p-3 rounded-xl text-sm text-yellow-300 mb-4 hidden"></div>
 
-                <div class="grid md:grid-cols-2 gap-4 mb-4">
-                    <div>
-                        <label class="block text-sm text-slate-400 mb-2">From</label>
-                        <select id="swapFromToken" class="input-field"></select>
+                <div id="swapSettingsPanel" class="glass-card p-4 rounded-xl mb-4 hidden">
+                    <label class="block text-sm text-slate-400 mb-2">Slippage tolerance</label>
+                    <div class="flex gap-2 flex-wrap" id="slippagePresetGroup">
+                        <button type="button" class="btn-outline px-3 py-2 text-sm" data-bps="10" onclick="setSlippagePreset(10)">0.1%</button>
+                        <button type="button" class="btn-gold px-3 py-2 text-sm" data-bps="50" onclick="setSlippagePreset(50)">0.5%</button>
+                        <button type="button" class="btn-outline px-3 py-2 text-sm" data-bps="100" onclick="setSlippagePreset(100)">1%</button>
+                        <button type="button" class="btn-outline px-3 py-2 text-sm" data-bps="custom" onclick="setSlippagePreset('custom')">Custom</button>
                     </div>
-                    <div>
-                        <label class="block text-sm text-slate-400 mb-2">To</label>
-                        <select id="swapToToken" class="input-field"></select>
-                    </div>
+                    <input type="number" id="swapSlippageCustomPct" class="input-field mt-2 hidden" placeholder="Custom %, e.g. 2.5" step="0.1" min="0.01" max="50" oninput="updateCustomSlippage()">
+                    <input type="hidden" id="swapSlippage" value="50">
                 </div>
 
-                <div class="grid md:grid-cols-[2fr_1fr_1fr] gap-4 mb-4">
-                    <div>
-                        <label class="block text-sm text-slate-400 mb-2">Amount</label>
-                        <input type="number" id="swapAmount" class="input-field" placeholder="0.00" step="0.000001">
-                    </div>
-                    <div>
-                        <label class="block text-sm text-slate-400 mb-2">Slippage tolerance</label>
-                        <div class="flex gap-2 flex-wrap" id="slippagePresetGroup">
-                            <button type="button" class="btn-outline px-3 py-2 text-sm" data-bps="10" onclick="setSlippagePreset(10)">0.1%</button>
-                            <button type="button" class="btn-gold px-3 py-2 text-sm" data-bps="50" onclick="setSlippagePreset(50)">0.5%</button>
-                            <button type="button" class="btn-outline px-3 py-2 text-sm" data-bps="100" onclick="setSlippagePreset(100)">1%</button>
-                            <button type="button" class="btn-outline px-3 py-2 text-sm" data-bps="custom" onclick="setSlippagePreset('custom')">Custom</button>
+                <!-- hidden mint holders, kept so existing quote/execute/max logic needs no changes -->
+                <input type="hidden" id="swapFromToken" value="">
+                <input type="hidden" id="swapToToken" value="">
+
+                <div class="relative">
+                    <div class="swap-card">
+                        <div class="flex items-center justify-between mb-1">
+                            <span class="swap-card-label">You Pay</span>
+                            <button class="swap-max-btn" onclick="setSwapMaxAmount()">MAX</button>
                         </div>
-                        <input type="number" id="swapSlippageCustomPct" class="input-field mt-2 hidden" placeholder="Custom %, e.g. 2.5" step="0.1" min="0.01" max="50" oninput="updateCustomSlippage()">
-                        <input type="hidden" id="swapSlippage" value="50">
+                        <div class="flex items-center justify-between gap-3 mt-1">
+                            <input type="number" id="swapAmount" class="swap-amount-input" placeholder="0" step="0.000001" oninput="onSwapAmountInput()">
+                            <button id="swapFromPill" class="token-pill" onclick="openTokenPicker('from')"></button>
+                        </div>
+                        <div class="swap-card-sub" id="swapFromBalance">Balance: —</div>
                     </div>
-                    <div class="flex items-end">
-                        <button class="btn-outline w-full py-3" onclick="setSwapMaxAmount()">
-                            <i class="fas fa-coins mr-2"></i>Use Max
+
+                    <div class="swap-flip-wrap">
+                        <button class="swap-flip-btn" onclick="flipSwapTokens()" title="Flip tokens">
+                            <i class="fas fa-arrow-up-arrow-down"></i>
                         </button>
                     </div>
+
+                    <div class="swap-card" style="margin-top:-8px;">
+                        <div class="flex items-center justify-between mb-1">
+                            <span class="swap-card-label">You Receive</span>
+                            <span class="text-xs text-slate-400" id="swapPriceImpact">—</span>
+                        </div>
+                        <div class="flex items-center justify-between gap-3 mt-1">
+                            <div class="swap-amount-readonly" id="swapQuoteOutBig">0</div>
+                            <button id="swapToPill" class="token-pill" onclick="openTokenPicker('to')"></button>
+                        </div>
+                        <div class="swap-card-sub" id="swapToBalance">Balance: —</div>
+                    </div>
                 </div>
 
-                <div class="flex gap-3 flex-wrap mb-4">
-                    <button class="btn-outline px-4 py-3" onclick="selectMostActiveWallet()">
-                        <i class="fas fa-bolt mr-2"></i>Use Most Active Wallet
-                    </button>
-                    <button class="btn-gold px-5 py-3" onclick="fetchSwapQuote()">
-                        <i class="fas fa-arrows-rotate mr-2"></i>Get Quote
-                    </button>
-                    <button id="swapExecuteBtn" class="btn-gold px-5 py-3" onclick="executeSwap()">
+                <div class="flex gap-3 flex-wrap mt-4">
+                    <button id="swapExecuteBtn" class="btn-gold px-5 py-3 w-full" onclick="executeSwap()">
                         <i class="fas fa-rocket mr-2"></i>Swap Now
                     </button>
                 </div>
 
-                <div id="swapQuoteCard" class="glass-card p-4 rounded-xl hidden">
+                <div id="swapQuoteCard" class="glass-card p-4 rounded-xl hidden mt-4">
                     <div class="flex items-center justify-between gap-3 flex-wrap mb-3">
                         <p class="font-semibold">Quote Summary</p>
                         <p id="swapRouteLabel" class="text-xs text-slate-400"></p>
                     </div>
-                    <div class="grid md:grid-cols-2 gap-3 text-sm">
+                    <div class="grid grid-cols-2 gap-3 text-sm">
                         <div class="glass-card p-3 rounded-xl">
                             <p class="text-slate-400 text-xs mb-1">Estimated Receive</p>
                             <p id="swapQuoteOut" class="font-semibold">—</p>
-                        </div>
-                        <div class="glass-card p-3 rounded-xl">
-                            <p class="text-slate-400 text-xs mb-1">Price Impact</p>
-                            <p id="swapPriceImpact" class="font-semibold">—</p>
                         </div>
                         <div class="glass-card p-3 rounded-xl">
                             <p class="text-slate-400 text-xs mb-1">Minimum Receive</p>
@@ -508,6 +669,17 @@
                     </div>
                     <div id="swapQuoteMeta" class="text-xs text-slate-400 mt-3"></div>
                 </div>
+            </div>
+        </div>
+
+        <div id="tokenPickerModal" class="token-picker-overlay hidden" onclick="closeTokenPickerOnOverlay(event)">
+            <div class="token-picker-modal" onclick="event.stopPropagation()">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="font-bold">Select token</h3>
+                    <button onclick="closeTokenPicker()" class="text-slate-400 hover:text-white"><i class="fas fa-xmark"></i></button>
+                </div>
+                <input type="text" id="tokenPickerSearch" class="input-field mb-3" placeholder="Search name or symbol" oninput="renderTokenPickerList()">
+                <div id="tokenPickerList" class="token-picker-list"></div>
             </div>
         </div>
 
@@ -897,6 +1069,20 @@
         'https://lite-api.jup.ag/swap/v1',
         'https://api.jup.ag/swap/v1',
     ];
+    // Jupiter's own balances endpoint — used so the Assets list doesn't depend
+    // on this wallet's current RPC endpoint being willing to serve
+    // getParsedTokenAccountsByOwner, which many free/public Solana RPCs
+    // restrict or rate-limit much harder than plain getBalance (see the long
+    // comment in refreshWallet). No API key needed on the lite- host.
+    const JUPITER_ULTRA_BASES = [
+        'https://lite-api.jup.ag/ultra/v1',
+        'https://api.jup.ag/ultra/v1',
+    ];
+    // Jupiter Token API v2 — used only to resolve symbol/name/icon for mints
+    // the wallet holds, so the Assets list can show "USDC" instead of a
+    // truncated mint address. Best-effort: if this fails, tokens still show,
+    // just labeled by mint address like before.
+    const JUPITER_TOKEN_API_BASE = 'https://lite-api.jup.ag/tokens/v2';
     // Public, CORS-friendly Ethereum mainnet RPCs — used ONLY for the read-only
     // "preview this address on Ethereum" check during import. This wallet does not
     // send/receive/store ETH; this is diagnostic only, best-effort, and fails silently
@@ -906,11 +1092,12 @@
         'https://eth.llamarpc.com',
     ];
     const JUPITER_MAINNET_TOKENS = [
-        { symbol: 'SOL',  mint: 'So11111111111111111111111111111111111111112', decimals: 9,  name: 'Solana' },
-        { symbol: 'USDC', mint: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v', decimals: 6,  name: 'USD Coin' },
-        { symbol: 'USDT', mint: 'Es9vMFrzaCERmJfrF4H2FYDutVwzmAqgxN6p6v5vC8t', decimals: 6,  name: 'Tether USD' },
-        { symbol: 'JUP',  mint: 'JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN', decimals: 6,  name: 'Jupiter' },
+        { symbol: 'SOL',  mint: 'So11111111111111111111111111111111111111112', decimals: 9,  name: 'Solana',     verified: true, logoURI: 'https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/So11111111111111111111111111111111111111112/logo.png' },
+        { symbol: 'USDC', mint: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v', decimals: 6,  name: 'USD Coin',    verified: true, logoURI: 'https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v/logo.png' },
+        { symbol: 'USDT', mint: 'Es9vMFrzaCERmJfrF4H2FYDutVwzmAqgxN6p6v5vC8t', decimals: 6,  name: 'Tether USD',  verified: true, logoURI: 'https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/Es9vMFrzaCERmJfrF4H2FYDutVwzmAqgxN6p6v5vC8t/logo.png' },
+        { symbol: 'JUP',  mint: 'JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN', decimals: 6,  name: 'Jupiter',     verified: true, logoURI: 'https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN/logo.png' },
     ];
+    const SOL_MINT = JUPITER_MAINNET_TOKENS[0].mint;
     const DEFAULT_ACCOUNT_INDEX = 0;
     // Standard Solana HD path used by Phantom/Solflare/Backpack: m/44'/501'/{account}'/0'
     // Account index lets one mnemonic hold multiple independent wallets.
@@ -2029,12 +2216,15 @@
             // balance and history would have succeeded fine. With Promise.allSettled,
             // one struggling data source degrades gracefully instead of blocking
             // everything else.
-            const [balanceResult, tokenResult, sigsResult] = await Promise.allSettled([
+            const [balanceResult, tokenResult, sigsResult, jupBalancesResult] = await Promise.allSettled([
                 withRpcFallback('get balance', conn => conn.getBalance(pubkey), 10_000),
                 withRpcFallback('get token accounts', conn => conn.getParsedTokenAccountsByOwner(pubkey, {
                     programId: new window.solanaWeb3.PublicKey(SPL_TOKEN_PROGRAM_ID),
                 }), 12_000),
                 withRpcFallback('get signatures', conn => conn.getSignaturesForAddress(pubkey, { limit: 20 }), 10_000),
+                state.network === 'mainnet'
+                    ? fetchJupiterBalances(w.address)
+                    : Promise.reject(new Error('Jupiter balances only available on mainnet')),
             ]);
 
             const failures = [];
@@ -2046,23 +2236,59 @@
                 console.warn('balance fetch failed', balanceResult.reason);
             }
 
+            // NFTs (decimals 0, amount 1) can only be told apart from fungible
+            // tokens using raw on-chain account data, so they still come from
+            // the RPC parse regardless of which source wins for fungible tokens.
+            const nfts = [];
             if (tokenResult.status === 'fulfilled') {
-                const tokens = [], nfts = [];
+                for (const { account } of tokenResult.value.value) {
+                    const info = account.data.parsed.info;
+                    const amount = info.tokenAmount.uiAmount || 0;
+                    if (amount === 0) continue;
+                    if (info.tokenAmount.decimals === 0 && amount === 1) nfts.push({ mint: info.mint, amount });
+                }
+            }
+            w.nfts = nfts;
+
+            // Fungible token balances: Jupiter's balances endpoint is the
+            // primary source, since it doesn't depend on this wallet's current
+            // RPC endpoint being willing to serve getParsedTokenAccountsByOwner
+            // (see comment above) — it's Jupiter's own infra behind it, not a
+            // free/shared Solana RPC node. Only fall back to the raw RPC parse
+            // if Jupiter's call fails outright.
+            let tokens = [];
+            if (jupBalancesResult.status === 'fulfilled' && jupBalancesResult.value) {
+                tokens = Object.entries(jupBalancesResult.value)
+                    .filter(([mint, info]) => mint !== 'SOL' && Number(info?.uiAmount || 0) > 0)
+                    .map(([mint, info]) => ({ mint, amount: Number(info.uiAmount) }));
+            } else if (tokenResult.status === 'fulfilled') {
+                console.warn('Jupiter balances failed, falling back to RPC token accounts', jupBalancesResult.reason);
                 for (const { account } of tokenResult.value.value) {
                     const info = account.data.parsed.info;
                     const amount = info.tokenAmount.uiAmount || 0;
                     const decimals = info.tokenAmount.decimals;
-                    const mint = info.mint;
-                    if (amount === 0) continue;
-                    if (decimals === 0 && amount === 1) nfts.push({ mint, amount });
-                    else tokens.push({ mint, amount, decimals });
+                    if (amount === 0 || (decimals === 0 && amount === 1)) continue; // zero + NFTs already handled above
+                    tokens.push({ mint: info.mint, amount, decimals });
                 }
-                w.tokens = tokens;
-                w.nfts = nfts;
             } else {
                 failures.push('token balances');
-                console.warn('token account fetch failed', tokenResult.reason);
+                console.warn('token balances unavailable — Jupiter and RPC both failed', jupBalancesResult.reason, tokenResult.reason);
             }
+
+            // Best-effort symbol/name/icon/price lookup so the Assets list shows
+            // "USDC" instead of a truncated mint address, and so the wallet total
+            // and swap pickers can show live USD prices. A failure here doesn't
+            // drop the tokens themselves — renderAssets() already falls back to
+            // shortAddr(mint) for anything without a resolved symbol.
+            try {
+                const mintsToPrice = tokens.map(t => t.mint).concat([SOL_MINT]);
+                const meta = await fetchJupiterTokenMetadata(mintsToPrice);
+                if (tokens.length) tokens = tokens.map(t => ({ ...t, ...(meta[t.mint] || {}) }));
+                if (meta[SOL_MINT]?.usdPrice) solPriceUsd = meta[SOL_MINT].usdPrice;
+            } catch (e) {
+                console.warn('Jupiter token metadata lookup failed', e);
+            }
+            w.tokens = tokens;
 
             if (sigsResult.status === 'fulfilled') {
                 const sigs = sigsResult.value;
@@ -2098,8 +2324,75 @@
         }
     }
 
-    function getSwapTokens() {
-        return state.network === 'mainnet' ? JUPITER_MAINNET_TOKENS : [];
+    // Cache of every token we've seen (wallet holdings, top-traded, search
+    // results) keyed by mint, so pickers can resolve tokens outside the
+    // small static JUPITER_MAINNET_TOKENS list.
+    const swapTokenCache = {};
+    function registerSwapToken(t) {
+        if (t && t.mint) swapTokenCache[t.mint] = { ...swapTokenCache[t.mint], ...t };
+    }
+    function registerSwapTokens(arr) { (arr || []).forEach(registerSwapToken); }
+    function getSwapTokenByMint(mint) {
+        return swapTokenCache[mint] || null;
+    }
+    // "You Pay" can only ever be a token actually sitting in the active wallet.
+    function getWalletSwapTokens() {
+        const w = getActiveWallet();
+        const list = [];
+        if (w) {
+            list.push({
+                mint: SOL_MINT, symbol: 'SOL', name: 'Solana', decimals: 9,
+                logoURI: JUPITER_MAINNET_TOKENS[0].logoURI, verified: true,
+                amount: Number(w.balance || 0), usdPrice: solPriceUsd,
+            });
+            for (const t of (w.tokens || [])) {
+                if (!(Number(t.amount) > 0)) continue;
+                list.push({
+                    mint: t.mint, symbol: t.symbol || shortAddr(t.mint), name: t.name || t.mint,
+                    decimals: t.decimals, logoURI: t.icon || '', verified: !!t.verified,
+                    amount: Number(t.amount || 0), usdPrice: Number(t.usdPrice || 0),
+                });
+            }
+        }
+        registerSwapTokens(list);
+        return list;
+    }
+    // "You Receive" defaults to the top 25 tokens traded on Jupiter in the last
+    // 24h, fetched once and cached; typing in the picker searches live instead.
+    let topTradedTokensCache = null;
+    async function fetchTopTradedTokens() {
+        if (topTradedTokensCache) return topTradedTokensCache;
+        try {
+            const res = await fetch(`${JUPITER_TOKEN_API_BASE}/toptraded/24h?limit=25`);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const list = await res.json();
+            topTradedTokensCache = (Array.isArray(list) ? list : []).map(t => ({
+                mint: t.id, symbol: t.symbol, name: t.name, decimals: t.decimals,
+                logoURI: t.icon || '', verified: !!t.isVerified, usdPrice: Number(t.usdPrice || 0),
+            }));
+            registerSwapTokens(topTradedTokensCache);
+        } catch (e) {
+            console.warn('top traded tokens fetch failed', e);
+            topTradedTokensCache = JUPITER_MAINNET_TOKENS.slice();
+        }
+        return topTradedTokensCache;
+    }
+    async function searchJupiterTokens(query) {
+        if (!query) return [];
+        try {
+            const res = await fetch(`${JUPITER_TOKEN_API_BASE}/search?query=${encodeURIComponent(query)}`);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const list = await res.json();
+            const mapped = (Array.isArray(list) ? list : []).slice(0, 30).map(t => ({
+                mint: t.id, symbol: t.symbol, name: t.name, decimals: t.decimals,
+                logoURI: t.icon || '', verified: !!t.isVerified, usdPrice: Number(t.usdPrice || 0),
+            }));
+            registerSwapTokens(mapped);
+            return mapped;
+        } catch (e) {
+            console.warn('token search failed', e);
+            return [];
+        }
     }
     // Preset buttons write a plain bps number into the hidden #swapSlippage
     // input so fetchSwapQuote()/executeSwap() don't need to change at all —
@@ -2132,9 +2425,6 @@
             hidden.value = String(Math.max(1, Math.round(pct * 100)));
         }
     }
-    function getSwapTokenByMint(mint) {
-        return getSwapTokens().find(t => t.mint === mint) || null;
-    }
     function base64ToBytes(base64) {
         return Uint8Array.from(atob(base64), c => c.charCodeAt(0));
     }
@@ -2149,17 +2439,160 @@
         if (!Number.isFinite(n)) return `0 ${symbol}`.trim();
         return `${n.toLocaleString(undefined, { maximumFractionDigits: Math.min(decimals, 6) })}${symbol ? ' ' + symbol : ''}`;
     }
+    // --- Phantom-style token pill / picker rendering --------------------
+    function tokenIconHTML(token, px) {
+        px = px || 28;
+        const letter = ((token && token.symbol) || '?').charAt(0).toUpperCase();
+        const url = (token && token.logoURI) || '';
+        return `<span class="token-icon-wrap" style="width:${px}px;height:${px}px;">` +
+               `<img src="${url}" alt="" style="width:100%;height:100%;object-fit:cover;" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">` +
+               `<span class="token-icon-fallback" style="display:none;font-size:${Math.round(px * 0.4)}px;">${letter}</span>` +
+               `</span>`;
+    }
+    // Shows wallet balance (+ USD value) when the token is held; otherwise
+    // falls back to a live per-token USD price so a price is always visible.
+    function computeSwapBalanceText(mint) {
+        const token = getSwapTokenByMint(mint);
+        if (!token) return '—';
+        const w = getActiveWallet();
+        let amount = 0;
+        if (w) {
+            if (mint === SOL_MINT) amount = Number(w.balance || 0);
+            else { const t = (w.tokens || []).find(x => x.mint === mint); amount = t ? Number(t.amount || 0) : 0; }
+        }
+        const price = Number(token.usdPrice || 0);
+        if (amount > 0) {
+            const usdPart = price > 0 ? ` ($${(amount * price).toFixed(2)})` : '';
+            return `Balance: ${amount.toLocaleString(undefined, { maximumFractionDigits: 6 })} ${token.symbol}${usdPart}`;
+        }
+        return price > 0 ? `1 ${token.symbol} ≈ $${price.toLocaleString(undefined, { maximumFractionDigits: price < 1 ? 6 : 2 })}` : 'Balance: 0';
+    }
+    function renderSwapTokenPill(side) {
+        const mint = document.getElementById(side === 'from' ? 'swapFromToken' : 'swapToToken')?.value;
+        const token = getSwapTokenByMint(mint);
+        const pill = document.getElementById(side === 'from' ? 'swapFromPill' : 'swapToPill');
+        const balanceEl = document.getElementById(side === 'from' ? 'swapFromBalance' : 'swapToBalance');
+        if (!pill) return;
+        if (!token) {
+            pill.innerHTML = `<span class="token-pill-symbol">Select</span><i class="fas fa-chevron-down text-xs opacity-60"></i>`;
+            if (balanceEl) balanceEl.textContent = 'Balance: —';
+            return;
+        }
+        pill.innerHTML = tokenIconHTML(token, 26) +
+            `<span class="token-pill-symbol">${token.symbol}</span>` +
+            (token.verified ? '<i class="fas fa-circle-check token-verified-badge" title="Verified"></i>' : '') +
+            '<i class="fas fa-chevron-down text-xs opacity-60"></i>';
+        if (balanceEl) balanceEl.textContent = computeSwapBalanceText(mint);
+    }
+    function refreshSwapPills() {
+        renderSwapTokenPill('from');
+        renderSwapTokenPill('to');
+    }
+    let swapPickerSide = null;
+    let tokenSearchDebounce = null;
+    async function openTokenPicker(side) {
+        swapPickerSide = side;
+        const search = document.getElementById('tokenPickerSearch');
+        if (search) search.value = '';
+        document.getElementById('tokenPickerModal')?.classList.remove('hidden');
+        if (side === 'to' && !topTradedTokensCache) {
+            document.getElementById('tokenPickerList').innerHTML = `<p class="text-sm text-slate-400 text-center py-4"><i class="fas fa-spinner fa-spin mr-2"></i>Loading top traded tokens…</p>`;
+            await fetchTopTradedTokens();
+        }
+        renderTokenPickerList();
+    }
+    function closeTokenPicker() {
+        document.getElementById('tokenPickerModal')?.classList.add('hidden');
+    }
+    function closeTokenPickerOnOverlay(e) {
+        if (e.target && e.target.id === 'tokenPickerModal') closeTokenPicker();
+    }
+    function tokenPickerNoMatch(q) {
+        return `<p class="text-sm text-slate-400 text-center py-4">No tokens match "${escapeHtml(q)}"</p>`;
+    }
+    function renderPickerItems(tokens, showBalance) {
+        return tokens.map(t => `
+            <button class="token-picker-item" onclick="selectSwapToken('${t.mint}')">
+                ${tokenIconHTML(t, 32)}
+                <div class="flex-1 min-w-0">
+                    <div class="token-picker-item-symbol">${escapeHtml(t.symbol)} ${t.verified ? '<i class="fas fa-circle-check token-verified-badge" style="font-size:11px;"></i>' : ''}</div>
+                    <div class="token-picker-item-name">${escapeHtml(t.name)}</div>
+                </div>
+                <div class="text-right text-xs text-slate-400 flex-shrink-0">
+                    ${t.usdPrice > 0 ? `<div>$${t.usdPrice.toLocaleString(undefined, { maximumFractionDigits: t.usdPrice < 1 ? 6 : 2 })}</div>` : ''}
+                    ${showBalance && t.amount > 0 ? `<div>${t.amount.toLocaleString(undefined, { maximumFractionDigits: 4 })}</div>` : ''}
+                </div>
+            </button>
+        `).join('');
+    }
+    function renderTokenPickerList() {
+        const list = document.getElementById('tokenPickerList');
+        if (!list) return;
+        const q = (document.getElementById('tokenPickerSearch')?.value || '').trim();
+
+        if (swapPickerSide === 'from') {
+            const tokens = getWalletSwapTokens().filter(t =>
+                !q || t.symbol.toLowerCase().includes(q.toLowerCase()) || t.name.toLowerCase().includes(q.toLowerCase())
+            );
+            list.innerHTML = renderPickerItems(tokens, true) || (q ? tokenPickerNoMatch(q) : '<p class="text-sm text-slate-400 text-center py-4">No tokens in this wallet yet</p>');
+            return;
+        }
+
+        // "to" side: top-traded by default, live search once the user types.
+        if (!q) {
+            const tokens = topTradedTokensCache || [];
+            list.innerHTML = renderPickerItems(tokens, false) || tokenPickerNoMatch('');
+            return;
+        }
+        list.innerHTML = `<p class="text-sm text-slate-400 text-center py-4"><i class="fas fa-spinner fa-spin mr-2"></i>Searching…</p>`;
+        clearTimeout(tokenSearchDebounce);
+        tokenSearchDebounce = setTimeout(async () => {
+            const results = await searchJupiterTokens(q);
+            const stillActive = swapPickerSide === 'to' && (document.getElementById('tokenPickerSearch')?.value || '').trim() === q;
+            if (stillActive) list.innerHTML = renderPickerItems(results, false) || tokenPickerNoMatch(q);
+        }, 400);
+    }
+    function selectSwapToken(mint) {
+        const side = swapPickerSide;
+        const fromEl = document.getElementById('swapFromToken');
+        const toEl = document.getElementById('swapToToken');
+        if (!fromEl || !toEl) return;
+        if (side === 'from') {
+            if (mint === toEl.value) toEl.value = fromEl.value; // avoid duplicate: swap counterpart in
+            fromEl.value = mint;
+        } else {
+            if (mint === fromEl.value) fromEl.value = toEl.value;
+            toEl.value = mint;
+        }
+        refreshSwapPills();
+        closeTokenPicker();
+        clearSwapQuote();
+        maybeAutoQuote();
+    }
+    let swapAutoQuoteTimer = null;
+    function onSwapAmountInput() {
+        clearSwapQuote();
+        maybeAutoQuote();
+    }
+    function maybeAutoQuote() {
+        clearTimeout(swapAutoQuoteTimer);
+        const amount = document.getElementById('swapAmount')?.value;
+        const fromMint = document.getElementById('swapFromToken')?.value;
+        const toMint = document.getElementById('swapToToken')?.value;
+        if (state.network !== 'mainnet' || !(Number(amount) > 0) || !fromMint || !toMint || fromMint === toMint) return;
+        swapAutoQuoteTimer = setTimeout(() => { fetchSwapQuote(); }, 600);
+    }
     function populateSwapTokenSelects() {
         const from = document.getElementById('swapFromToken');
         const to = document.getElementById('swapToToken');
         if (!from || !to) return;
-        const tokens = getSwapTokens();
-        const htmlOptions = tokens.map(t => `<option value="${t.mint}">${t.symbol} · ${t.name}</option>`).join('');
-        from.innerHTML = htmlOptions;
-        to.innerHTML = htmlOptions;
-        if (!from.value && tokens[0]) from.value = tokens[0].mint;
-        if (!to.value && tokens[1]) to.value = tokens[1].mint;
-        if (from.value === to.value && tokens[1]) to.value = tokens[1].mint;
+        const walletTokens = getWalletSwapTokens();
+        if (!from.value && walletTokens[0]) from.value = walletTokens[0].mint;
+        if (!to.value) {
+            const fallbackTo = JUPITER_MAINNET_TOKENS.find(t => t.mint !== from.value) || JUPITER_MAINNET_TOKENS[1];
+            if (fallbackTo) { registerSwapToken(fallbackTo); to.value = fallbackTo.mint; }
+        }
+        refreshSwapPills();
     }
     function updateSwapAvailability() {
         const notice = document.getElementById('swapNetworkNotice');
@@ -2181,6 +2614,10 @@
         currentSwapQuote = null;
         const card = document.getElementById('swapQuoteCard');
         if (card) card.classList.add('hidden');
+        const big = document.getElementById('swapQuoteOutBig');
+        if (big) big.textContent = '0';
+        const impact = document.getElementById('swapPriceImpact');
+        if (impact) impact.textContent = '—';
     }
     function flipSwapTokens() {
         const from = document.getElementById('swapFromToken');
@@ -2189,20 +2626,23 @@
         const temp = from.value;
         from.value = to.value;
         to.value = temp;
+        refreshSwapPills();
         clearSwapQuote();
+        maybeAutoQuote();
     }
     function setSwapMaxAmount() {
         const w = getActiveWallet();
         const fromMint = document.getElementById('swapFromToken')?.value;
         const amountEl = document.getElementById('swapAmount');
         if (!w || !amountEl) return;
-        if (fromMint === JUPITER_MAINNET_TOKENS[0].mint) {
+        if (fromMint === SOL_MINT) {
             amountEl.value = Math.max(0, (Number(w.balance || 0) - 0.01)).toFixed(6);
         } else {
             const token = (w.tokens || []).find(t => t.mint === fromMint);
             amountEl.value = token ? String(token.amount) : '';
         }
         clearSwapQuote();
+        maybeAutoQuote();
     }
     async function jupiterFetch(path, options = {}) {
         let lastErr = null;
@@ -2220,6 +2660,36 @@
             }
         }
         throw lastErr || new Error('Jupiter request failed');
+    }
+    // GET /ultra/v1/balances/{address} -> { SOL: {amount, uiAmount, ...}, <mint>: {...}, ... }
+    async function fetchJupiterBalances(address) {
+        let lastErr = null;
+        for (const base of JUPITER_ULTRA_BASES) {
+            try {
+                const res = await fetch(`${base}/balances/${address}`);
+                if (!res.ok) throw new Error(`Jupiter balances HTTP ${res.status}`);
+                return await res.json();
+            } catch (e) {
+                lastErr = e;
+                console.warn('Jupiter balances endpoint failed', base, e);
+            }
+        }
+        throw lastErr || new Error('Jupiter balances request failed');
+    }
+    // GET /tokens/v2/search?query=mint1,mint2,... (up to 100 mints per call)
+    // -> array of { id, symbol, name, icon, decimals, ... }; returns a map
+    // keyed by mint address for easy lookup.
+    async function fetchJupiterTokenMetadata(mints) {
+        const unique = [...new Set(mints)].slice(0, 100);
+        if (!unique.length) return {};
+        const res = await fetch(`${JUPITER_TOKEN_API_BASE}/search?query=${unique.join(',')}`);
+        if (!res.ok) throw new Error(`Jupiter token metadata HTTP ${res.status}`);
+        const list = await res.json();
+        const map = {};
+        for (const t of (Array.isArray(list) ? list : [])) {
+            if (t && t.id) map[t.id] = { symbol: t.symbol, name: t.name, icon: t.icon, decimals: t.decimals, usdPrice: Number(t.usdPrice || 0), verified: !!t.isVerified };
+        }
+        return map;
     }
     async function fetchSwapQuote() {
         const w = getActiveWallet();
@@ -2253,10 +2723,13 @@
             const route = (quote.routePlan || []).map(r => r.swapInfo?.label).filter(Boolean);
             document.getElementById('swapRouteLabel').textContent = route.length ? route.join(' → ') : 'Best route';
             document.getElementById('swapQuoteOut').textContent = formatTokenAmount(quote.outAmount, toToken.decimals, toToken.symbol);
-            document.getElementById('swapPriceImpact').textContent = `${Number(quote.priceImpactPct || 0).toFixed(4)}%`;
             document.getElementById('swapMinReceive').textContent = formatTokenAmount(quote.otherAmountThreshold, toToken.decimals, toToken.symbol);
             document.getElementById('swapTimeTaken').textContent = `${Math.round(Number(quote.timeTaken || 0) * 1000)} ms`;
             document.getElementById('swapQuoteMeta').textContent = `Input ${amount} ${fromToken.symbol} • ${quote.routePlan?.length || 0} hop(s) • Slippage ${(slippageBps / 100).toFixed(2)}%`;
+            const receiveBig = document.getElementById('swapQuoteOutBig');
+            if (receiveBig) receiveBig.textContent = (Number(quote.outAmount) / Math.pow(10, toToken.decimals)).toLocaleString(undefined, { maximumFractionDigits: Math.min(toToken.decimals, 6) });
+            const impactEl = document.getElementById('swapPriceImpact');
+            if (impactEl) impactEl.textContent = `Impact ${Number(quote.priceImpactPct || 0).toFixed(2)}%`;
             showToast('Quote updated', 'success');
         } catch (e) {
             console.error(e);
@@ -2327,8 +2800,12 @@
 
             showToast('Swap confirmed', 'success');
             currentSwapQuote = null;
+            const amountEl = document.getElementById('swapAmount');
+            if (amountEl) amountEl.value = '';
+            clearSwapQuote();
             await refreshAllWalletActivity();
             await refreshWallet();
+            refreshSwapPills();
             switchTab('history');
         } catch (e) {
             console.error(e);
@@ -2524,9 +3001,7 @@
         if (state.wallets.length === 0) {
             wrap.classList.add('hidden');
             const totalEl = document.getElementById('totalBalance');
-            if (totalEl) totalEl.textContent = '— SOL';
-            const usdEl = document.getElementById('usdBalance');
-            if (usdEl) usdEl.textContent = '';
+            if (totalEl) totalEl.textContent = '$0.00';
             const assets = document.getElementById('assetsList');
             if (assets) assets.innerHTML = `
                 <div class="text-center py-8">
@@ -2550,17 +3025,22 @@
     function renderBalance() {
         const w = getActiveWallet();
         const totalEl = document.getElementById('totalBalance');
-        const usdEl   = document.getElementById('usdBalance');
         if (!w || !totalEl) return;
-        totalEl.textContent = `${(w.balance || 0).toFixed(6)} SOL`;
-        if (state.showUsd && solPriceUsd > 0) {
-            usdEl.textContent = `$${((w.balance || 0) * solPriceUsd).toFixed(2)} USD`;
-            usdEl.style.display = '';
-        } else {
-            usdEl.textContent = state.showUsd ? '—' : '';
+        let totalUsd = Number(w.balance || 0) * solPriceUsd;
+        for (const t of (w.tokens || [])) {
+            totalUsd += Number(t.amount || 0) * Number(t.usdPrice || 0);
         }
+        totalEl.textContent = `$${totalUsd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     }
 
+    // Token symbol/name comes from Jupiter's public Token API — anyone can
+    // mint a token with an arbitrary name, so this is untrusted external
+    // input and must be escaped before going into innerHTML below.
+    function escapeHtml(str) {
+        return String(str ?? '').replace(/[&<>"']/g, c => ({
+            '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+        }[c]));
+    }
     function renderAssets() {
         const w = getActiveWallet();
         const list = document.getElementById('assetsList');
@@ -2568,9 +3048,9 @@
         const empty = document.getElementById('assetsEmpty');
         if (!w || !list) return;
         loading.classList.add('hidden');
-        let items = [{ symbol: 'SOL', name: 'Solana', amount: w.balance || 0, decimals: 9, mint: null }];
+        let items = [{ symbol: 'SOL', name: 'Solana', amount: w.balance || 0, decimals: 9, mint: null, icon: JUPITER_MAINNET_TOKENS[0].logoURI, usdPrice: solPriceUsd }];
         for (const t of (w.tokens || [])) {
-            items.push({ symbol: shortAddr(t.mint), name: t.mint, amount: t.amount, decimals: t.decimals, mint: t.mint });
+            items.push({ symbol: t.symbol || shortAddr(t.mint), name: t.name || t.mint, amount: t.amount, decimals: t.decimals, mint: t.mint, icon: t.icon || '', usdPrice: Number(t.usdPrice || 0) });
         }
         if (state.hideZeroBalances) {
             items = items.filter(a => Number(a.amount) > 0);
@@ -2579,14 +3059,17 @@
         empty.classList.add('hidden');
         list.innerHTML = items.map(a => `
             <div class="asset-item flex items-center justify-between">
-                <div class="min-w-0 flex-1">
-                    <p class="font-semibold">${a.symbol}</p>
-                    <p class="text-xs text-slate-400 wallet-address truncate">${a.mint ? a.mint : 'Native SOL'}</p>
+                <div class="flex items-center gap-3 min-w-0 flex-1">
+                    ${tokenIconHTML({ symbol: a.symbol, logoURI: a.icon }, 32)}
+                    <div class="min-w-0">
+                        <p class="font-semibold">${escapeHtml(a.symbol)}</p>
+                        <p class="text-xs text-slate-400 wallet-address truncate">${a.mint ? escapeHtml(a.mint) : 'Native SOL'}</p>
+                    </div>
                 </div>
-                <div class="text-right ml-3">
+                <div class="text-right ml-3 flex-shrink-0">
                     <p class="font-mono">${a.amount}</p>
-                    ${a.symbol === 'SOL' && solPriceUsd > 0 && state.showUsd
-                        ? `<p class="text-xs text-slate-400">$${(a.amount * solPriceUsd).toFixed(2)}</p>` : ''}
+                    ${a.usdPrice > 0 && state.showUsd
+                        ? `<p class="text-xs text-slate-400">$${(a.amount * a.usdPrice).toFixed(2)}</p>` : ''}
                 </div>
             </div>`).join('');
     }
