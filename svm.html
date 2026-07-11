@@ -67,12 +67,6 @@
             border-color: #f5af19;
             background: rgba(245, 175, 25, 0.1);
         }
-
-        .btn-outline.tab-active {
-            border-color: #f5af19;
-            background: rgba(245, 175, 25, 0.15);
-            color: #f5af19;
-        }
         
         .tab-button {
             background: transparent;
@@ -265,11 +259,6 @@
     <!-- Core libraries -->
     <script src="https://unpkg.com/@solana/web3.js@1.95.3/lib/index.iife.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
-    <!-- Used ONLY for read-only "what would my Ethereum address be" preview during
-         import (see previewImportAddresses). This wallet does not send/receive/hold
-         Ethereum assets — verified against ethers 6.17.0's published BIP39 test vector
-         before shipping (HDNodeWallet.fromPhrase(mnemonic, '', path)). -->
-    <script src="https://cdn.jsdelivr.net/npm/ethers@6.17.0/dist/ethers.umd.min.js"></script>
 </head>
 <body>
     <div id="demoBanner" style="background: linear-gradient(90deg,#eb3349,#f45c43); color:white; padding:10px 16px; text-align:center; font-size:13px; font-weight:600;">
@@ -630,19 +619,8 @@
                         <div class="min-w-0">
                             <p class="font-medium"><i class="fas fa-server mr-2 text-purple-400"></i>Custom RPC Endpoint</p>
                             <p class="text-sm text-slate-400">Comma or newline separated endpoints. First healthy RPC is used.</p>
-                            <p class="text-xs text-slate-500 mt-1">
-                                The built-in public endpoints are free but rate-limited and can be blocked without notice —
-                                that's normal, documented behavior for public Solana RPC, not a bug in this app.
-                                For reliable access, get a free API key (no credit card) from a provider like
-                                <a href="https://www.helius.dev" target="_blank" rel="noopener" class="text-purple-300 underline">Helius</a>
-                                or <a href="https://www.alchemy.com" target="_blank" rel="noopener" class="text-purple-300 underline">Alchemy</a>
-                                and paste the resulting URL here, or use the quick setup below.
-                            </p>
                         </div>
                         <input type="text" id="customRpc" class="input-field flex-1 min-w-[220px]" placeholder="https://rpc-1.example.com, https://rpc-2.example.com" />
-                        <button type="button" class="btn-outline text-xs px-3 py-2 whitespace-nowrap" onclick="quickSetupHelius()">
-                            <i class="fas fa-bolt mr-1 text-purple-400"></i>Quick setup: Helius
-                        </button>
                     </div>
                     
                     <div class="flex items-center justify-between py-3 border-b border-slate-700/50">
@@ -713,60 +691,13 @@
     <div id="importWalletModal" class="modal hidden">
         <div class="modal-content">
             <h2 class="text-2xl font-bold mb-4">Import Wallet</h2>
-            <div class="flex gap-2 mb-4">
-                <button type="button" id="importModeMnemonicBtn" class="btn-outline flex-1 py-2 text-sm" onclick="setImportMode('mnemonic')">
-                    <i class="fas fa-key mr-1"></i>Mnemonic
-                </button>
-                <button type="button" id="importModePrivateKeyBtn" class="btn-outline flex-1 py-2 text-sm" onclick="setImportMode('privateKey')">
-                    <i class="fas fa-lock mr-1"></i>Private Key
-                </button>
-            </div>
             <div class="space-y-4">
-                <div id="importMnemonicFields" class="space-y-4">
-                    <div>
-                        <label class="block text-sm text-slate-400 mb-2">Mnemonic Phrase</label>
-                        <textarea id="importMnemonic" class="input-field" rows="4" placeholder="Enter your 12-word mnemonic"></textarea>
-                    </div>
-                    <div>
-                        <div class="flex items-center justify-between mb-2">
-                            <label class="block text-sm text-slate-400">Account Index</label>
-                            <button type="button" class="text-xs text-purple-300 hover:text-purple-200 underline" onclick="previewImportAddresses()">
-                                <i class="fas fa-magnifying-glass mr-1"></i>Preview addresses
-                            </button>
-                        </div>
-                        <input type="number" id="importAccountIndex" class="input-field" min="0" step="1" value="0" />
-                        <p class="text-xs text-slate-500 mt-1">
-                            One mnemonic can hold multiple wallets (Phantom/Solflare/Backpack call these "accounts").
-                            Index 0 is the default. If you don't see the address you expect, click "Preview addresses" to see and pick the right one.
-                        </p>
-                    </div>
-                    <div>
-                        <label class="block text-sm text-slate-400 mb-2">Preview chain</label>
-                        <select id="importPreviewChain" class="input-field" onchange="onImportChainChange()">
-                            <option value="solana">Solana (importable here)</option>
-                            <option value="ethereum">Ethereum / EVM (preview only)</option>
-                        </select>
-                        <p id="importChainNote" class="text-xs text-slate-500 mt-1 hidden">
-                            <i class="fas fa-circle-info mr-1"></i>
-                            This wallet only holds Solana assets. If your mnemonic turns out to be an Ethereum/EVM seed,
-                            this shows the address so you can confirm it and go use it in an EVM wallet (MetaMask, Rabby, etc.) —
-                            importing it here would not give you access to those funds.
-                        </p>
-                    </div>
-                    <div id="importAddressPreview" class="hidden space-y-1 max-h-48 overflow-y-auto"></div>
+                <div>
+                    <label class="block text-sm text-slate-400 mb-2">Mnemonic, Private Key, or Keypair JSON</label>
+                    <textarea id="importMnemonic" class="input-field" rows="4" placeholder="12/24-word mnemonic, base58 private key, or [1,2,3,...] keypair JSON"></textarea>
+                    <p class="text-xs text-slate-500 mt-1">Importing several wallets? Submit one, then reopen this dialog for the next — each import is added to your wallet list.</p>
                 </div>
-                <div id="importPrivateKeyFields" class="space-y-4 hidden">
-                    <div>
-                        <label class="block text-sm text-slate-400 mb-2">Private Key</label>
-                        <textarea id="importPrivateKey" class="input-field" rows="3" placeholder="Base58 string (e.g. from Phantom's 'Export Private Key') or a JSON array like [12,34,...]"></textarea>
-                        <p class="text-xs text-slate-500 mt-1">
-                            <i class="fas fa-circle-info mr-1"></i>
-                            A raw private key has no recovery phrase backing it up — if you lose it, this wallet
-                            can't help you recover it. Only paste keys on a device you trust.
-                        </p>
-                    </div>
-                </div>
-                <button id="importConfirmBtn" class="btn-gold w-full py-3" onclick="confirmImportWallet()">Import Wallet</button>
+                <button class="btn-gold w-full py-3" onclick="confirmImportWallet()">Import Wallet</button>
             </div>
             <button class="btn-outline w-full py-3 mt-4" onclick="closeImportWalletModal()">Cancel</button>
         </div>
@@ -805,41 +736,20 @@
     const BIP39_WORDLIST = ["abandon","ability","able","about","above","absent","absorb","abstract","absurd","abuse","access","accident","account","accuse","achieve","acid","acoustic","acquire","across","act","action","actor","actress","actual","adapt","add","addict","address","adjust","admit","adult","advance","advice","aerobic","affair","afford","afraid","again","age","agent","agree","ahead","aim","air","airport","aisle","alarm","album","alcohol","alert","alien","all","alley","allow","almost","alone","alpha","already","also","alter","always","amateur","amazing","among","amount","amused","analyst","anchor","ancient","anger","angle","angry","animal","ankle","announce","annual","another","answer","antenna","antique","anxiety","any","apart","apology","appear","apple","approve","april","arch","arctic","area","arena","argue","arm","armed","armor","army","around","arrange","arrest","arrive","arrow","art","artefact","artist","artwork","ask","aspect","assault","asset","assist","assume","asthma","athlete","atom","attack","attend","attitude","attract","auction","audit","august","aunt","author","auto","autumn","average","avocado","avoid","awake","aware","away","awesome","awful","awkward","axis","baby","bachelor","bacon","badge","bag","balance","balcony","ball","bamboo","banana","banner","bar","barely","bargain","barrel","base","basic","basket","battle","beach","bean","beauty","because","become","beef","before","begin","behave","behind","believe","below","belt","bench","benefit","best","betray","better","between","beyond","bicycle","bid","bike","bind","biology","bird","birth","bitter","black","blade","blame","blanket","blast","bleak","bless","blind","blood","blossom","blouse","blue","blur","blush","board","boat","body","boil","bomb","bone","bonus","book","boost","border","boring","borrow","boss","bottom","bounce","box","boy","bracket","brain","brand","brass","brave","bread","breeze","brick","bridge","brief","bright","bring","brisk","broccoli","broken","bronze","broom","brother","brown","brush","bubble","buddy","budget","buffalo","build","bulb","bulk","bullet","bundle","bunker","burden","burger","burst","bus","business","busy","butter","buyer","buzz","cabbage","cabin","cable","cactus","cage","cake","call","calm","camera","camp","can","canal","cancel","candy","cannon","canoe","canvas","canyon","capable","capital","captain","car","carbon","card","cargo","carpet","carry","cart","case","cash","casino","castle","casual","cat","catalog","catch","category","cattle","caught","cause","caution","cave","ceiling","celery","cement","census","century","cereal","certain","chair","chalk","champion","change","chaos","chapter","charge","chase","chat","cheap","check","cheese","chef","cherry","chest","chicken","chief","child","chimney","choice","choose","chronic","chuckle","chunk","churn","cigar","cinnamon","circle","citizen","city","civil","claim","clap","clarify","claw","clay","clean","clerk","clever","click","client","cliff","climb","clinic","clip","clock","clog","close","cloth","cloud","clown","club","clump","cluster","clutch","coach","coast","coconut","code","coffee","coil","coin","collect","color","column","combine","come","comfort","comic","common","company","concert","conduct","confirm","congress","connect","consider","control","convince","cook","cool","copper","copy","coral","core","corn","correct","cost","cotton","couch","country","couple","course","cousin","cover","coyote","crack","cradle","craft","cram","crane","crash","crater","crawl","crazy","cream","credit","creek","crew","cricket","crime","crisp","critic","crop","cross","crouch","crowd","crucial","cruel","cruise","crumble","crunch","crush","cry","crystal","cube","culture","cup","cupboard","curious","current","curtain","curve","cushion","custom","cute","cycle","dad","damage","damp","dance","danger","daring","dash","daughter","dawn","day","deal","debate","debris","decade","december","decide","decline","decorate","decrease","deer","defense","define","defy","degree","delay","deliver","demand","demise","denial","dentist","deny","depart","depend","deposit","depth","deputy","derive","describe","desert","design","desk","despair","destroy","detail","detect","develop","device","devote","diagram","dial","diamond","diary","dice","diesel","diet","differ","digital","dignity","dilemma","dinner","dinosaur","direct","dirt","disagree","discover","disease","dish","dismiss","disorder","display","distance","divert","divide","divorce","dizzy","doctor","document","dog","doll","dolphin","domain","donate","donkey","donor","door","dose","double","dove","draft","dragon","drama","drastic","draw","dream","dress","drift","drill","drink","drip","drive","drop","drum","dry","duck","dumb","dune","during","dust","dutch","duty","dwarf","dynamic","eager","eagle","early","earn","earth","easily","east","easy","echo","ecology","economy","edge","edit","educate","effort","egg","eight","either","elbow","elder","electric","elegant","element","elephant","elevator","elite","else","embark","embody","embrace","emerge","emotion","employ","empower","empty","enable","enact","end","endless","endorse","enemy","energy","enforce","engage","engine","enhance","enjoy","enlist","enough","enrich","enroll","ensure","enter","entire","entry","envelope","episode","equal","equip","era","erase","erode","erosion","error","erupt","escape","essay","essence","estate","eternal","ethics","evidence","evil","evoke","evolve","exact","example","excess","exchange","excite","exclude","excuse","execute","exercise","exhaust","exhibit","exile","exist","exit","exotic","expand","expect","expire","explain","expose","express","extend","extra","eye","eyebrow","fabric","face","faculty","fade","faint","faith","fall","false","fame","family","famous","fan","fancy","fantasy","farm","fashion","fat","fatal","father","fatigue","fault","favorite","feature","february","federal","fee","feed","feel","female","fence","festival","fetch","fever","few","fiber","fiction","field","figure","file","film","filter","final","find","fine","finger","finish","fire","firm","first","fiscal","fish","fit","fitness","fix","flag","flame","flash","flat","flavor","flee","flight","flip","float","flock","floor","flower","fluid","flush","fly","foam","focus","fog","foil","fold","follow","food","foot","force","forest","forget","fork","fortune","forum","forward","fossil","foster","found","fox","fragile","frame","frequent","fresh","friend","fringe","frog","front","frost","frown","frozen","fruit","fuel","fun","funny","furnace","fury","future","gadget","gain","galaxy","gallery","game","gap","garage","garbage","garden","garlic","garment","gas","gasp","gate","gather","gauge","gaze","general","genius","genre","gentle","genuine","gesture","ghost","giant","gift","giggle","ginger","giraffe","girl","give","glad","glance","glare","glass","glide","glimpse","globe","gloom","glory","glove","glow","glue","goat","goddess","gold","good","goose","gorilla","gospel","gossip","govern","gown","grab","grace","grain","grant","grape","grass","gravity","great","green","grid","grief","grit","grocery","group","grow","grunt","guard","guess","guide","guilt","guitar","gun","gym","habit","hair","half","hammer","hamster","hand","happy","harbor","hard","harsh","harvest","hat","have","hawk","hazard","head","health","heart","heavy","hedgehog","height","hello","helmet","help","hen","hero","hidden","high","hill","hint","hip","hire","history","hobby","hockey","hold","hole","holiday","hollow","home","honey","hood","hope","horn","horror","horse","hospital","host","hotel","hour","hover","hub","huge","human","humble","humor","hundred","hungry","hunt","hurdle","hurry","hurt","husband","hybrid","ice","icon","idea","identify","idle","ignore","ill","illegal","illness","image","imitate","immense","immune","impact","impose","improve","impulse","inch","include","income","increase","index","indicate","indoor","industry","infant","inflict","inform","inhale","inherit","initial","inject","injury","inmate","inner","innocent","input","inquiry","insane","insect","inside","inspire","install","intact","interest","into","invest","invite","involve","iron","island","isolate","issue","item","ivory","jacket","jaguar","jar","jazz","jealous","jeans","jelly","jewel","job","join","joke","journey","joy","judge","juice","jump","jungle","junior","junk","just","kangaroo","keen","keep","ketchup","key","kick","kid","kidney","kind","kingdom","kiss","kit","kitchen","kite","kitten","kiwi","knee","knife","knock","know","lab","label","labor","ladder","lady","lake","lamp","language","laptop","large","later","latin","laugh","laundry","lava","law","lawn","lawsuit","layer","lazy","leader","leaf","learn","leave","lecture","left","leg","legal","legend","leisure","lemon","lend","length","lens","leopard","lesson","letter","level","liar","liberty","library","license","life","lift","light","like","limb","limit","link","lion","liquid","list","little","live","lizard","load","loan","lobster","local","lock","logic","lonely","long","loop","lottery","loud","lounge","love","loyal","lucky","luggage","lumber","lunar","lunch","luxury","lyrics","machine","mad","magic","magnet","maid","mail","main","major","make","mammal","man","manage","mandate","mango","mansion","manual","maple","marble","march","margin","marine","market","marriage","mask","mass","master","match","material","math","matrix","matter","maximum","maze","meadow","mean","measure","meat","mechanic","medal","media","melody","melt","member","memory","mention","menu","mercy","merge","merit","merry","mesh","message","metal","method","middle","midnight","milk","million","mimic","mind","minimum","minor","minute","miracle","mirror","misery","miss","mistake","mix","mixed","mixture","mobile","model","modify","mom","moment","monitor","monkey","monster","month","moon","moral","more","morning","mosquito","mother","motion","motor","mountain","mouse","move","movie","much","muffin","mule","multiply","muscle","museum","mushroom","music","must","mutual","myself","mystery","myth","naive","name","napkin","narrow","nasty","nation","nature","near","neck","need","negative","neglect","neither","nephew","nerve","nest","net","network","neutral","never","news","next","nice","night","noble","noise","nominee","noodle","normal","north","nose","notable","note","nothing","notice","novel","now","nuclear","number","nurse","nut","oak","obey","object","oblige","obscure","observe","obtain","obvious","occur","ocean","october","odor","off","offer","office","often","oil","okay","old","olive","olympic","omit","once","one","onion","online","only","open","opera","opinion","oppose","option","orange","orbit","orchard","order","ordinary","organ","orient","original","orphan","ostrich","other","outdoor","outer","output","outside","oval","oven","over","own","owner","oxygen","oyster","ozone","pact","paddle","page","pair","palace","palm","panda","panel","panic","panther","paper","parade","parent","park","parrot","party","pass","patch","path","patient","patrol","pattern","pause","pave","payment","peace","peanut","pear","peasant","pelican","pen","penalty","pencil","people","pepper","perfect","permit","person","pet","phone","photo","phrase","physical","piano","picnic","picture","piece","pig","pigeon","pill","pilot","pink","pioneer","pipe","pistol","pitch","pizza","place","planet","plastic","plate","play","please","pledge","pluck","plug","plunge","poem","poet","point","polar","pole","police","pond","pony","pool","popular","portion","position","possible","post","potato","pottery","poverty","powder","power","practice","praise","predict","prefer","prepare","present","pretty","prevent","price","pride","primary","print","priority","prison","private","prize","problem","process","produce","profit","program","project","promote","proof","property","prosper","protect","proud","provide","public","pudding","pull","pulp","pulse","pumpkin","punch","pupil","puppy","purchase","purity","purpose","purse","push","put","puzzle","pyramid","quality","quantum","quarter","question","quick","quit","quiz","quote","rabbit","raccoon","race","rack","radar","radio","rail","rain","raise","rally","ramp","ranch","random","range","rapid","rare","rate","rather","raven","raw","razor","ready","real","reason","rebel","rebuild","recall","receive","recipe","record","recycle","reduce","reflect","reform","refuse","region","regret","regular","reject","relax","release","relief","rely","remain","remember","remind","remove","render","renew","rent","reopen","repair","repeat","replace","report","require","rescue","resemble","resist","resource","response","result","retire","retreat","return","reunion","reveal","review","reward","rhythm","rib","ribbon","rice","rich","ride","ridge","rifle","right","rigid","ring","riot","ripple","risk","ritual","rival","river","road","roast","robot","robust","rocket","romance","roof","rookie","room","rose","rotate","rough","round","route","royal","rubber","rude","rug","rule","run","runway","rural","sad","saddle","sadness","safe","sail","salad","salmon","salon","salt","salute","same","sample","sand","satisfy","satoshi","sauce","sausage","save","say","scale","scan","scare","scatter","scene","scheme","school","science","scissors","scorpion","scout","scrap","screen","script","scrub","sea","search","season","seat","second","secret","section","security","seed","seek","segment","select","sell","seminar","senior","sense","sentence","series","service","session","settle","setup","seven","shadow","shaft","shallow","share","shed","shell","sheriff","shield","shift","shine","ship","shiver","shock","shoe","shoot","shop","short","shoulder","shove","shrimp","shrug","shuffle","shy","sibling","sick","side","siege","sight","sign","silent","silk","silly","silver","similar","simple","since","sing","siren","sister","situate","six","size","skate","sketch","ski","skill","skin","skirt","skull","slab","slam","sleep","slender","slice","slide","slight","slim","slogan","slot","slow","slush","small","smart","smile","smoke","smooth","snack","snake","snap","sniff","snow","soap","soccer","social","sock","soda","soft","solar","soldier","solid","solution","solve","someone","song","soon","sorry","sort","soul","sound","soup","source","south","space","spare","spatial","spawn","speak","special","speed","spell","spend","sphere","spice","spider","spike","spin","spirit","split","spoil","sponsor","spoon","sport","spot","spray","spread","spring","spy","square","squeeze","squirrel","stable","stadium","staff","stage","stairs","stamp","stand","start","state","stay","steak","steel","stem","step","stereo","stick","still","sting","stock","stomach","stone","stool","story","stove","strategy","street","strike","strong","struggle","student","stuff","stumble","style","subject","submit","subway","success","such","sudden","suffer","sugar","suggest","suit","summer","sun","sunny","sunset","super","supply","supreme","sure","surface","surge","surprise","surround","survey","suspect","sustain","swallow","swamp","swap","swarm","swear","sweet","swift","swim","swing","switch","sword","symbol","symptom","syrup","system","table","tackle","tag","tail","talent","talk","tank","tape","target","task","taste","tattoo","taxi","teach","team","tell","ten","tenant","tennis","tent","term","test","text","thank","that","theme","then","theory","there","they","thing","this","thought","three","thrive","throw","thumb","thunder","ticket","tide","tiger","tilt","timber","time","tiny","tip","tired","tissue","title","toast","tobacco","today","toddler","toe","together","toilet","token","tomato","tomorrow","tone","tongue","tonight","tool","tooth","top","topic","topple","torch","tornado","tortoise","toss","total","tourist","toward","tower","town","toy","track","trade","traffic","tragic","train","transfer","trap","trash","travel","tray","treat","tree","trend","trial","tribe","trick","trigger","trim","trip","trophy","trouble","truck","true","truly","trumpet","trust","truth","try","tube","tuition","tumble","tuna","tunnel","turkey","turn","turtle","twelve","twenty","twice","twin","twist","two","type","typical","ugly","umbrella","unable","unaware","uncle","uncover","under","undo","unfair","unfold","unhappy","uniform","unique","unit","universe","unknown","unlock","until","unusual","unveil","update","upgrade","uphold","upon","upper","upset","urban","urge","usage","use","used","useful","useless","usual","utility","vacant","vacuum","vague","valid","valley","valve","van","vanish","vapor","various","vast","vault","vehicle","velvet","vendor","venture","venue","verb","verify","version","very","vessel","veteran","viable","vibrant","vicious","victory","video","view","village","vintage","violin","virtual","virus","visa","visit","visual","vital","vivid","vocal","voice","void","volcano","volume","vote","voyage","wage","wagon","wait","walk","wall","walnut","want","warfare","warm","warrior","wash","wasp","waste","water","wave","way","wealth","weapon","wear","weasel","weather","web","wedding","weekend","weird","welcome","west","wet","whale","what","wheat","wheel","when","where","whip","whisper","wide","width","wife","wild","will","win","window","wine","wing","wink","winner","winter","wire","wisdom","wise","wish","witness","wolf","woman","wonder","wood","wool","word","work","world","worry","worth","wrap","wreck","wrestle","wrist","write","wrong","yard","year","yellow","you","young","youth","zebra","zero","zone","zoo"];
 
     // -- Constants --------------------------------------------------------------
-    // Default public RPC endpoints. Sourced from Solana's own current docs
-    // (solana.com/docs/references/clusters) rather than memory, since this list
-    // goes stale — see reasoning below.
-    //
-    // - Solana's official docs now list `api.mainnet.solana.com` (no "-beta") as
-    //   THE current Mainnet endpoint. `api.mainnet-beta.solana.com` is kept as a
-    //   second fallback since a lot of tooling/aliases still point at it, but the
-    //   non-"-beta" domain is primary going forward.
-    // - Ankr's and dRPC's anonymous free tiers now explicitly refuse Solana
-    //   ("API key is not allowed to access blockchain" / "chain is not available
-    //   on freetier") — both were removed rather than left in as guaranteed-fail
-    //   fallback entries that burn a retry slot for nothing.
-    // - Public endpoints are rate-limited by design (Solana's own docs: 100 req/10s
-    //   per IP, 40 req/10s per method) and can be blocked "without prior notice."
-    //   A 403 from these is often not a bug to fix in this app — it's the
-    //   documented behavior of free public infra. The durable fix is a free API
-    //   key from a provider (see the in-app message when all endpoints fail).
-    // Optional: your own Alchemy/Helius-backed proxy (see alchemy-proxy/ for
-    // the Cloudflare Worker that holds the real API keys server-side — never
-    // put a raw provider key directly in this file, it would be visible to
-    // anyone who views source or opens the network tab). Paste your deployed
-    // Worker's routes below to add them as automatic fallbacks; leave either
-    // blank to skip it and rely on the public endpoints only.
-    const ALCHEMY_PROXY_URL = ''; // e.g. 'https://solana-rpc-proxy.you.workers.dev/alchemy'
-    const HELIUS_PROXY_URL  = ''; // e.g. 'https://solana-rpc-proxy.you.workers.dev/helius'
-
+    // Each cluster now maps to a POOL of independent public providers, not a
+    // single URL. withRpcFallback() walks this list in order, so one flaky /
+    // rate-limited provider (the official api.*.solana.com nodes are heavily
+    // rate-limited — 40 req/10s per method) no longer takes the whole app down.
     const NETWORKS = {
         mainnet: [
-            'https://api.mainnet.solana.com',
             'https://api.mainnet-beta.solana.com',
-            ...(ALCHEMY_PROXY_URL ? [ALCHEMY_PROXY_URL] : []),
-            ...(HELIUS_PROXY_URL ? [HELIUS_PROXY_URL] : []),
+            'https://solana-rpc.publicnode.com',
+            'https://solana.drpc.org',
+            'https://rpc.ankr.com/solana',
         ],
         devnet: [
             'https://api.devnet.solana.com',
+            'https://rpc.ankr.com/solana_devnet',
         ],
         testnet: [
             'https://api.testnet.solana.com',
@@ -849,27 +759,13 @@
         'https://lite-api.jup.ag/swap/v1',
         'https://api.jup.ag/swap/v1',
     ];
-    // Public, CORS-friendly Ethereum mainnet RPCs — used ONLY for the read-only
-    // "preview this address on Ethereum" check during import. This wallet does not
-    // send/receive/store ETH; this is diagnostic only, best-effort, and fails silently
-    // to a "balance unavailable" label if none of these respond.
-    const EVM_PREVIEW_RPC_URLS = [
-        'https://cloudflare-eth.com',
-        'https://eth.llamarpc.com',
-    ];
     const JUPITER_MAINNET_TOKENS = [
         { symbol: 'SOL',  mint: 'So11111111111111111111111111111111111111112', decimals: 9,  name: 'Solana' },
         { symbol: 'USDC', mint: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v', decimals: 6,  name: 'USD Coin' },
         { symbol: 'USDT', mint: 'Es9vMFrzaCERmJfrF4H2FYDutVwzmAqgxN6p6v5vC8t', decimals: 6,  name: 'Tether USD' },
         { symbol: 'JUP',  mint: 'JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN', decimals: 6,  name: 'Jupiter' },
     ];
-    const DEFAULT_ACCOUNT_INDEX = 0;
-    // Standard Solana HD path used by Phantom/Solflare/Backpack: m/44'/501'/{account}'/0'
-    // Account index lets one mnemonic hold multiple independent wallets.
-    function derivationPathForIndex(accountIndex) {
-        const idx = Math.max(0, Math.floor(Number(accountIndex) || 0));
-        return `m/44'/501'/${idx}'/0'`;
-    }
+    const DERIVATION_PATH  = "m/44'/501'/0'/0'";
     const LAMPORTS_PER_SOL = 1_000_000_000;
     const SPL_TOKEN_PROGRAM_ID = 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA';
 
@@ -896,12 +792,6 @@
         if (m.includes('signature verification') || m.includes('missing signature')) return 'Signature error — please retry.';
         if (m.includes('exceeds desired size limit')) return 'Transaction too large.';
         if (m.includes('429') || m.includes('rate limit')) return 'RPC rate-limited — try a custom RPC endpoint in Settings.';
-        if (m.includes('not allowed to access blockchain') || m.includes('freetier') || m.includes('free tier') || m.includes('upgrade to paid')) {
-            return 'This public RPC now requires a paid plan for Solana. Get a free API key (e.g. from Helius or Alchemy — most Solana providers offer a free tier with no credit card) and add it as a Custom RPC in Settings.';
-        }
-        if (m.includes('403') || m.includes('access forbidden')) {
-            return 'Public RPC blocked this request — free endpoints rate-limit and block traffic without notice by design. For reliable access, get a free API key (e.g. from Helius) and add it as a Custom RPC in Settings.';
-        }
         return raw.length > 140 ? raw.slice(0, 140) + '…' : raw;
     }
 
@@ -912,66 +802,6 @@
         for (let i = 0; i < out.length; i++) out[i] = parseInt(hex.substr(i * 2, 2), 16);
         return out;
     };
-
-    // -- Base58 (Bitcoin alphabet) — self-contained, no CDN dependency ----------
-    // Solana private keys are conventionally shared as base58 (what Phantom/
-    // Solflare show on "Export Private Key") or as a JSON array of 64 bytes.
-    const BASE58_ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
-    function base58Decode(str) {
-        str = String(str || '').trim();
-        if (!str) throw new Error('Empty input');
-        const bytes = [0];
-        for (const ch of str) {
-            const value = BASE58_ALPHABET.indexOf(ch);
-            if (value === -1) throw new Error('Not valid base58 (unexpected character "' + ch + '")');
-            let carry = value;
-            for (let i = 0; i < bytes.length; i++) {
-                carry += bytes[i] * 58;
-                bytes[i] = carry & 0xff;
-                carry >>= 8;
-            }
-            while (carry > 0) {
-                bytes.push(carry & 0xff);
-                carry >>= 8;
-            }
-        }
-        // Leading '1's in base58 encode leading zero bytes.
-        for (let i = 0; i < str.length && str[i] === '1'; i++) bytes.push(0);
-        return new Uint8Array(bytes.reverse());
-    }
-
-    /**
-     * Parse a pasted private key in either common Solana export format:
-     *  - base58 string (Phantom/Solflare "Export Private Key") — decodes to a
-     *    64-byte secret key (or occasionally a 32-byte seed).
-     *  - JSON array of 64 numbers (Solana CLI keypair file format).
-     * Returns a solanaWeb3.Keypair. Throws with a clear message if neither parses.
-     */
-    function privateKeyToKeypair(input) {
-        const raw = String(input || '').trim();
-        if (!raw) throw new Error('Enter a private key');
-
-        // Try JSON array format first (e.g. "[12,34,...]").
-        if (raw.startsWith('[')) {
-            let arr;
-            try { arr = JSON.parse(raw); } catch { throw new Error('Invalid JSON array — check for missing brackets or commas'); }
-            if (!Array.isArray(arr) || !arr.every(n => Number.isInteger(n) && n >= 0 && n <= 255)) {
-                throw new Error('JSON array must contain only byte values (0-255)');
-            }
-            const bytes = Uint8Array.from(arr);
-            if (bytes.length !== 64) throw new Error(`Expected a 64-byte secret key array, got ${bytes.length} bytes`);
-            return window.solanaWeb3.Keypair.fromSecretKey(bytes);
-        }
-
-        // Otherwise treat as base58.
-        let bytes;
-        try { bytes = base58Decode(raw); }
-        catch (e) { throw new Error('Could not parse as base58 or JSON array: ' + e.message); }
-
-        if (bytes.length === 64) return window.solanaWeb3.Keypair.fromSecretKey(bytes);
-        if (bytes.length === 32) return window.solanaWeb3.Keypair.fromSeed(bytes);
-        throw new Error(`Decoded ${bytes.length} bytes — expected 64 (full secret key) or 32 (seed). Double-check you copied the whole key.`);
-    }
 
     // ============================================================================
     // BIP39 — mnemonic <-> entropy <-> seed
@@ -1100,14 +930,88 @@
         return node;
     }
 
-    /** Full pipeline: mnemonic → Solana Keypair at m/44'/501'/{accountIndex}'/0'. */
-    async function mnemonicToKeypair(mnemonic, accountIndex = DEFAULT_ACCOUNT_INDEX) {
+    /** Full pipeline: mnemonic → Solana Keypair at m/44'/501'/0'/0'. */
+    async function mnemonicToKeypair(mnemonic) {
         if (!(await bip39_validateMnemonic(mnemonic))) {
             throw new Error('Invalid mnemonic phrase');
         }
         const seed = await bip39_mnemonicToSeed(mnemonic);
-        const { key } = await slip10_derivePath(derivationPathForIndex(accountIndex), seed);
+        const { key } = await slip10_derivePath(DERIVATION_PATH, seed);
         return window.solanaWeb3.Keypair.fromSeed(key);
+    }
+
+    // -- Base58 (Bitcoin alphabet) — needed to accept pasted private keys,
+    //    since @solana/web3.js's IIFE bundle doesn't expose its internal bs58. --
+    const BASE58_ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+    function base58Decode(str) {
+        const bytes = [0];
+        for (const ch of str) {
+            const value = BASE58_ALPHABET.indexOf(ch);
+            if (value === -1) throw new Error('Invalid base58 character: ' + ch);
+            let carry = value;
+            for (let i = 0; i < bytes.length; i++) {
+                carry += bytes[i] * 58;
+                bytes[i] = carry & 0xff;
+                carry >>= 8;
+            }
+            while (carry > 0) { bytes.push(carry & 0xff); carry >>= 8; }
+        }
+        for (let k = 0; k < str.length && str[k] === '1'; k++) bytes.push(0); // leading-zero bytes
+        return new Uint8Array(bytes.reverse());
+    }
+
+    // Collision-proof wallet id — Date.now().toString() alone can collide if
+    // two wallets are ever created/imported within the same millisecond.
+    function makeWalletId() {
+        if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+        return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+    }
+
+    /**
+     * Resolve ANY of the three formats a Solana wallet is commonly exported in:
+     *   1. JSON byte array   — Phantom/Solflare "export as JSON" (64-byte secret
+     *                          key, occasionally a 32-byte seed).
+     *   2. Base58 string     — Phantom/Solflare "export private key".
+     *   3. Mnemonic phrase   — 12/15/18/21/24 BIP39 words.
+     * This is what actually makes "import multiple wallets" bulletproof: wallets
+     * that only ever exposed a private key (not a mnemonic) can still be
+     * imported, not just freshly-generated ones.
+     */
+    async function resolveImportedKeypair(input) {
+        const trimmed = String(input || '').trim();
+        if (!trimmed) throw new Error('Enter a mnemonic, private key, or keypair JSON.');
+
+        if (trimmed.startsWith('[')) {
+            let arr;
+            try { arr = JSON.parse(trimmed); } catch { throw new Error('That JSON keypair could not be parsed.'); }
+            if (!Array.isArray(arr) || !arr.every(n => Number.isInteger(n) && n >= 0 && n <= 255)) {
+                throw new Error('That JSON keypair is not a valid byte array.');
+            }
+            const bytes = Uint8Array.from(arr);
+            if (bytes.length === 64) return window.solanaWeb3.Keypair.fromSecretKey(bytes);
+            if (bytes.length === 32) return window.solanaWeb3.Keypair.fromSeed(bytes);
+            throw new Error(`Expected a 64-byte secret key or 32-byte seed, got ${bytes.length} bytes.`);
+        }
+
+        const words = trimmed.toLowerCase().split(/\s+/);
+        if ([12, 15, 18, 21, 24].includes(words.length)) {
+            const normalized = words.join(' ');
+            if (!(await bip39_validateMnemonic(normalized))) throw new Error('Invalid mnemonic phrase.');
+            const kp = await mnemonicToKeypair(normalized);
+            kp.mnemonic = normalized;
+            return kp;
+        }
+
+        if (/^[1-9A-HJ-NP-Za-km-z]+$/.test(trimmed)) {
+            let bytes;
+            try { bytes = base58Decode(trimmed); }
+            catch { throw new Error('That does not look like a valid private key, mnemonic, or JSON keypair.'); }
+            if (bytes.length === 64) return window.solanaWeb3.Keypair.fromSecretKey(bytes);
+            if (bytes.length === 32) return window.solanaWeb3.Keypair.fromSeed(bytes);
+            throw new Error(`Decoded ${bytes.length} bytes — expected a 64-byte private key.`);
+        }
+
+        throw new Error('Enter a 12/24-word mnemonic, a base58 private key, or a JSON keypair array.');
     }
 
     // ============================================================================
@@ -1129,10 +1033,6 @@
     let refreshTimer = null;
     let pendingTx = null;
     let pendingMnemonic = null;
-    // Cache of the last address-preview render (address/balance/tx-count per index) so
-    // clicking a different row just re-highlights instead of re-deriving + re-fetching
-    // balances from RPC every click.
-    let importPreviewCache = null;
     let solPriceUsd = 0;
     let currentSwapQuote = null;
     let refreshInFlight = false;
@@ -1376,24 +1276,15 @@
     function sanitizeRpcUrl(url) {
         return String(url || '').trim().replace(/\/+$/, '');
     }
-    function isValidRpcUrl(url) {
-        // Connection() throws synchronously on anything that isn't a clean http(s) URL.
-        // Validate here so garbage never gets into the fallback list in the first place.
-        try {
-            const u = new URL(url);
-            return u.protocol === 'http:' || u.protocol === 'https:';
-        } catch {
-            return false;
-        }
-    }
     function getRpcUrls() {
-        const rawCustom = String(state.customRpc || '').split(/[\n,]+/).map(sanitizeRpcUrl).filter(Boolean);
-        const custom = rawCustom.filter(isValidRpcUrl);
-        const invalidCustom = rawCustom.filter(u => !isValidRpcUrl(u));
-        if (invalidCustom.length > 0) {
-            console.warn('Ignoring invalid custom RPC entr' + (invalidCustom.length === 1 ? 'y' : 'ies') + ':', invalidCustom);
-        }
-        const defaults = (NETWORKS[state.network] || NETWORKS.mainnet).map(sanitizeRpcUrl).filter(Boolean);
+        const custom = String(state.customRpc || '')
+            .split(/[\n,]+/)
+            .map(sanitizeRpcUrl)
+            .filter(Boolean);
+        const pool = NETWORKS[state.network] || NETWORKS.mainnet;
+        const defaults = (Array.isArray(pool) ? pool : [pool]).map(sanitizeRpcUrl).filter(Boolean);
+        // Custom RPC(s), if the user set any, are tried first; then the built-in
+        // provider pool for the active cluster, in listed order.
         return Array.from(new Set([...custom, ...defaults]));
     }
     function getConnectionForUrl(url) {
@@ -1409,31 +1300,18 @@
             new Promise((_, reject) => setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms)),
         ]);
     }
-    function isRateLimitError(err) {
-        const msg = String((err && (err.message || err)) || '').toLowerCase();
-        return msg.includes('429') || msg.includes('too many requests') || msg.includes('rate limit') || msg.includes('rate-limited');
-    }
     async function withRpcFallback(label, worker, timeoutMs = 15_000) {
         const urls = getRpcUrls();
         let lastErr = null;
-        for (const url of urls) {
-            // A 429 is often transient (a shared public RPC momentarily over its quota).
-            // Give it one quick backoff-retry on the SAME endpoint before writing it off —
-            // immediately jumping to the next URL wastes an endpoint that would likely
-            // have worked a moment later, and if every endpoint is rate-limited at once
-            // (common right after a burst of refreshes), retrying without backoff just
-            // burns through all of them without giving any a chance to recover.
-            const maxAttempts = 2;
-            for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        // Two passes over the provider pool. If every provider fails on pass 1
+        // (e.g. a shared upstream hiccup, or all providers momentarily rate-
+        // limiting together), wait briefly and try the whole pool again once
+        // before giving up. This is what actually makes "bulletproof" true for
+        // bursty conditions, rather than just having more URLs to burn through.
+        for (let attempt = 0; attempt < 2; attempt++) {
+            for (const url of urls) {
+                const conn = getConnectionForUrl(url);
                 try {
-                    // getConnectionForUrl (and the underlying `new Connection(...)`) is
-                    // inside this try on purpose: Connection() throws SYNCHRONOUSLY on a
-                    // malformed URL, and previously that throw happened outside any
-                    // try/catch here, which aborted the entire fallback loop on the first
-                    // bad endpoint — including skipping every working default endpoint
-                    // after it. Now a bad URL is just treated like any other failed
-                    // endpoint and the loop moves on.
-                    const conn = getConnectionForUrl(url);
                     const result = await withTimeout(worker(conn, url), timeoutMs, label);
                     connection = conn;
                     state.lastGoodRpc = url;
@@ -1441,64 +1319,19 @@
                     return result;
                 } catch (err) {
                     lastErr = err;
-                    console.warn(`RPC ${label} failed on ${url} (attempt ${attempt}/${maxAttempts}):`, err);
-                    if (attempt < maxAttempts && isRateLimitError(err)) {
-                        await new Promise(r => setTimeout(r, 500 * attempt)); // 500ms, then 1000ms if ever raised
-                        continue;
-                    }
-                    break; // not a rate-limit error, or out of retries — try the next URL
+                    console.warn(`RPC ${label} failed on ${url} (pass ${attempt + 1}):`, err);
                 }
             }
+            if (attempt === 0 && urls.length) await new Promise(r => setTimeout(r, 700));
         }
         updateNetworkIndicator(false);
         throw lastErr || new Error(`${label} failed on all RPC endpoints`);
     }
     function rebuildConnection() {
         const [first] = getRpcUrls();
-        if (!first) {
-            console.warn('rebuildConnection: no valid RPC URLs available');
-            updateNetworkIndicator(false);
-            updateNetworkBanner();
-            return;
-        }
-        try {
-            connection = getConnectionForUrl(first);
-            updateNetworkIndicator(true, first);
-        } catch (e) {
-            console.warn('rebuildConnection failed for', first, e);
-            updateNetworkIndicator(false);
-        }
+        connection = getConnectionForUrl(first);
+        updateNetworkIndicator(true, first);
         updateNetworkBanner();
-    }
-
-    // Prompts for a Helius API key and wires up BOTH the standard mainnet endpoint
-    // and the lower-latency "Gatekeeper Beta" endpoint (same key, same standard
-    // JSON-RPC methods — confirmed via Helius's own docs, no code changes needed
-    // elsewhere in this app). The key is stored only in this wallet's own encrypted
-    // local state (via saveState(), same as any other Custom RPC entry) — it is
-    // NEVER written into this file's source, so sharing/deploying this HTML never
-    // leaks a personal key to anyone else who opens it.
-    function quickSetupHelius() {
-        const existing = String(state.customRpc || '');
-        const key = prompt(
-            'Paste your Helius API key (from helius.dev — free tier, no credit card).\n' +
-            'This is stored only in your own encrypted wallet data, never in this file.'
-        );
-        if (!key) return;
-        const trimmedKey = key.trim();
-        if (!trimmedKey || /[\/\s]/.test(trimmedKey)) {
-            showToast('That doesn\'t look like a valid API key (no spaces or slashes expected)', 'error');
-            return;
-        }
-        const primary = `https://mainnet.helius-rpc.com/?api-key=${trimmedKey}`;
-        const gatekeeperBeta = `https://beta.helius-rpc.com/?api-key=${trimmedKey}`;
-        const combined = [primary, gatekeeperBeta].join('\n');
-        state.customRpc = existing ? `${combined}\n${existing}` : combined;
-        const rpcInput = document.getElementById('customRpc');
-        if (rpcInput) rpcInput.value = state.customRpc;
-        saveState();
-        rebuildConnection();
-        showToast('Helius endpoints added as your Custom RPC — try refreshing your wallet now', 'success');
     }
 
     // Prominent banner shown when on devnet/testnet.
@@ -1535,9 +1368,26 @@
             : `<i class="fas fa-circle text-xs"></i><span>Offline</span>`;
     }
 
+    // Runs async worker(item) over items with at most `limit` in flight at
+    // once, preserving results order. Used to stop the wallet-activity scan
+    // from firing one RPC call per wallet all at the same instant — with a
+    // free public endpoint that burst is exactly what trips rate limits as
+    // soon as someone has imported more than a couple of wallets.
+    async function mapWithConcurrency(items, limit, worker) {
+        const results = new Array(items.length);
+        let next = 0;
+        async function runner() {
+            while (next < items.length) {
+                const i = next++;
+                results[i] = await worker(items[i], i);
+            }
+        }
+        await Promise.all(Array.from({ length: Math.min(limit, items.length) }, runner));
+        return results;
+    }
     async function refreshAllWalletActivity({ autoSelect = false } = {}) {
         if (!state.wallets.length) return;
-        const updates = await Promise.all(state.wallets.map(async (wallet) => {
+        const updates = await mapWithConcurrency(state.wallets, 3, async (wallet) => {
             try {
                 const sigs = await withRpcFallback('activity scan', conn => conn.getSignaturesForAddress(new window.solanaWeb3.PublicKey(wallet.address), { limit: 25 }), 12_000);
                 const latest = sigs.find(s => s.blockTime)?.blockTime || 0;
@@ -1546,7 +1396,7 @@
                 console.warn('activity scan failed', wallet.address, e);
                 return { id: wallet.id, activityScore: wallet.activityScore || 0, lastActivityAt: wallet.lastActivityAt || 0 };
             }
-        }));
+        });
         for (const u of updates) {
             const wallet = state.wallets.find(w => w.id === u.id);
             if (wallet) {
@@ -1600,15 +1450,13 @@
     async function confirmCreateWallet() {
         if (!pendingMnemonic) return;
         try {
-            const kp = await mnemonicToKeypair(pendingMnemonic, DEFAULT_ACCOUNT_INDEX);
+            const kp = await mnemonicToKeypair(pendingMnemonic);
             const wallet = {
-                id: Date.now().toString(),
+                id: makeWalletId(),
                 name: `Wallet ${state.wallets.length + 1}`,
                 address: kp.publicKey.toString(),
                 secretKey: Array.from(kp.secretKey),
                 mnemonic: pendingMnemonic,
-                derivationIndex: DEFAULT_ACCOUNT_INDEX,
-                derivationPath: derivationPathForIndex(DEFAULT_ACCOUNT_INDEX),
                 balance: 0,
                 tokens: [],
                 transactions: [],
@@ -1636,216 +1484,21 @@
         pendingMnemonic = null;
     }
 
-    let importMode = 'mnemonic';
     function importWallet() {
-        setImportMode('mnemonic');
         document.getElementById('importWalletModal').classList.remove('hidden');
-    }
-    function setImportMode(mode) {
-        importMode = mode;
-        document.getElementById('importMnemonicFields').classList.toggle('hidden', mode !== 'mnemonic');
-        document.getElementById('importPrivateKeyFields').classList.toggle('hidden', mode !== 'privateKey');
-        document.getElementById('importModeMnemonicBtn').classList.toggle('tab-active', mode === 'mnemonic');
-        document.getElementById('importModePrivateKeyBtn').classList.toggle('tab-active', mode === 'privateKey');
-        const btn = document.getElementById('importConfirmBtn');
-        if (mode === 'privateKey') {
-            btn.disabled = false;
-            btn.classList.remove('opacity-50', 'cursor-not-allowed');
-            btn.innerHTML = 'Import Wallet';
-        } else {
-            onImportChainChange();
-        }
-    }
-    function onImportChainChange() {
-        const chain = document.getElementById('importPreviewChain').value;
-        const note = document.getElementById('importChainNote');
-        const btn = document.getElementById('importConfirmBtn');
-        const isEvm = chain === 'ethereum';
-        note.classList.toggle('hidden', !isEvm);
-        btn.disabled = isEvm;
-        btn.classList.toggle('opacity-50', isEvm);
-        btn.classList.toggle('cursor-not-allowed', isEvm);
-        btn.innerHTML = isEvm ? 'Preview only — use an EVM wallet to import this' : 'Import Wallet';
-        // Different chain selected — old preview rows (if any) no longer apply.
-        importPreviewCache = null;
-        document.getElementById('importAddressPreview').classList.add('hidden');
-    }
-    async function fetchEvmBalanceAndTxCount(address) {
-        for (const url of EVM_PREVIEW_RPC_URLS) {
-            try {
-                const provider = new ethers.JsonRpcProvider(url);
-                const [balanceWei, txCount] = await withTimeout(
-                    Promise.all([provider.getBalance(address), provider.getTransactionCount(address)]),
-                    8_000, 'evm preview'
-                );
-                return { balance: Number(ethers.formatEther(balanceWei)), txCount };
-            } catch (err) {
-                console.warn(`EVM preview RPC failed on ${url}:`, err);
-            }
-        }
-        throw new Error('All EVM preview RPCs failed');
-    }
-    function importChain() {
-        const el = document.getElementById('importPreviewChain');
-        return el ? el.value : 'solana';
     }
     function closeImportWalletModal() {
         document.getElementById('importWalletModal').classList.add('hidden');
-        document.getElementById('importMnemonic').value = '';
-        document.getElementById('importAccountIndex').value = '0';
-        document.getElementById('importPrivateKey').value = '';
-        const chainSel = document.getElementById('importPreviewChain');
-        if (chainSel) { chainSel.value = 'solana'; }
-        setImportMode('mnemonic');
-        const preview = document.getElementById('importAddressPreview');
-        preview.classList.add('hidden');
-        preview.innerHTML = '';
-        importPreviewCache = null;
     }
-    // Pure render helper — takes currentIndex as a parameter (not closed over) so a
-    // cached set of rows can be re-rendered with a new highlight without re-deriving
-    // or re-fetching anything from RPC. clickable=false is used for the Ethereum
-    // preview, where rows are informational only and can't be "selected for import".
-    function renderImportPreviewRows(rows, currentIndex, clickable = true) {
-        return rows.map(r => `
-            <${clickable ? 'button type="button"' : 'div'}
-                class="w-full text-left px-3 py-2 rounded-lg border transition-all ${clickable && r.index === currentIndex ? 'border-purple-400 bg-purple-500/10' : 'border-white/10 bg-white/[0.02]'} ${clickable ? 'hover:bg-white/[0.06]' : ''}"
-                ${clickable ? `onclick="selectImportAddress(${r.index})"` : ''}>
-                <div class="flex items-center justify-between gap-2">
-                    <span class="text-xs font-medium text-slate-300">Account #${r.index}</span>
-                    <span class="text-[10px] ${r.status === 'active' ? 'text-emerald-400' : r.status === 'empty' ? 'text-slate-500' : 'text-slate-600'}">
-                        ${r.alreadyImported ? 'already imported · ' : ''}${r.label}
-                    </span>
-                </div>
-                <div class="wallet-address text-xs text-slate-400 mt-0.5">${r.address}</div>
-            </${clickable ? 'button' : 'div'}>
-        `).join('');
-    }
-    // Derives addresses for account indices 0-4 AND checks their on-chain balance +
-    // tx count, so the user can see which one actually has funds/activity instead of
-    // guessing blind. Uses the same withRpcFallback the rest of the app uses — there
-    // is no separate "healthy connection" helper. Branches to a read-only Ethereum
-    // preview (via ethers.js) when that chain is selected — see importChain().
-    async function previewImportAddresses() {
-        const m = document.getElementById('importMnemonic').value.trim().toLowerCase().replace(/\s+/g, ' ');
-        const preview = document.getElementById('importAddressPreview');
-        if (!m) { showToast('Enter a mnemonic first', 'error'); return; }
-        if (!(await bip39_validateMnemonic(m))) { showToast('Invalid mnemonic', 'error'); return; }
-
-        const chain = importChain();
-        preview.classList.remove('hidden');
-        preview.innerHTML = `<div class="text-xs text-slate-400 py-2"><i class="fas fa-spinner fa-spin mr-2"></i>Deriving addresses and checking balances…</div>`;
-
-        if (chain === 'ethereum') {
-            try {
-                if (typeof ethers === 'undefined') throw new Error('ethers.js failed to load from CDN');
-                const base = [];
-                for (let i = 0; i < 5; i++) {
-                    const path = `m/44'/60'/${i}'/0/0`;
-                    const hd = ethers.HDNodeWallet.fromPhrase(m, '', path);
-                    base.push({ index: i, address: hd.address });
-                }
-                let rows = base.map(r => ({ ...r, label: 'checking balance…', status: 'pending', alreadyImported: false }));
-                preview.innerHTML = renderImportPreviewRows(rows, -1, false);
-
-                const checks = await Promise.allSettled(base.map(r => fetchEvmBalanceAndTxCount(r.address)));
-                rows = base.map((r, i) => {
-                    const check = checks[i];
-                    if (check.status === 'fulfilled') {
-                        const { balance, txCount } = check.value;
-                        const active = balance > 0 || txCount > 0;
-                        return { ...r, alreadyImported: false, status: active ? 'active' : 'empty',
-                            label: `${balance.toFixed(5)} ETH · ${txCount > 0 ? txCount + '+ tx' : 'no tx'}` };
-                    }
-                    console.warn(`EVM balance check failed for index ${r.index}`, check.reason);
-                    return { ...r, alreadyImported: false, status: 'unknown', label: 'balance unavailable' };
-                });
-                preview.innerHTML = renderImportPreviewRows(rows, -1, false)
-                    + `<p class="text-xs text-amber-400/80 mt-2"><i class="fas fa-triangle-exclamation mr-1"></i>Preview only — this wallet can't import or use Ethereum addresses.</p>`;
-                importPreviewCache = null; // nothing here is selectable, so nothing to cache for reuse
-            } catch (e) {
-                console.error(e);
-                preview.innerHTML = `<div class="text-xs text-red-400 py-2">Could not preview Ethereum addresses: ${e.message}</div>`;
-                importPreviewCache = null;
-            }
-            return;
-        }
-
-        try {
-            const currentIndex = parseInt(document.getElementById('importAccountIndex').value, 10) || 0;
-
-            // Phase 1: derive addresses (fast, local, no network) and render immediately
-            // so the user isn't staring at a blank spinner while balances load.
-            const base = [];
-            for (let i = 0; i < 5; i++) {
-                const kp = await mnemonicToKeypair(m, i);
-                base.push({ index: i, address: kp.publicKey.toString() });
-            }
-
-            let rows = base.map(r => ({ ...r, label: 'checking balance…', status: 'pending',
-                alreadyImported: state.wallets.some(w => w.address === r.address) }));
-            preview.innerHTML = renderImportPreviewRows(rows, currentIndex);
-            importPreviewCache = { rows, mnemonic: m };
-
-            // Phase 2: check on-chain balance + tx count per index, in parallel, using the
-            // same withRpcFallback fallback chain the rest of the app uses. Short timeout
-            // so one slow index can't hold up the whole picker.
-            const checks = await Promise.allSettled(base.map(async (r) => {
-                const pubkey = new window.solanaWeb3.PublicKey(r.address);
-                const [balLamports, sigs] = await Promise.all([
-                    withRpcFallback(`preview balance #${r.index}`, conn => conn.getBalance(pubkey), 8_000),
-                    withRpcFallback(`preview sigs #${r.index}`, conn => conn.getSignaturesForAddress(pubkey, { limit: 1 }), 8_000),
-                ]);
-                return { balance: balLamports / LAMPORTS_PER_SOL, txCount: sigs.length };
-            }));
-
-            rows = base.map((r, i) => {
-                const alreadyImported = state.wallets.some(w => w.address === r.address);
-                const check = checks[i];
-                if (check.status === 'fulfilled') {
-                    const { balance, txCount } = check.value;
-                    const active = balance > 0 || txCount > 0;
-                    return { ...r, alreadyImported, status: active ? 'active' : 'empty',
-                        label: `${balance.toFixed(4)} SOL · ${txCount > 0 ? txCount + '+ tx' : 'no tx'}` };
-                }
-                console.warn(`balance check failed for index ${r.index}`, check.reason);
-                return { ...r, alreadyImported, status: 'unknown', label: 'balance unavailable (RPC)' };
-            });
-            const latestIndex = parseInt(document.getElementById('importAccountIndex').value, 10) || 0;
-            preview.innerHTML = renderImportPreviewRows(rows, latestIndex);
-            importPreviewCache = { rows, mnemonic: m };
-        } catch (e) {
-            console.error(e);
-            preview.innerHTML = `<div class="text-xs text-red-400 py-2">Could not derive addresses: ${e.message}</div>`;
-            importPreviewCache = null;
-        }
-    }
-    function selectImportAddress(index) {
-        document.getElementById('importAccountIndex').value = String(index);
-        const preview = document.getElementById('importAddressPreview');
-        const currentMnemonic = document.getElementById('importMnemonic').value.trim().toLowerCase().replace(/\s+/g, ' ');
-        if (importPreviewCache && importPreviewCache.mnemonic === currentMnemonic) {
-            // Same mnemonic as last preview — just re-highlight from cache, no network calls.
-            preview.innerHTML = renderImportPreviewRows(importPreviewCache.rows, index);
-            return;
-        }
-        // Mnemonic changed since the last preview (or no cache yet) — do a full preview.
-        previewImportAddresses();
-    }
+    // Imports exactly one wallet per call. To import several, run this
+    // several times — the modal clears itself and the wallet list only ever
+    // grows, so re-opening "Import Wallet" and submitting the next one is
+    // safe to repeat back-to-back.
     async function confirmImportWallet() {
-        if (importMode === 'privateKey') {
-            return confirmImportPrivateKey();
-        }
-        if (importChain() === 'ethereum') {
-            showToast('This wallet only supports Solana — switch "Preview chain" back to Solana to import', 'error');
-            return;
-        }
-        const m = document.getElementById('importMnemonic').value.trim().toLowerCase().replace(/\s+/g, ' ');
-        if (!m) { showToast('Enter a mnemonic', 'error'); return; }
-        if (!(await bip39_validateMnemonic(m))) { showToast('Invalid mnemonic', 'error'); return; }
-        const accountIndex = Math.max(0, parseInt(document.getElementById('importAccountIndex').value, 10) || 0);
+        const raw = document.getElementById('importMnemonic').value;
+        if (!raw || !raw.trim()) { showToast('Enter a mnemonic, private key, or keypair JSON', 'error'); return; }
         try {
-            const kp = await mnemonicToKeypair(m, accountIndex);
+            const kp = await resolveImportedKeypair(raw);
             const address = kp.publicKey.toString();
             if (state.wallets.some(w => w.address === address)) {
                 showToast('Wallet already imported', 'info');
@@ -1853,54 +1506,11 @@
                 return;
             }
             const wallet = {
-                id: Date.now().toString(),
-                name: accountIndex === 0 ? `Wallet ${state.wallets.length + 1}` : `Wallet ${state.wallets.length + 1} (acct #${accountIndex})`,
-                address,
-                secretKey: Array.from(kp.secretKey),
-                mnemonic: m,
-                derivationIndex: accountIndex,
-                derivationPath: derivationPathForIndex(accountIndex),
-                balance: 0,
-                tokens: [],
-                transactions: [],
-                nfts: [],
-            };
-            state.wallets.push(wallet);
-            state.activeWalletId = wallet.id;
-            saveState();
-            closeImportWalletModal();
-            renderAll();
-            showToast('Wallet imported', 'success');
-            await refreshAllWalletActivity();
-            await refreshWallet();
-        } catch (e) {
-            console.error(e);
-            showToast('Import failed: ' + e.message, 'error');
-        }
-    }
-
-    /** Import a wallet from a raw private key (base58 or JSON byte array). No
-     *  mnemonic is available for this kind of import, so wallet.mnemonic is left
-     *  unset — export/backup UI should fall back to showing the raw key instead. */
-    async function confirmImportPrivateKey() {
-        const raw = document.getElementById('importPrivateKey').value.trim();
-        if (!raw) { showToast('Enter a private key', 'error'); return; }
-        try {
-            const kp = privateKeyToKeypair(raw);
-            const address = kp.publicKey.toString();
-            if (state.wallets.some(w => w.address === address)) {
-                showToast('Wallet already imported', 'info');
-                closeImportWalletModal();
-                return;
-            }
-            const wallet = {
-                id: Date.now().toString(),
+                id: makeWalletId(),
                 name: `Wallet ${state.wallets.length + 1}`,
                 address,
                 secretKey: Array.from(kp.secretKey),
-                mnemonic: null,
-                derivationIndex: null,
-                derivationPath: null,
+                mnemonic: kp.mnemonic || null, // null for private-key / JSON imports — expected, not a bug
                 balance: 0,
                 tokens: [],
                 transactions: [],
@@ -1909,22 +1519,22 @@
             state.wallets.push(wallet);
             state.activeWalletId = wallet.id;
             saveState();
+            document.getElementById('importMnemonic').value = '';
             closeImportWalletModal();
             renderAll();
-            showToast('Wallet imported from private key', 'success');
+            showToast(`Wallet imported (${state.wallets.length} total)`, 'success');
             await refreshAllWalletActivity();
             await refreshWallet();
         } catch (e) {
             console.error(e);
-            showToast('Import failed: ' + e.message, 'error');
+            showToast('Import failed: ' + friendlyError(e), 'error');
         }
     }
 
     function deleteWallet() {
         const w = getActiveWallet();
         if (!w) { showToast('No active wallet', 'info'); return; }
-        const backupHint = w.mnemonic ? 'your mnemonic' : 'your private key';
-        if (!confirm(`Delete "${w.name}"? Ensure ${backupHint} is saved elsewhere.`)) return;
+        if (!confirm(`Delete "${w.name}"? Ensure your mnemonic is saved elsewhere.`)) return;
         state.wallets = state.wallets.filter(x => x.id !== w.id);
         state.activeWalletId = state.wallets[0]?.id || null;
         saveState();
@@ -1976,76 +1586,38 @@
         refreshInFlight = true;
         try {
             const pubkey = new window.solanaWeb3.PublicKey(w.address);
+            const data = await withRpcFallback('wallet refresh', async (conn) => {
+                const [lamports, tokenAccounts, sigs] = await Promise.all([
+                    conn.getBalance(pubkey),
+                    conn.getParsedTokenAccountsByOwner(pubkey, {
+                        programId: new window.solanaWeb3.PublicKey(SPL_TOKEN_PROGRAM_ID),
+                    }),
+                    conn.getSignaturesForAddress(pubkey, { limit: 20 }),
+                ]);
+                return { lamports, tokenAccounts, sigs };
+            }, 18_000);
 
-            // Each RPC method gets its own independent fallback pass instead of being
-            // bundled into one Promise.all. Bundling them meant that a single method
-            // failing on an endpoint (most commonly getParsedTokenAccountsByOwner,
-            // which many free/public RPCs restrict or rate-limit harder than plain
-            // getBalance) rejected the whole worker, which made withRpcFallback treat
-            // that entire endpoint as dead and jump to the next one — even though
-            // balance and history would have succeeded fine. With Promise.allSettled,
-            // one struggling data source degrades gracefully instead of blocking
-            // everything else.
-            const [balanceResult, tokenResult, sigsResult] = await Promise.allSettled([
-                withRpcFallback('get balance', conn => conn.getBalance(pubkey), 10_000),
-                withRpcFallback('get token accounts', conn => conn.getParsedTokenAccountsByOwner(pubkey, {
-                    programId: new window.solanaWeb3.PublicKey(SPL_TOKEN_PROGRAM_ID),
-                }), 12_000),
-                withRpcFallback('get signatures', conn => conn.getSignaturesForAddress(pubkey, { limit: 20 }), 10_000),
-            ]);
-
-            const failures = [];
-
-            if (balanceResult.status === 'fulfilled') {
-                w.balance = balanceResult.value / LAMPORTS_PER_SOL;
-            } else {
-                failures.push('balance');
-                console.warn('balance fetch failed', balanceResult.reason);
+            w.balance = data.lamports / LAMPORTS_PER_SOL;
+            const tokens = [], nfts = [];
+            for (const { account } of data.tokenAccounts.value) {
+                const info = account.data.parsed.info;
+                const amount = info.tokenAmount.uiAmount || 0;
+                const decimals = info.tokenAmount.decimals;
+                const mint = info.mint;
+                if (amount === 0) continue;
+                if (decimals === 0 && amount === 1) nfts.push({ mint, amount });
+                else tokens.push({ mint, amount, decimals });
             }
+            w.tokens = tokens;
+            w.nfts = nfts;
+            w.transactions = data.sigs.map(s => ({
+                signature: s.signature, slot: s.slot, blockTime: s.blockTime, err: s.err, memo: s.memo,
+            }));
+            w.activityScore = data.sigs.length;
+            w.lastActivityAt = data.sigs.find(s => s.blockTime)?.blockTime || w.lastActivityAt || 0;
 
-            if (tokenResult.status === 'fulfilled') {
-                const tokens = [], nfts = [];
-                for (const { account } of tokenResult.value.value) {
-                    const info = account.data.parsed.info;
-                    const amount = info.tokenAmount.uiAmount || 0;
-                    const decimals = info.tokenAmount.decimals;
-                    const mint = info.mint;
-                    if (amount === 0) continue;
-                    if (decimals === 0 && amount === 1) nfts.push({ mint, amount });
-                    else tokens.push({ mint, amount, decimals });
-                }
-                w.tokens = tokens;
-                w.nfts = nfts;
-            } else {
-                failures.push('token balances');
-                console.warn('token account fetch failed', tokenResult.reason);
-            }
-
-            if (sigsResult.status === 'fulfilled') {
-                const sigs = sigsResult.value;
-                w.transactions = sigs.map(s => ({
-                    signature: s.signature, slot: s.slot, blockTime: s.blockTime, err: s.err, memo: s.memo,
-                }));
-                w.activityScore = sigs.length;
-                w.lastActivityAt = sigs.find(s => s.blockTime)?.blockTime || w.lastActivityAt || 0;
-            } else {
-                failures.push('transaction history');
-                console.warn('signature fetch failed', sigsResult.reason);
-            }
-
-            if (failures.length < 3) renderAll();
-
-            if (failures.length === 3) {
-                // Every data source failed on every fallback endpoint — this is a
-                // genuine outage, not a single restricted method. Show the hard error.
-                updateNetworkIndicator(false);
-                showToast('RPC error: ' + friendlyError(balanceResult.reason), 'error');
-            } else if (failures.length > 0) {
-                updateNetworkIndicator(true, state.lastGoodRpc || getRpcUrls()[0]);
-                showToast(`Partial update — ${failures.join(' & ')} unavailable on current RPC`, 'info');
-            } else {
-                updateNetworkIndicator(true, state.lastGoodRpc || getRpcUrls()[0]);
-            }
+            renderAll();
+            updateNetworkIndicator(true, state.lastGoodRpc || getRpcUrls()[0]);
         } catch (e) {
             console.error('refreshWallet', e);
             updateNetworkIndicator(false);
@@ -2469,7 +2041,7 @@
         wrap.classList.remove('hidden');
         const orderedWallets = getWalletsByActivity();
         sel.innerHTML = orderedWallets.map(w =>
-            `<option value="${w.id}" ${w.id === state.activeWalletId ? 'selected' : ''}>${w.name} — ${shortAddr(w.address)}${w.derivationIndex ? ` — acct #${w.derivationIndex}` : ''} — ${getWalletActivityScore(w)} tx</option>`
+            `<option value="${w.id}" ${w.id === state.activeWalletId ? 'selected' : ''}>${w.name} — ${shortAddr(w.address)} — ${getWalletActivityScore(w)} tx</option>`
         ).join('');
     }
 
@@ -3041,11 +2613,10 @@
     Object.assign(window, {
         createNewWallet, confirmCreateWallet, closeCreateWalletModal,
         importWallet, closeImportWalletModal, confirmImportWallet,
-        previewImportAddresses, selectImportAddress, onImportChainChange,
         deleteWallet, exportWallet, switchToWallet,
         sendSol, closeConfirmModal, confirmTransaction,
         switchTab, copyAddress, changeNetwork, selectMostActiveWallet,
-        lockWalletNow, changePassword, quickSetupHelius,
+        lockWalletNow, changePassword,
         exportHistoryCsv, addToAddressBook, removeFromAddressBook, pickFromAddressBook,
         fetchSwapQuote, executeSwap, flipSwapTokens, setSwapMaxAmount,
     });
