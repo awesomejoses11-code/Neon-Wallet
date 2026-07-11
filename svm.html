@@ -1,0 +1,3056 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SVM Wallet</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
+            min-height: 100vh;
+            color: #fff;
+        }
+
+        /* Confetti animation used after successful send / wallet creation. */
+        @keyframes confettiFall {
+            0%   { transform: translateY(-10vh) rotate(0deg);   opacity: 1; }
+            100% { transform: translateY(110vh) rotate(720deg); opacity: 0; }
+        }
+        
+        .glass-card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+        }
+        
+        .btn-gold {
+            background: linear-gradient(135deg, #f5af19 0%, #f12711 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-gold:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(245, 175, 25, 0.3);
+        }
+        
+        .btn-outline {
+            background: transparent;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-outline:hover {
+            border-color: #f5af19;
+            background: rgba(245, 175, 25, 0.1);
+        }
+
+        .btn-outline.tab-active {
+            border-color: #f5af19;
+            background: rgba(245, 175, 25, 0.15);
+            color: #f5af19;
+        }
+        
+        .tab-button {
+            background: transparent;
+            border: none;
+            color: rgba(255, 255, 255, 0.5);
+            padding: 12px 20px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            border-bottom: 3px solid transparent;
+        }
+        
+        .tab-button:hover {
+            color: rgba(255, 255, 255, 0.8);
+        }
+        
+        .tab-button.active {
+            color: #f5af19;
+            border-bottom-color: #f5af19;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .hidden-section {
+            display: none !important;
+        }
+        
+        .wallet-address {
+            font-family: 'Courier New', monospace;
+            word-break: break-all;
+        }
+        
+        .asset-item {
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 12px;
+            transition: all 0.3s ease;
+        }
+        
+        .asset-item:hover {
+            background: rgba(255, 255, 255, 0.08);
+        }
+        
+        .input-field {
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 12px 16px;
+            color: white;
+            font-size: 16px;
+            width: 100%;
+            outline: none;
+            transition: all 0.3s ease;
+        }
+        
+        .input-field:focus {
+            border-color: #f5af19;
+            box-shadow: 0 0 10px rgba(245, 175, 25, 0.2);
+        }
+        
+        .input-field::placeholder {
+            color: rgba(255, 255, 255, 0.4);
+        }
+        
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        
+        .modal-content {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            border-radius: 20px;
+            padding: 30px;
+            max-width: 500px;
+            width: 90%;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .spinner {
+            border: 3px solid rgba(255, 255, 255, 0.1);
+            border-top: 3px solid #f5af19;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 16px 24px;
+            border-radius: 12px;
+            color: white;
+            font-weight: 500;
+            z-index: 2000;
+            animation: slideIn 0.3s ease;
+        }
+        
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        
+        .toast.success {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+        }
+        
+        .toast.error {
+            background: linear-gradient(135deg, #eb3349 0%, #f45c43 100%);
+        }
+        
+        .toast.info {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        .network-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 20px;
+        }
+        
+        .network-indicator.online {
+            color: #38ef7d;
+        }
+        
+        .network-indicator.offline {
+            color: #f45c43;
+        }
+        
+        .qr-code {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .transaction-row {
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 12px;
+            transition: all 0.3s ease;
+        }
+        
+        .transaction-row:hover {
+            background: rgba(255, 255, 255, 0.08);
+        }
+        
+        .balance-display {
+            font-size: 48px;
+            font-weight: 700;
+            background: linear-gradient(135deg, #f5af19 0%, #f12711 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+    </style>
+    <!-- Core libraries -->
+    <script src="https://unpkg.com/@solana/web3.js@1.95.3/lib/index.iife.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+    <!-- Used ONLY for read-only "what would my Ethereum address be" preview during
+         import (see previewImportAddresses). This wallet does not send/receive/hold
+         Ethereum assets — verified against ethers 6.17.0's published BIP39 test vector
+         before shipping (HDNodeWallet.fromPhrase(mnemonic, '', path)). -->
+    <script src="https://cdn.jsdelivr.net/npm/ethers@6.17.0/dist/ethers.umd.min.js"></script>
+</head>
+<body>
+    <div id="demoBanner" style="background: linear-gradient(90deg,#eb3349,#f45c43); color:white; padding:10px 16px; text-align:center; font-size:13px; font-weight:600;">
+        <i class="fas fa-triangle-exclamation mr-2"></i>
+        Local-first wallet. Keys stay on this device and are encrypted at rest. Back up your mnemonic offline.
+    </div>
+
+    <!-- ============================================================
+         Security Overlays (Setup / Unlock) — inserted by security patch
+         ============================================================ -->
+    <div id="setupScreen" class="modal hidden" style="z-index:10000;">
+        <div class="modal-content" style="max-width:440px;">
+            <div class="text-center mb-6">
+                <div class="w-16 h-16 mx-auto rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center mb-3">
+                    <i class="fas fa-shield-halved text-2xl"></i>
+                </div>
+                <h2 class="text-2xl font-bold">Secure Your Wallet</h2>
+                <p class="text-sm text-slate-400 mt-2">Set a password to encrypt your keys. This password is required every time you open the wallet.</p>
+            </div>
+            <label class="text-xs text-slate-400">Password (min 8 chars)</label>
+            <input type="password" id="setupPassword" class="input-field w-full mb-3 mt-1" placeholder="Strong password" autocomplete="new-password">
+            <label class="text-xs text-slate-400">Confirm Password</label>
+            <input type="password" id="setupPasswordConfirm" class="input-field w-full mb-4 mt-1" placeholder="Repeat password" autocomplete="new-password">
+            <div id="setupError" class="text-red-400 text-sm mb-3 hidden"></div>
+            <button id="setupBtn" class="btn-gold w-full py-3">
+                <i class="fas fa-lock mr-2"></i>Encrypt &amp; Continue
+            </button>
+            <p class="text-xs text-slate-500 mt-4 text-center">Your password never leaves this device. If you forget it, your wallet cannot be recovered without the mnemonic phrase.</p>
+        </div>
+    </div>
+
+    <div id="unlockScreen" class="modal hidden" style="z-index:10000;">
+        <div class="modal-content" style="max-width:440px;">
+            <div class="text-center mb-6">
+                <div class="w-16 h-16 mx-auto rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center mb-3">
+                    <i class="fas fa-lock text-2xl"></i>
+                </div>
+                <h2 class="text-2xl font-bold">Unlock Wallet</h2>
+                <p class="text-sm text-slate-400 mt-2">Enter your password to decrypt your wallet.</p>
+            </div>
+            <input type="password" id="unlockPassword" class="input-field w-full mb-3" placeholder="Password" autocomplete="current-password">
+            <div id="unlockError" class="text-red-400 text-sm mb-3 hidden"></div>
+            <button id="unlockBtn" class="btn-gold w-full py-3 mb-3">
+                <i class="fas fa-unlock mr-2"></i>Unlock
+            </button>
+            <button id="biometricUnlockBtn" class="btn-outline w-full py-3 hidden">
+                <i class="fas fa-fingerprint mr-2"></i>Use Biometrics
+            </button>
+            <button id="resetWalletBtn" class="text-xs text-slate-500 hover:text-red-400 mt-4 w-full text-center">
+                Forgot password? Erase encrypted data
+            </button>
+        </div>
+    </div>
+
+    <div id="reauthModal" class="modal hidden" style="z-index:10001;">
+        <div class="modal-content" style="max-width:400px;">
+            <h2 class="text-xl font-bold mb-3"><i class="fas fa-key mr-2 text-yellow-400"></i>Confirm Password</h2>
+            <p class="text-sm text-slate-400 mb-4" id="reauthMessage">Re-enter your password to continue.</p>
+            <input type="password" id="reauthPassword" class="input-field w-full mb-3" placeholder="Password">
+            <div id="reauthError" class="text-red-400 text-sm mb-3 hidden"></div>
+            <div class="flex gap-3">
+                <button class="btn-outline flex-1 py-3" id="reauthCancel">Cancel</button>
+                <button class="btn-gold flex-1 py-3" id="reauthOk">Confirm</button>
+            </div>
+        </div>
+    </div>
+    <div class="min-h-screen p-4 md:p-8">
+        <div id="networkBanner" class="hidden text-center text-sm font-medium p-3 mb-4 rounded-xl" style="background:linear-gradient(90deg,#b45309,#dc2626);color:#fff;"></div>
+        <div class="glass-card p-6 mb-6">
+            <div class="flex items-center justify-between flex-wrap gap-4">
+                <div class="flex items-center gap-3">
+                    <div class="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
+                        <i class="fas fa-wallet text-xl"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-2xl font-bold">Solana Wallet</h1>
+                        <p class="text-sm text-slate-400">SVM Wallet</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-3">
+                    <div id="networkStatus" class="network-indicator online">
+                        <i class="fas fa-circle text-xs"></i>
+                        <span>Online</span>
+                    </div>
+                    <button class="btn-outline px-4 py-2" onclick="lockWalletNow()" title="Lock wallet">
+                        <i class="fas fa-lock"></i>
+                    </button>
+                    <button class="btn-outline px-4 py-2" onclick="switchTab('settings', event)">
+                        <i class="fas fa-cog"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div id="walletSwitcherWrap" class="glass-card p-4 mb-6 hidden">
+            <div class="flex items-center gap-3">
+                <span class="text-xs text-slate-400 uppercase">Active Wallet</span>
+                <select id="walletSwitcher" class="input-field flex-1" onchange="switchToWallet(this.value)">
+                </select>
+                <button class="btn-outline px-3 py-2 text-xs" onclick="selectMostActiveWallet()" title="Select most active wallet">
+                    <i class="fas fa-bolt"></i>
+                </button>
+                <button class="btn-outline px-3 py-2 text-xs" onclick="createNewWallet()" title="Add new wallet">
+                    <i class="fas fa-plus"></i>
+                </button>
+            </div>
+        </div>
+
+        <div class="glass-card mb-6">
+            <div class="flex border-b border-slate-700/50 overflow-x-auto whitespace-nowrap">
+                <button class="tab-button active" onclick="switchTab('wallet', event)">Wallet</button>
+                <button class="tab-button" onclick="switchTab('swap', event)">Swap</button>
+                <button class="tab-button" onclick="switchTab('nfts', event)">NFTs</button>
+                <button class="tab-button" onclick="switchTab('history', event)">History</button>
+            </div>
+        </div>
+
+        <div id="wallet" class="tab-content active">
+            <div class="grid grid-cols-2 gap-3 mb-6">
+                <button class="btn-gold py-3" onclick="switchTab('send', event)">
+                    <i class="fas fa-paper-plane mr-2"></i>Send
+                </button>
+                <button class="btn-outline py-3" onclick="switchTab('receive', event)">
+                    <i class="fas fa-qrcode mr-2"></i>Receive
+                </button>
+            </div>
+
+            <div class="glass-card p-5 rounded-xl mb-6">
+                <p class="text-xs text-slate-400 uppercase mb-3">Total Balance (SOL)</p>
+                <div id="totalBalance" class="balance-display">0.00 SOL</div>
+                <p id="usdBalance" class="text-lg text-slate-400 mt-2">$0.00 USD</p>
+            </div>
+
+            <div class="glass-card p-5 rounded-xl">
+                <p class="text-xs text-slate-400 uppercase mb-3">Assets</p>
+                <div id="assetsList" class="space-y-2"></div>
+                <div id="assetsLoading" class="text-sm text-slate-400 text-center py-2">
+                    <i class="fas fa-spinner fa-spin mr-2"></i>Loading assets...
+                </div>
+                <div id="assetsEmpty" class="text-sm text-slate-400 text-center py-2 hidden">No assets found</div>
+            </div>
+        </div>
+
+        <div id="swap" class="tab-content">
+            <div class="glass-card p-6 rounded-xl">
+                <div class="flex items-start justify-between gap-3 flex-wrap mb-6">
+                    <div>
+                        <h2 class="text-xl font-bold">Jupiter Swap</h2>
+                        <p class="text-sm text-slate-400">Mainnet token swaps with quote, route preview, signing, and broadcast.</p>
+                    </div>
+                    <button class="btn-outline text-sm px-3 py-2" onclick="flipSwapTokens()">
+                        <i class="fas fa-right-left mr-2"></i>Flip
+                    </button>
+                </div>
+
+                <div id="swapNetworkNotice" class="glass-card p-3 rounded-xl text-sm text-yellow-300 mb-4 hidden"></div>
+
+                <div class="grid md:grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label class="block text-sm text-slate-400 mb-2">From</label>
+                        <select id="swapFromToken" class="input-field"></select>
+                    </div>
+                    <div>
+                        <label class="block text-sm text-slate-400 mb-2">To</label>
+                        <select id="swapToToken" class="input-field"></select>
+                    </div>
+                </div>
+
+                <div class="grid md:grid-cols-[2fr_1fr_1fr] gap-4 mb-4">
+                    <div>
+                        <label class="block text-sm text-slate-400 mb-2">Amount</label>
+                        <input type="number" id="swapAmount" class="input-field" placeholder="0.00" step="0.000001">
+                    </div>
+                    <div>
+                        <label class="block text-sm text-slate-400 mb-2">Slippage (bps)</label>
+                        <input type="number" id="swapSlippage" class="input-field" value="50" min="1" max="500">
+                    </div>
+                    <div class="flex items-end">
+                        <button class="btn-outline w-full py-3" onclick="setSwapMaxAmount()">
+                            <i class="fas fa-coins mr-2"></i>Use Max
+                        </button>
+                    </div>
+                </div>
+
+                <div class="flex gap-3 flex-wrap mb-4">
+                    <button class="btn-outline px-4 py-3" onclick="selectMostActiveWallet()">
+                        <i class="fas fa-bolt mr-2"></i>Use Most Active Wallet
+                    </button>
+                    <button class="btn-gold px-5 py-3" onclick="fetchSwapQuote()">
+                        <i class="fas fa-arrows-rotate mr-2"></i>Get Quote
+                    </button>
+                    <button id="swapExecuteBtn" class="btn-gold px-5 py-3" onclick="executeSwap()">
+                        <i class="fas fa-rocket mr-2"></i>Swap Now
+                    </button>
+                </div>
+
+                <div id="swapQuoteCard" class="glass-card p-4 rounded-xl hidden">
+                    <div class="flex items-center justify-between gap-3 flex-wrap mb-3">
+                        <p class="font-semibold">Quote Summary</p>
+                        <p id="swapRouteLabel" class="text-xs text-slate-400"></p>
+                    </div>
+                    <div class="grid md:grid-cols-2 gap-3 text-sm">
+                        <div class="glass-card p-3 rounded-xl">
+                            <p class="text-slate-400 text-xs mb-1">Estimated Receive</p>
+                            <p id="swapQuoteOut" class="font-semibold">—</p>
+                        </div>
+                        <div class="glass-card p-3 rounded-xl">
+                            <p class="text-slate-400 text-xs mb-1">Price Impact</p>
+                            <p id="swapPriceImpact" class="font-semibold">—</p>
+                        </div>
+                        <div class="glass-card p-3 rounded-xl">
+                            <p class="text-slate-400 text-xs mb-1">Minimum Receive</p>
+                            <p id="swapMinReceive" class="font-semibold">—</p>
+                        </div>
+                        <div class="glass-card p-3 rounded-xl">
+                            <p class="text-slate-400 text-xs mb-1">Latency</p>
+                            <p id="swapTimeTaken" class="font-semibold">—</p>
+                        </div>
+                    </div>
+                    <div id="swapQuoteMeta" class="text-xs text-slate-400 mt-3"></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="send" class="tab-content">
+            <div class="glass-card p-6 rounded-xl">
+                <h2 class="text-xl font-bold mb-6">Send SOL</h2>
+                
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm text-slate-400 mb-2">Recipient Address</label>
+                        <input type="text" id="sendAddress" class="input-field" placeholder="Enter Solana address">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm text-slate-400 mb-2">Amount (SOL)</label>
+                        <input type="number" id="sendAmount" class="input-field" placeholder="0.00" step="0.000001">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm text-slate-400 mb-2">Priority Fee (lamports)</label>
+                        <input type="number" id="sendFee" class="input-field" placeholder="5000" value="5000">
+                    </div>
+                    
+                    <button class="btn-gold w-full py-4" onclick="sendSol()">
+                        <i class="fas fa-paper-plane mr-2"></i>Send SOL
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div id="receive" class="tab-content">
+            <div class="glass-card p-6 rounded-xl">
+                <h2 class="text-xl font-bold mb-6">Receive SOL</h2>
+                
+                <div class="text-center mb-6">
+                    <div id="qrCode" class="qr-code mb-4">
+                        <i class="fas fa-qrcode text-6xl text-slate-600"></i>
+                    </div>
+                    <p class="text-sm text-slate-400 mb-2">Your Solana Address</p>
+                    <p id="receiveAddress" class="wallet-address text-sm text-slate-300 break-all"></p>
+                    <button class="btn-outline mt-4" onclick="copyAddress()">
+                        <i class="fas fa-copy mr-2"></i>Copy Address
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div id="nfts" class="tab-content">
+            <div class="glass-card p-6 rounded-xl">
+                <h2 class="text-xl font-bold mb-6">Your NFTs</h2>
+                <div id="nftsList" class="grid grid-cols-2 md:grid-cols-3 gap-4">
+                    <div class="text-center py-8 text-slate-400">
+                        <i class="fas fa-image text-4xl mb-3"></i>
+                        <p>No NFTs found</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="history" class="tab-content">
+            <div class="glass-card p-6 rounded-xl">
+                <div class="flex items-center justify-between mb-6 flex-wrap gap-2">
+                    <h2 class="text-xl font-bold">Transaction History</h2>
+                    <button class="btn-outline text-sm px-3 py-2" onclick="exportHistoryCsv()" title="Export as CSV">
+                        <i class="fas fa-file-csv mr-2"></i>Export CSV
+                    </button>
+                </div>
+                <div id="historyList" class="space-y-2"></div>
+                <div id="historyEmpty" class="text-center py-8 text-slate-400 hidden">
+                    <i class="fas fa-history text-4xl mb-3"></i>
+                    <p>No transactions yet</p>
+                </div>
+            </div>
+
+            <div class="glass-card p-6 rounded-xl mt-4">
+                <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
+                    <h2 class="text-lg font-bold"><i class="fas fa-address-book mr-2 text-purple-400"></i>Address Book</h2>
+                    <button class="btn-outline text-sm px-3 py-2" onclick="addToAddressBook()">
+                        <i class="fas fa-plus mr-2"></i>Add
+                    </button>
+                </div>
+                <div id="addressBookList" class="space-y-2"></div>
+            </div>
+        </div>
+
+        <div id="settings" class="tab-content">
+            <div class="glass-card p-6 rounded-xl">
+                <h2 class="text-xl font-bold mb-6">Settings</h2>
+                
+                <div class="space-y-4">
+                    <div class="flex items-center justify-between py-3 border-b border-slate-700/50">
+                        <div>
+                            <p class="font-medium">Network</p>
+                            <p class="text-sm text-slate-400">Mainnet</p>
+                        </div>
+                        <select class="input-field w-32" onchange="changeNetwork(this.value)">
+                            <option value="mainnet">Mainnet</option>
+                            <option value="devnet">Devnet</option>
+                            <option value="testnet">Testnet</option>
+                        </select>
+                    </div>
+                    
+                    <div class="flex items-center justify-between py-3 border-b border-slate-700/50">
+                        <div>
+                            <p class="font-medium">Auto-refresh</p>
+                            <p class="text-sm text-slate-400">Refresh balance every 30s</p>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="autoRefresh" class="sr-only peer" checked>
+                            <div class="w-11 h-6 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                        </label>
+                    </div>
+                    
+                    <div class="flex items-center justify-between py-3 border-b border-slate-700/50">
+                        <div>
+                            <p class="font-medium">Show USD Values</p>
+                            <p class="text-sm text-slate-400">Display balances in USD</p>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="showUsd" class="sr-only peer" checked>
+                            <div class="w-11 h-6 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                        </label>
+                    </div>
+
+                    <div class="flex items-center justify-between py-3 border-b border-slate-700/50">
+                        <div>
+                            <p class="font-medium"><i class="fas fa-eye-slash mr-2 text-purple-400"></i>Hide Zero Balances</p>
+                            <p class="text-sm text-slate-400">Hide assets with zero balance</p>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="hideZeroBalances" class="sr-only peer">
+                            <div class="w-11 h-6 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                        </label>
+                    </div>
+
+                    <div class="flex items-center justify-between py-3 border-b border-slate-700/50 flex-wrap gap-2">
+                        <div class="min-w-0">
+                            <p class="font-medium"><i class="fas fa-server mr-2 text-purple-400"></i>Custom RPC Endpoint</p>
+                            <p class="text-sm text-slate-400">Comma or newline separated endpoints. First healthy RPC is used.</p>
+                            <p class="text-xs text-slate-500 mt-1">
+                                The built-in public endpoints are free but rate-limited and can be blocked without notice —
+                                that's normal, documented behavior for public Solana RPC, not a bug in this app.
+                                For reliable access, get a free API key (no credit card) from a provider like
+                                <a href="https://www.helius.dev" target="_blank" rel="noopener" class="text-purple-300 underline">Helius</a>
+                                or <a href="https://www.alchemy.com" target="_blank" rel="noopener" class="text-purple-300 underline">Alchemy</a>
+                                and paste the resulting URL here, or use the quick setup below.
+                            </p>
+                        </div>
+                        <input type="text" id="customRpc" class="input-field flex-1 min-w-[220px]" placeholder="https://rpc-1.example.com, https://rpc-2.example.com" />
+                        <button type="button" class="btn-outline text-xs px-3 py-2 whitespace-nowrap" onclick="quickSetupHelius()">
+                            <i class="fas fa-bolt mr-1 text-purple-400"></i>Quick setup: Helius
+                        </button>
+                    </div>
+                    
+                    <div class="flex items-center justify-between py-3 border-b border-slate-700/50">
+                        <div>
+                            <p class="font-medium"><i class="fas fa-fingerprint mr-2 text-purple-400"></i>Biometric Unlock</p>
+                            <p class="text-sm text-slate-400">Use device biometrics (WebAuthn PRF)</p>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="biometricToggle" class="sr-only peer">
+                            <div class="w-11 h-6 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                        </label>
+                    </div>
+
+                    <div class="flex items-center justify-between py-3 border-b border-slate-700/50">
+                        <div>
+                            <p class="font-medium"><i class="fas fa-clock mr-2 text-purple-400"></i>Auto-Lock</p>
+                            <p class="text-sm text-slate-400">Lock wallet after inactivity</p>
+                        </div>
+                        <select id="autoLockSelect" class="input-field w-32">
+                            <option value="1">1 minute</option>
+                            <option value="5" selected>5 minutes</option>
+                            <option value="15">15 minutes</option>
+                            <option value="30">30 minutes</option>
+                            <option value="60">1 hour</option>
+                        </select>
+                    </div>
+
+                    <button class="btn-outline w-full py-3 mt-4" onclick="lockWalletNow()">
+                        <i class="fas fa-lock mr-2"></i>Lock Wallet Now
+                    </button>
+
+                    <button class="btn-outline w-full py-3" onclick="changePassword()">
+                        <i class="fas fa-key mr-2"></i>Change Password
+                    </button>
+
+                    <button class="btn-outline w-full py-3 mt-4" onclick="exportWallet()">
+                        <i class="fas fa-download mr-2"></i>Export Wallet
+                    </button>
+                    
+                    <button class="btn-outline w-full py-3" onclick="importWallet()">
+                        <i class="fas fa-upload mr-2"></i>Import Wallet
+                    </button>
+                    
+                    <button class="btn-outline w-full py-3 text-red-400" onclick="deleteWallet()">
+                        <i class="fas fa-trash mr-2"></i>Delete Wallet
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="createWalletModal" class="modal hidden">
+        <div class="modal-content">
+            <h2 class="text-2xl font-bold mb-4">Create New Wallet</h2>
+            <p class="text-slate-400 mb-6">Your mnemonic phrase will be shown once. Store it securely!</p>
+            <div id="mnemonicDisplay" class="glass-card p-4 rounded-xl mb-6 text-center">
+                <p class="text-sm text-slate-400 mb-2">Your 12-word mnemonic:</p>
+                <p id="mnemonicWords" class="font-mono text-sm break-all" style="filter:blur(6px); cursor:pointer; user-select:all;" onclick="this.style.filter='none'" title="Click to reveal"></p>
+                <p class="text-xs text-slate-500 mt-2"><i class="fas fa-eye mr-1"></i>Click to reveal. Never share this phrase.</p>
+            </div>
+            <div class="flex gap-3">
+                <button class="btn-outline flex-1 py-3" onclick="closeCreateWalletModal()">Cancel</button>
+                <button class="btn-gold flex-1 py-3" onclick="confirmCreateWallet()">I've saved it</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="importWalletModal" class="modal hidden">
+        <div class="modal-content">
+            <h2 class="text-2xl font-bold mb-4">Import Wallet</h2>
+            <div class="flex gap-2 mb-4">
+                <button type="button" id="importModeMnemonicBtn" class="btn-outline flex-1 py-2 text-sm" onclick="setImportMode('mnemonic')">
+                    <i class="fas fa-key mr-1"></i>Mnemonic
+                </button>
+                <button type="button" id="importModePrivateKeyBtn" class="btn-outline flex-1 py-2 text-sm" onclick="setImportMode('privateKey')">
+                    <i class="fas fa-lock mr-1"></i>Private Key
+                </button>
+            </div>
+            <div class="space-y-4">
+                <div id="importMnemonicFields" class="space-y-4">
+                    <div>
+                        <label class="block text-sm text-slate-400 mb-2">Mnemonic Phrase</label>
+                        <textarea id="importMnemonic" class="input-field" rows="4" placeholder="Enter your 12-word mnemonic"></textarea>
+                    </div>
+                    <div>
+                        <div class="flex items-center justify-between mb-2">
+                            <label class="block text-sm text-slate-400">Account Index</label>
+                            <button type="button" class="text-xs text-purple-300 hover:text-purple-200 underline" onclick="previewImportAddresses()">
+                                <i class="fas fa-magnifying-glass mr-1"></i>Preview addresses
+                            </button>
+                        </div>
+                        <input type="number" id="importAccountIndex" class="input-field" min="0" step="1" value="0" />
+                        <p class="text-xs text-slate-500 mt-1">
+                            One mnemonic can hold multiple wallets (Phantom/Solflare/Backpack call these "accounts").
+                            Index 0 is the default. If you don't see the address you expect, click "Preview addresses" to see and pick the right one.
+                        </p>
+                    </div>
+                    <div>
+                        <label class="block text-sm text-slate-400 mb-2">Preview chain</label>
+                        <select id="importPreviewChain" class="input-field" onchange="onImportChainChange()">
+                            <option value="solana">Solana (importable here)</option>
+                            <option value="ethereum">Ethereum / EVM (preview only)</option>
+                        </select>
+                        <p id="importChainNote" class="text-xs text-slate-500 mt-1 hidden">
+                            <i class="fas fa-circle-info mr-1"></i>
+                            This wallet only holds Solana assets. If your mnemonic turns out to be an Ethereum/EVM seed,
+                            this shows the address so you can confirm it and go use it in an EVM wallet (MetaMask, Rabby, etc.) —
+                            importing it here would not give you access to those funds.
+                        </p>
+                    </div>
+                    <div id="importAddressPreview" class="hidden space-y-1 max-h-48 overflow-y-auto"></div>
+                </div>
+                <div id="importPrivateKeyFields" class="space-y-4 hidden">
+                    <div>
+                        <label class="block text-sm text-slate-400 mb-2">Private Key</label>
+                        <textarea id="importPrivateKey" class="input-field" rows="3" placeholder="Base58 string (e.g. from Phantom's 'Export Private Key') or a JSON array like [12,34,...]"></textarea>
+                        <p class="text-xs text-slate-500 mt-1">
+                            <i class="fas fa-circle-info mr-1"></i>
+                            A raw private key has no recovery phrase backing it up — if you lose it, this wallet
+                            can't help you recover it. Only paste keys on a device you trust.
+                        </p>
+                    </div>
+                </div>
+                <button id="importConfirmBtn" class="btn-gold w-full py-3" onclick="confirmImportWallet()">Import Wallet</button>
+            </div>
+            <button class="btn-outline w-full py-3 mt-4" onclick="closeImportWalletModal()">Cancel</button>
+        </div>
+    </div>
+
+    <div id="confirmModal" class="modal hidden">
+        <div class="modal-content">
+            <h2 class="text-2xl font-bold mb-4">Confirm Transaction</h2>
+            <div id="confirmDetails" class="space-y-3 mb-6"></div>
+            <div class="flex gap-3">
+                <button class="btn-outline flex-1 py-3" onclick="closeConfirmModal()">Cancel</button>
+                <button class="btn-gold flex-1 py-3" onclick="confirmTransaction()">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toastContainer"></div>
+
+
+    <script>
+    // ============================================================================
+    // Solana Wallet — self-contained rewrite
+    // ----------------------------------------------------------------------------
+    // Dependencies loaded via <script> tags in <head>:
+    //   • @solana/web3.js (IIFE build) → window.solanaWeb3
+    //   • qrcodejs                     → window.QRCode
+    // Everything else — BIP39 encode/decode/validate, PBKDF2 seed derivation, and
+    // SLIP-0010 Ed25519 HD derivation at m/44'/501'/0'/0' — is implemented inline
+    // using the browser's built-in WebCrypto API (SubtleCrypto).
+    //
+    // localStorage is used to persist wallets for the demo; the red banner at the
+    // top of the page warns users not to hold real funds here.
+    // ============================================================================
+
+    // -- BIP39 English wordlist (2048 words, embedded) --------------------------
+    const BIP39_WORDLIST = ["abandon","ability","able","about","above","absent","absorb","abstract","absurd","abuse","access","accident","account","accuse","achieve","acid","acoustic","acquire","across","act","action","actor","actress","actual","adapt","add","addict","address","adjust","admit","adult","advance","advice","aerobic","affair","afford","afraid","again","age","agent","agree","ahead","aim","air","airport","aisle","alarm","album","alcohol","alert","alien","all","alley","allow","almost","alone","alpha","already","also","alter","always","amateur","amazing","among","amount","amused","analyst","anchor","ancient","anger","angle","angry","animal","ankle","announce","annual","another","answer","antenna","antique","anxiety","any","apart","apology","appear","apple","approve","april","arch","arctic","area","arena","argue","arm","armed","armor","army","around","arrange","arrest","arrive","arrow","art","artefact","artist","artwork","ask","aspect","assault","asset","assist","assume","asthma","athlete","atom","attack","attend","attitude","attract","auction","audit","august","aunt","author","auto","autumn","average","avocado","avoid","awake","aware","away","awesome","awful","awkward","axis","baby","bachelor","bacon","badge","bag","balance","balcony","ball","bamboo","banana","banner","bar","barely","bargain","barrel","base","basic","basket","battle","beach","bean","beauty","because","become","beef","before","begin","behave","behind","believe","below","belt","bench","benefit","best","betray","better","between","beyond","bicycle","bid","bike","bind","biology","bird","birth","bitter","black","blade","blame","blanket","blast","bleak","bless","blind","blood","blossom","blouse","blue","blur","blush","board","boat","body","boil","bomb","bone","bonus","book","boost","border","boring","borrow","boss","bottom","bounce","box","boy","bracket","brain","brand","brass","brave","bread","breeze","brick","bridge","brief","bright","bring","brisk","broccoli","broken","bronze","broom","brother","brown","brush","bubble","buddy","budget","buffalo","build","bulb","bulk","bullet","bundle","bunker","burden","burger","burst","bus","business","busy","butter","buyer","buzz","cabbage","cabin","cable","cactus","cage","cake","call","calm","camera","camp","can","canal","cancel","candy","cannon","canoe","canvas","canyon","capable","capital","captain","car","carbon","card","cargo","carpet","carry","cart","case","cash","casino","castle","casual","cat","catalog","catch","category","cattle","caught","cause","caution","cave","ceiling","celery","cement","census","century","cereal","certain","chair","chalk","champion","change","chaos","chapter","charge","chase","chat","cheap","check","cheese","chef","cherry","chest","chicken","chief","child","chimney","choice","choose","chronic","chuckle","chunk","churn","cigar","cinnamon","circle","citizen","city","civil","claim","clap","clarify","claw","clay","clean","clerk","clever","click","client","cliff","climb","clinic","clip","clock","clog","close","cloth","cloud","clown","club","clump","cluster","clutch","coach","coast","coconut","code","coffee","coil","coin","collect","color","column","combine","come","comfort","comic","common","company","concert","conduct","confirm","congress","connect","consider","control","convince","cook","cool","copper","copy","coral","core","corn","correct","cost","cotton","couch","country","couple","course","cousin","cover","coyote","crack","cradle","craft","cram","crane","crash","crater","crawl","crazy","cream","credit","creek","crew","cricket","crime","crisp","critic","crop","cross","crouch","crowd","crucial","cruel","cruise","crumble","crunch","crush","cry","crystal","cube","culture","cup","cupboard","curious","current","curtain","curve","cushion","custom","cute","cycle","dad","damage","damp","dance","danger","daring","dash","daughter","dawn","day","deal","debate","debris","decade","december","decide","decline","decorate","decrease","deer","defense","define","defy","degree","delay","deliver","demand","demise","denial","dentist","deny","depart","depend","deposit","depth","deputy","derive","describe","desert","design","desk","despair","destroy","detail","detect","develop","device","devote","diagram","dial","diamond","diary","dice","diesel","diet","differ","digital","dignity","dilemma","dinner","dinosaur","direct","dirt","disagree","discover","disease","dish","dismiss","disorder","display","distance","divert","divide","divorce","dizzy","doctor","document","dog","doll","dolphin","domain","donate","donkey","donor","door","dose","double","dove","draft","dragon","drama","drastic","draw","dream","dress","drift","drill","drink","drip","drive","drop","drum","dry","duck","dumb","dune","during","dust","dutch","duty","dwarf","dynamic","eager","eagle","early","earn","earth","easily","east","easy","echo","ecology","economy","edge","edit","educate","effort","egg","eight","either","elbow","elder","electric","elegant","element","elephant","elevator","elite","else","embark","embody","embrace","emerge","emotion","employ","empower","empty","enable","enact","end","endless","endorse","enemy","energy","enforce","engage","engine","enhance","enjoy","enlist","enough","enrich","enroll","ensure","enter","entire","entry","envelope","episode","equal","equip","era","erase","erode","erosion","error","erupt","escape","essay","essence","estate","eternal","ethics","evidence","evil","evoke","evolve","exact","example","excess","exchange","excite","exclude","excuse","execute","exercise","exhaust","exhibit","exile","exist","exit","exotic","expand","expect","expire","explain","expose","express","extend","extra","eye","eyebrow","fabric","face","faculty","fade","faint","faith","fall","false","fame","family","famous","fan","fancy","fantasy","farm","fashion","fat","fatal","father","fatigue","fault","favorite","feature","february","federal","fee","feed","feel","female","fence","festival","fetch","fever","few","fiber","fiction","field","figure","file","film","filter","final","find","fine","finger","finish","fire","firm","first","fiscal","fish","fit","fitness","fix","flag","flame","flash","flat","flavor","flee","flight","flip","float","flock","floor","flower","fluid","flush","fly","foam","focus","fog","foil","fold","follow","food","foot","force","forest","forget","fork","fortune","forum","forward","fossil","foster","found","fox","fragile","frame","frequent","fresh","friend","fringe","frog","front","frost","frown","frozen","fruit","fuel","fun","funny","furnace","fury","future","gadget","gain","galaxy","gallery","game","gap","garage","garbage","garden","garlic","garment","gas","gasp","gate","gather","gauge","gaze","general","genius","genre","gentle","genuine","gesture","ghost","giant","gift","giggle","ginger","giraffe","girl","give","glad","glance","glare","glass","glide","glimpse","globe","gloom","glory","glove","glow","glue","goat","goddess","gold","good","goose","gorilla","gospel","gossip","govern","gown","grab","grace","grain","grant","grape","grass","gravity","great","green","grid","grief","grit","grocery","group","grow","grunt","guard","guess","guide","guilt","guitar","gun","gym","habit","hair","half","hammer","hamster","hand","happy","harbor","hard","harsh","harvest","hat","have","hawk","hazard","head","health","heart","heavy","hedgehog","height","hello","helmet","help","hen","hero","hidden","high","hill","hint","hip","hire","history","hobby","hockey","hold","hole","holiday","hollow","home","honey","hood","hope","horn","horror","horse","hospital","host","hotel","hour","hover","hub","huge","human","humble","humor","hundred","hungry","hunt","hurdle","hurry","hurt","husband","hybrid","ice","icon","idea","identify","idle","ignore","ill","illegal","illness","image","imitate","immense","immune","impact","impose","improve","impulse","inch","include","income","increase","index","indicate","indoor","industry","infant","inflict","inform","inhale","inherit","initial","inject","injury","inmate","inner","innocent","input","inquiry","insane","insect","inside","inspire","install","intact","interest","into","invest","invite","involve","iron","island","isolate","issue","item","ivory","jacket","jaguar","jar","jazz","jealous","jeans","jelly","jewel","job","join","joke","journey","joy","judge","juice","jump","jungle","junior","junk","just","kangaroo","keen","keep","ketchup","key","kick","kid","kidney","kind","kingdom","kiss","kit","kitchen","kite","kitten","kiwi","knee","knife","knock","know","lab","label","labor","ladder","lady","lake","lamp","language","laptop","large","later","latin","laugh","laundry","lava","law","lawn","lawsuit","layer","lazy","leader","leaf","learn","leave","lecture","left","leg","legal","legend","leisure","lemon","lend","length","lens","leopard","lesson","letter","level","liar","liberty","library","license","life","lift","light","like","limb","limit","link","lion","liquid","list","little","live","lizard","load","loan","lobster","local","lock","logic","lonely","long","loop","lottery","loud","lounge","love","loyal","lucky","luggage","lumber","lunar","lunch","luxury","lyrics","machine","mad","magic","magnet","maid","mail","main","major","make","mammal","man","manage","mandate","mango","mansion","manual","maple","marble","march","margin","marine","market","marriage","mask","mass","master","match","material","math","matrix","matter","maximum","maze","meadow","mean","measure","meat","mechanic","medal","media","melody","melt","member","memory","mention","menu","mercy","merge","merit","merry","mesh","message","metal","method","middle","midnight","milk","million","mimic","mind","minimum","minor","minute","miracle","mirror","misery","miss","mistake","mix","mixed","mixture","mobile","model","modify","mom","moment","monitor","monkey","monster","month","moon","moral","more","morning","mosquito","mother","motion","motor","mountain","mouse","move","movie","much","muffin","mule","multiply","muscle","museum","mushroom","music","must","mutual","myself","mystery","myth","naive","name","napkin","narrow","nasty","nation","nature","near","neck","need","negative","neglect","neither","nephew","nerve","nest","net","network","neutral","never","news","next","nice","night","noble","noise","nominee","noodle","normal","north","nose","notable","note","nothing","notice","novel","now","nuclear","number","nurse","nut","oak","obey","object","oblige","obscure","observe","obtain","obvious","occur","ocean","october","odor","off","offer","office","often","oil","okay","old","olive","olympic","omit","once","one","onion","online","only","open","opera","opinion","oppose","option","orange","orbit","orchard","order","ordinary","organ","orient","original","orphan","ostrich","other","outdoor","outer","output","outside","oval","oven","over","own","owner","oxygen","oyster","ozone","pact","paddle","page","pair","palace","palm","panda","panel","panic","panther","paper","parade","parent","park","parrot","party","pass","patch","path","patient","patrol","pattern","pause","pave","payment","peace","peanut","pear","peasant","pelican","pen","penalty","pencil","people","pepper","perfect","permit","person","pet","phone","photo","phrase","physical","piano","picnic","picture","piece","pig","pigeon","pill","pilot","pink","pioneer","pipe","pistol","pitch","pizza","place","planet","plastic","plate","play","please","pledge","pluck","plug","plunge","poem","poet","point","polar","pole","police","pond","pony","pool","popular","portion","position","possible","post","potato","pottery","poverty","powder","power","practice","praise","predict","prefer","prepare","present","pretty","prevent","price","pride","primary","print","priority","prison","private","prize","problem","process","produce","profit","program","project","promote","proof","property","prosper","protect","proud","provide","public","pudding","pull","pulp","pulse","pumpkin","punch","pupil","puppy","purchase","purity","purpose","purse","push","put","puzzle","pyramid","quality","quantum","quarter","question","quick","quit","quiz","quote","rabbit","raccoon","race","rack","radar","radio","rail","rain","raise","rally","ramp","ranch","random","range","rapid","rare","rate","rather","raven","raw","razor","ready","real","reason","rebel","rebuild","recall","receive","recipe","record","recycle","reduce","reflect","reform","refuse","region","regret","regular","reject","relax","release","relief","rely","remain","remember","remind","remove","render","renew","rent","reopen","repair","repeat","replace","report","require","rescue","resemble","resist","resource","response","result","retire","retreat","return","reunion","reveal","review","reward","rhythm","rib","ribbon","rice","rich","ride","ridge","rifle","right","rigid","ring","riot","ripple","risk","ritual","rival","river","road","roast","robot","robust","rocket","romance","roof","rookie","room","rose","rotate","rough","round","route","royal","rubber","rude","rug","rule","run","runway","rural","sad","saddle","sadness","safe","sail","salad","salmon","salon","salt","salute","same","sample","sand","satisfy","satoshi","sauce","sausage","save","say","scale","scan","scare","scatter","scene","scheme","school","science","scissors","scorpion","scout","scrap","screen","script","scrub","sea","search","season","seat","second","secret","section","security","seed","seek","segment","select","sell","seminar","senior","sense","sentence","series","service","session","settle","setup","seven","shadow","shaft","shallow","share","shed","shell","sheriff","shield","shift","shine","ship","shiver","shock","shoe","shoot","shop","short","shoulder","shove","shrimp","shrug","shuffle","shy","sibling","sick","side","siege","sight","sign","silent","silk","silly","silver","similar","simple","since","sing","siren","sister","situate","six","size","skate","sketch","ski","skill","skin","skirt","skull","slab","slam","sleep","slender","slice","slide","slight","slim","slogan","slot","slow","slush","small","smart","smile","smoke","smooth","snack","snake","snap","sniff","snow","soap","soccer","social","sock","soda","soft","solar","soldier","solid","solution","solve","someone","song","soon","sorry","sort","soul","sound","soup","source","south","space","spare","spatial","spawn","speak","special","speed","spell","spend","sphere","spice","spider","spike","spin","spirit","split","spoil","sponsor","spoon","sport","spot","spray","spread","spring","spy","square","squeeze","squirrel","stable","stadium","staff","stage","stairs","stamp","stand","start","state","stay","steak","steel","stem","step","stereo","stick","still","sting","stock","stomach","stone","stool","story","stove","strategy","street","strike","strong","struggle","student","stuff","stumble","style","subject","submit","subway","success","such","sudden","suffer","sugar","suggest","suit","summer","sun","sunny","sunset","super","supply","supreme","sure","surface","surge","surprise","surround","survey","suspect","sustain","swallow","swamp","swap","swarm","swear","sweet","swift","swim","swing","switch","sword","symbol","symptom","syrup","system","table","tackle","tag","tail","talent","talk","tank","tape","target","task","taste","tattoo","taxi","teach","team","tell","ten","tenant","tennis","tent","term","test","text","thank","that","theme","then","theory","there","they","thing","this","thought","three","thrive","throw","thumb","thunder","ticket","tide","tiger","tilt","timber","time","tiny","tip","tired","tissue","title","toast","tobacco","today","toddler","toe","together","toilet","token","tomato","tomorrow","tone","tongue","tonight","tool","tooth","top","topic","topple","torch","tornado","tortoise","toss","total","tourist","toward","tower","town","toy","track","trade","traffic","tragic","train","transfer","trap","trash","travel","tray","treat","tree","trend","trial","tribe","trick","trigger","trim","trip","trophy","trouble","truck","true","truly","trumpet","trust","truth","try","tube","tuition","tumble","tuna","tunnel","turkey","turn","turtle","twelve","twenty","twice","twin","twist","two","type","typical","ugly","umbrella","unable","unaware","uncle","uncover","under","undo","unfair","unfold","unhappy","uniform","unique","unit","universe","unknown","unlock","until","unusual","unveil","update","upgrade","uphold","upon","upper","upset","urban","urge","usage","use","used","useful","useless","usual","utility","vacant","vacuum","vague","valid","valley","valve","van","vanish","vapor","various","vast","vault","vehicle","velvet","vendor","venture","venue","verb","verify","version","very","vessel","veteran","viable","vibrant","vicious","victory","video","view","village","vintage","violin","virtual","virus","visa","visit","visual","vital","vivid","vocal","voice","void","volcano","volume","vote","voyage","wage","wagon","wait","walk","wall","walnut","want","warfare","warm","warrior","wash","wasp","waste","water","wave","way","wealth","weapon","wear","weasel","weather","web","wedding","weekend","weird","welcome","west","wet","whale","what","wheat","wheel","when","where","whip","whisper","wide","width","wife","wild","will","win","window","wine","wing","wink","winner","winter","wire","wisdom","wise","wish","witness","wolf","woman","wonder","wood","wool","word","work","world","worry","worth","wrap","wreck","wrestle","wrist","write","wrong","yard","year","yellow","you","young","youth","zebra","zero","zone","zoo"];
+
+    // -- Constants --------------------------------------------------------------
+    // Default public RPC endpoints. Sourced from Solana's own current docs
+    // (solana.com/docs/references/clusters) rather than memory, since this list
+    // goes stale — see reasoning below.
+    //
+    // - Solana's official docs now list `api.mainnet.solana.com` (no "-beta") as
+    //   THE current Mainnet endpoint. `api.mainnet-beta.solana.com` is kept as a
+    //   second fallback since a lot of tooling/aliases still point at it, but the
+    //   non-"-beta" domain is primary going forward.
+    // - Ankr's and dRPC's anonymous free tiers now explicitly refuse Solana
+    //   ("API key is not allowed to access blockchain" / "chain is not available
+    //   on freetier") — both were removed rather than left in as guaranteed-fail
+    //   fallback entries that burn a retry slot for nothing.
+    // - Public endpoints are rate-limited by design (Solana's own docs: 100 req/10s
+    //   per IP, 40 req/10s per method) and can be blocked "without prior notice."
+    //   A 403 from these is often not a bug to fix in this app — it's the
+    //   documented behavior of free public infra. The durable fix is a free API
+    //   key from a provider (see the in-app message when all endpoints fail).
+    // Optional: your own Alchemy/Helius-backed proxy (see alchemy-proxy/ for
+    // the Cloudflare Worker that holds the real API keys server-side — never
+    // put a raw provider key directly in this file, it would be visible to
+    // anyone who views source or opens the network tab). Paste your deployed
+    // Worker's routes below to add them as automatic fallbacks; leave either
+    // blank to skip it and rely on the public endpoints only.
+    const ALCHEMY_PROXY_URL = ''; // e.g. 'https://solana-rpc-proxy.you.workers.dev/alchemy'
+    const HELIUS_PROXY_URL  = ''; // e.g. 'https://solana-rpc-proxy.you.workers.dev/helius'
+
+    const NETWORKS = {
+        mainnet: [
+            'https://api.mainnet.solana.com',
+            'https://api.mainnet-beta.solana.com',
+            ...(ALCHEMY_PROXY_URL ? [ALCHEMY_PROXY_URL] : []),
+            ...(HELIUS_PROXY_URL ? [HELIUS_PROXY_URL] : []),
+        ],
+        devnet: [
+            'https://api.devnet.solana.com',
+        ],
+        testnet: [
+            'https://api.testnet.solana.com',
+        ],
+    };
+    const JUPITER_API_BASES = [
+        'https://lite-api.jup.ag/swap/v1',
+        'https://api.jup.ag/swap/v1',
+    ];
+    // Public, CORS-friendly Ethereum mainnet RPCs — used ONLY for the read-only
+    // "preview this address on Ethereum" check during import. This wallet does not
+    // send/receive/store ETH; this is diagnostic only, best-effort, and fails silently
+    // to a "balance unavailable" label if none of these respond.
+    const EVM_PREVIEW_RPC_URLS = [
+        'https://cloudflare-eth.com',
+        'https://eth.llamarpc.com',
+    ];
+    const JUPITER_MAINNET_TOKENS = [
+        { symbol: 'SOL',  mint: 'So11111111111111111111111111111111111111112', decimals: 9,  name: 'Solana' },
+        { symbol: 'USDC', mint: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v', decimals: 6,  name: 'USD Coin' },
+        { symbol: 'USDT', mint: 'Es9vMFrzaCERmJfrF4H2FYDutVwzmAqgxN6p6v5vC8t', decimals: 6,  name: 'Tether USD' },
+        { symbol: 'JUP',  mint: 'JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN', decimals: 6,  name: 'Jupiter' },
+    ];
+    const DEFAULT_ACCOUNT_INDEX = 0;
+    // Standard Solana HD path used by Phantom/Solflare/Backpack: m/44'/501'/{account}'/0'
+    // Account index lets one mnemonic hold multiple independent wallets.
+    function derivationPathForIndex(accountIndex) {
+        const idx = Math.max(0, Math.floor(Number(accountIndex) || 0));
+        return `m/44'/501'/${idx}'/0'`;
+    }
+    const LAMPORTS_PER_SOL = 1_000_000_000;
+    const SPL_TOKEN_PROGRAM_ID = 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA';
+
+    // -- Sensitive-memory hygiene ----------------------------------------------
+    // Zero out arrays containing secrets (mnemonic bytes, secret keys) once done.
+    function zeroArray(arr) {
+        if (!arr) return;
+        try { for (let i = 0; i < arr.length; i++) arr[i] = 0; } catch (_) {}
+    }
+    function zeroString(ref, key) {
+        // Strings are immutable in JS; best we can do is drop the reference.
+        if (ref && key in ref) ref[key] = null;
+    }
+
+    // -- Friendly error mapper -------------------------------------------------
+    // Translates raw RPC/Solana errors into human-readable messages.
+    function friendlyError(e) {
+        const raw = (e && (e.message || e.toString())) || 'Unknown error';
+        const m = raw.toLowerCase();
+        if (m.includes('insufficient funds') || m.includes('insufficient lamports')) return 'Insufficient funds for this transaction (including network fees).';
+        if (m.includes('blockhash not found') || m.includes('block height exceeded')) return 'Network was too busy — the blockhash expired. Please try again.';
+        if (m.includes('failed to fetch') || m.includes('networkerror')) return 'Network error — check your internet or RPC endpoint.';
+        if (m.includes('invalid public key')) return 'Invalid Solana address.';
+        if (m.includes('signature verification') || m.includes('missing signature')) return 'Signature error — please retry.';
+        if (m.includes('exceeds desired size limit')) return 'Transaction too large.';
+        if (m.includes('429') || m.includes('rate limit')) return 'RPC rate-limited — try a custom RPC endpoint in Settings.';
+        if (m.includes('not allowed to access blockchain') || m.includes('freetier') || m.includes('free tier') || m.includes('upgrade to paid')) {
+            return 'This public RPC now requires a paid plan for Solana. Get a free API key (e.g. from Helius or Alchemy — most Solana providers offer a free tier with no credit card) and add it as a Custom RPC in Settings.';
+        }
+        if (m.includes('403') || m.includes('access forbidden')) {
+            return 'Public RPC blocked this request — free endpoints rate-limit and block traffic without notice by design. For reliable access, get a free API key (e.g. from Helius) and add it as a Custom RPC in Settings.';
+        }
+        return raw.length > 140 ? raw.slice(0, 140) + '…' : raw;
+    }
+
+    // -- Small hex/byte helpers -------------------------------------------------
+    const toHex   = (u8) => Array.from(u8).map(b => b.toString(16).padStart(2, '0')).join('');
+    const fromHex = (hex) => {
+        const out = new Uint8Array(hex.length / 2);
+        for (let i = 0; i < out.length; i++) out[i] = parseInt(hex.substr(i * 2, 2), 16);
+        return out;
+    };
+
+    // -- Base58 (Bitcoin alphabet) — self-contained, no CDN dependency ----------
+    // Solana private keys are conventionally shared as base58 (what Phantom/
+    // Solflare show on "Export Private Key") or as a JSON array of 64 bytes.
+    const BASE58_ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+    function base58Decode(str) {
+        str = String(str || '').trim();
+        if (!str) throw new Error('Empty input');
+        const bytes = [0];
+        for (const ch of str) {
+            const value = BASE58_ALPHABET.indexOf(ch);
+            if (value === -1) throw new Error('Not valid base58 (unexpected character "' + ch + '")');
+            let carry = value;
+            for (let i = 0; i < bytes.length; i++) {
+                carry += bytes[i] * 58;
+                bytes[i] = carry & 0xff;
+                carry >>= 8;
+            }
+            while (carry > 0) {
+                bytes.push(carry & 0xff);
+                carry >>= 8;
+            }
+        }
+        // Leading '1's in base58 encode leading zero bytes.
+        for (let i = 0; i < str.length && str[i] === '1'; i++) bytes.push(0);
+        return new Uint8Array(bytes.reverse());
+    }
+
+    /**
+     * Parse a pasted private key in either common Solana export format:
+     *  - base58 string (Phantom/Solflare "Export Private Key") — decodes to a
+     *    64-byte secret key (or occasionally a 32-byte seed).
+     *  - JSON array of 64 numbers (Solana CLI keypair file format).
+     * Returns a solanaWeb3.Keypair. Throws with a clear message if neither parses.
+     */
+    function privateKeyToKeypair(input) {
+        const raw = String(input || '').trim();
+        if (!raw) throw new Error('Enter a private key');
+
+        // Try JSON array format first (e.g. "[12,34,...]").
+        if (raw.startsWith('[')) {
+            let arr;
+            try { arr = JSON.parse(raw); } catch { throw new Error('Invalid JSON array — check for missing brackets or commas'); }
+            if (!Array.isArray(arr) || !arr.every(n => Number.isInteger(n) && n >= 0 && n <= 255)) {
+                throw new Error('JSON array must contain only byte values (0-255)');
+            }
+            const bytes = Uint8Array.from(arr);
+            if (bytes.length !== 64) throw new Error(`Expected a 64-byte secret key array, got ${bytes.length} bytes`);
+            return window.solanaWeb3.Keypair.fromSecretKey(bytes);
+        }
+
+        // Otherwise treat as base58.
+        let bytes;
+        try { bytes = base58Decode(raw); }
+        catch (e) { throw new Error('Could not parse as base58 or JSON array: ' + e.message); }
+
+        if (bytes.length === 64) return window.solanaWeb3.Keypair.fromSecretKey(bytes);
+        if (bytes.length === 32) return window.solanaWeb3.Keypair.fromSeed(bytes);
+        throw new Error(`Decoded ${bytes.length} bytes — expected 64 (full secret key) or 32 (seed). Double-check you copied the whole key.`);
+    }
+
+    // ============================================================================
+    // BIP39 — mnemonic <-> entropy <-> seed
+    // ============================================================================
+    async function sha256(bytes) {
+        const h = await crypto.subtle.digest('SHA-256', bytes);
+        return new Uint8Array(h);
+    }
+
+    /** Generate a 12-word BIP39 mnemonic from 128 bits of entropy. */
+    async function bip39_generateMnemonic() {
+        const entropy = crypto.getRandomValues(new Uint8Array(16)); // 128 bits
+        return bip39_entropyToMnemonic(entropy);
+    }
+
+    async function bip39_entropyToMnemonic(entropy) {
+        // Compute checksum: first (entropy.length * 8 / 32) bits of SHA-256(entropy)
+        const hash = await sha256(entropy);
+        const csBits = (entropy.length * 8) / 32;              // 4 bits for 128-bit entropy
+        // Build a bit string: entropy bits + checksum bits
+        let bits = '';
+        for (const b of entropy) bits += b.toString(2).padStart(8, '0');
+        for (let i = 0; i < csBits; i++) {
+            bits += ((hash[Math.floor(i / 8)] >> (7 - (i % 8))) & 1).toString();
+        }
+        // Split into 11-bit chunks → word indices
+        const words = [];
+        for (let i = 0; i < bits.length; i += 11) {
+            const idx = parseInt(bits.slice(i, i + 11), 2);
+            words.push(BIP39_WORDLIST[idx]);
+        }
+        return words.join(' ');
+    }
+
+    async function bip39_validateMnemonic(mnemonic) {
+        try {
+            const words = mnemonic.trim().toLowerCase().split(/\s+/);
+            if (![12, 15, 18, 21, 24].includes(words.length)) return false;
+            let bits = '';
+            for (const w of words) {
+                const idx = BIP39_WORDLIST.indexOf(w);
+                if (idx === -1) return false;
+                bits += idx.toString(2).padStart(11, '0');
+            }
+            const dividerIndex = Math.floor(bits.length / 33) * 32;
+            const entropyBits = bits.slice(0, dividerIndex);
+            const checksumBits = bits.slice(dividerIndex);
+            const entropy = new Uint8Array(entropyBits.length / 8);
+            for (let i = 0; i < entropy.length; i++) {
+                entropy[i] = parseInt(entropyBits.substr(i * 8, 8), 2);
+            }
+            const hash = await sha256(entropy);
+            let computedCs = '';
+            for (let i = 0; i < checksumBits.length; i++) {
+                computedCs += ((hash[Math.floor(i / 8)] >> (7 - (i % 8))) & 1).toString();
+            }
+            return computedCs === checksumBits;
+        } catch { return false; }
+    }
+
+    /**
+     * Convert mnemonic → 64-byte seed via PBKDF2-HMAC-SHA512, 2048 iterations,
+     * salt = "mnemonic" + passphrase.   (BIP39 §Seed)
+     */
+    async function bip39_mnemonicToSeed(mnemonic, passphrase = '') {
+        const enc = new TextEncoder();
+        const normalizedMnemonic = mnemonic.normalize('NFKD');
+        const normalizedSalt = ('mnemonic' + passphrase).normalize('NFKD');
+        const key = await crypto.subtle.importKey(
+            'raw',
+            enc.encode(normalizedMnemonic),
+            { name: 'PBKDF2' }, false, ['deriveBits']
+        );
+        const bits = await crypto.subtle.deriveBits(
+            { name: 'PBKDF2', salt: enc.encode(normalizedSalt), iterations: 2048, hash: 'SHA-512' },
+            key, 512
+        );
+        return new Uint8Array(bits);
+    }
+
+    // ============================================================================
+    // SLIP-0010 Ed25519 HD derivation — hardened-only, works for any m/44'/501'…
+    // ============================================================================
+    async function hmacSha512(keyBytes, data) {
+        const key = await crypto.subtle.importKey(
+            'raw', keyBytes, { name: 'HMAC', hash: 'SHA-512' }, false, ['sign']
+        );
+        const sig = await crypto.subtle.sign('HMAC', key, data);
+        return new Uint8Array(sig);
+    }
+
+    /**
+     * Derive the Ed25519 master key from a BIP39 seed, per SLIP-0010.
+     * Returns { key: Uint8Array(32), chainCode: Uint8Array(32) }.
+     */
+    async function slip10_deriveMaster(seed) {
+        const key = new TextEncoder().encode('ed25519 seed');
+        const I = await hmacSha512(key, seed);
+        return { key: I.slice(0, 32), chainCode: I.slice(32) };
+    }
+
+    /**
+     * Derive one hardened child from a parent (SLIP-0010 §CKDpriv).
+     * All indices in Ed25519 must be hardened (≥ 0x80000000).
+     */
+    async function slip10_deriveChild(parent, index) {
+        // data = 0x00 || parentKey (32) || index (4 bytes, big-endian)
+        const data = new Uint8Array(1 + 32 + 4);
+        data[0] = 0x00;
+        data.set(parent.key, 1);
+        new DataView(data.buffer).setUint32(33, index >>> 0, false);
+        const I = await hmacSha512(parent.chainCode, data);
+        return { key: I.slice(0, 32), chainCode: I.slice(32) };
+    }
+
+    /** Derive along a path like m/44'/501'/0'/0'. Non-hardened segments become hardened. */
+    async function slip10_derivePath(path, seed) {
+        let node = await slip10_deriveMaster(seed);
+        const segments = path.replace(/^m\/?/, '').split('/').filter(Boolean);
+        for (const seg of segments) {
+            const hardened = seg.endsWith("'");
+            const num = parseInt(hardened ? seg.slice(0, -1) : seg, 10);
+            const index = (num | 0x80000000) >>> 0; // force hardened
+            node = await slip10_deriveChild(node, index);
+        }
+        return node;
+    }
+
+    /** Full pipeline: mnemonic → Solana Keypair at m/44'/501'/{accountIndex}'/0'. */
+    async function mnemonicToKeypair(mnemonic, accountIndex = DEFAULT_ACCOUNT_INDEX) {
+        if (!(await bip39_validateMnemonic(mnemonic))) {
+            throw new Error('Invalid mnemonic phrase');
+        }
+        const seed = await bip39_mnemonicToSeed(mnemonic);
+        const { key } = await slip10_derivePath(derivationPathForIndex(accountIndex), seed);
+        return window.solanaWeb3.Keypair.fromSeed(key);
+    }
+
+    // ============================================================================
+    // App state
+    // ============================================================================
+    let state = {
+        wallets: [],
+        activeWalletId: null,
+        network: 'mainnet',
+        autoRefresh: true,
+        showUsd: true,
+        autoLockMinutes: 5,
+        biometricEnabled: false,
+        customRpc: '',          // optional user-supplied RPC endpoint
+        hideZeroBalances: false,
+        addressBook: [],        // [{label, address}]
+    };
+    let connection = null;
+    let refreshTimer = null;
+    let pendingTx = null;
+    let pendingMnemonic = null;
+    // Cache of the last address-preview render (address/balance/tx-count per index) so
+    // clicking a different row just re-highlights instead of re-deriving + re-fetching
+    // balances from RPC every click.
+    let importPreviewCache = null;
+    let solPriceUsd = 0;
+    let currentSwapQuote = null;
+    let refreshInFlight = false;
+    let rpcConnections = new Map();
+
+    // ============================================================================
+    // Security layer — password-based encryption + WebAuthn biometrics
+    // ----------------------------------------------------------------------------
+    // Storage keys:
+    //   'encryptedWallet'    -> base64(salt|iv|ciphertext) of JSON.stringify(state)
+    //   'walletKdfParams'    -> {iterations, saltB64}  (public, non-secret)
+    //   'biometricEnvelope'  -> base64 wrapped-password blob (when biometrics on)
+    //   'biometricCredId'    -> base64 WebAuthn credential id
+    //   NOTE: legacy 'solanaWalletState' (plaintext) is migrated on first unlock.
+    // ============================================================================
+    const SEC = (() => {
+        const LS_ENC       = 'encryptedWallet';
+        const LS_KDF       = 'walletKdfParams';
+        const LS_BIO_ENV   = 'biometricEnvelope';
+        const LS_BIO_CRED  = 'biometricCredId';
+        const LS_LEGACY    = 'solanaWalletState';
+        const PBKDF2_ITERS = 600_000;
+
+        // ---- base64 helpers ----
+        const b64enc = (u8) => btoa(String.fromCharCode(...u8));
+        const b64dec = (s)  => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+
+        // ---- KDF: password + salt -> AES-GCM CryptoKey ----
+        async function deriveKey(password, salt, iterations = PBKDF2_ITERS) {
+            const baseKey = await crypto.subtle.importKey(
+                'raw', new TextEncoder().encode(password),
+                { name: 'PBKDF2' }, false, ['deriveKey']
+            );
+            return crypto.subtle.deriveKey(
+                { name: 'PBKDF2', salt, iterations, hash: 'SHA-256' },
+                baseKey,
+                { name: 'AES-GCM', length: 256 },
+                false, ['encrypt', 'decrypt']
+            );
+        }
+
+        async function encryptJSON(obj, password) {
+            const salt = crypto.getRandomValues(new Uint8Array(16));
+            const iv   = crypto.getRandomValues(new Uint8Array(12));
+            const key  = await deriveKey(password, salt);
+            const pt   = new TextEncoder().encode(JSON.stringify(obj));
+            const ct   = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, pt));
+            const out  = new Uint8Array(salt.length + iv.length + ct.length);
+            out.set(salt, 0); out.set(iv, salt.length); out.set(ct, salt.length + iv.length);
+            // persist KDF params (public) so we could tune iterations without breaking old blobs
+            localStorage.setItem(LS_KDF, JSON.stringify({ iterations: PBKDF2_ITERS }));
+            return b64enc(out);
+        }
+
+        async function decryptToJSON(blobB64, password) {
+            const buf  = b64dec(blobB64);
+            const salt = buf.slice(0, 16);
+            const iv   = buf.slice(16, 28);
+            const ct   = buf.slice(28);
+            const params = JSON.parse(localStorage.getItem(LS_KDF) || '{}');
+            const key  = await deriveKey(password, salt, params.iterations || PBKDF2_ITERS);
+            const pt   = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ct);
+            return JSON.parse(new TextDecoder().decode(pt));
+        }
+
+        function hasEncrypted() { return !!localStorage.getItem(LS_ENC); }
+        function hasLegacy()    { return !!localStorage.getItem(LS_LEGACY); }
+
+        async function saveEncrypted(stateObj, password) {
+            const blob = await encryptJSON(stateObj, password);
+            localStorage.setItem(LS_ENC, blob);
+            // Legacy plaintext must not linger.
+            localStorage.removeItem(LS_LEGACY);
+        }
+
+        async function loadDecrypted(password) {
+            const blob = localStorage.getItem(LS_ENC);
+            if (!blob) throw new Error('no-encrypted-data');
+            return decryptToJSON(blob, password);
+        }
+
+        // ---- Biometrics: use WebAuthn PRF extension when available to wrap the password ----
+        // Fallback: store password encrypted with a device-bound random key stored via WebAuthn largeBlob.
+        // Simplest viable approach: after successful WebAuthn assertion, release an AES key derived from
+        // the PRF output; use it to wrap the raw password.
+        async function biometricSupported() {
+            return !!(window.PublicKeyCredential && navigator.credentials && await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable().catch(() => false));
+        }
+
+        async function enrollBiometric(password) {
+            const challenge = crypto.getRandomValues(new Uint8Array(32));
+            const userId    = crypto.getRandomValues(new Uint8Array(16));
+            const prfSalt   = crypto.getRandomValues(new Uint8Array(32));
+            const cred = await navigator.credentials.create({
+                publicKey: {
+                    challenge,
+                    rp: { name: 'Solana Wallet (local)' },
+                    user: { id: userId, name: 'wallet-user', displayName: 'Wallet User' },
+                    pubKeyCredParams: [{ type: 'public-key', alg: -7 }, { type: 'public-key', alg: -257 }],
+                    authenticatorSelection: { userVerification: 'required', residentKey: 'preferred' },
+                    timeout: 60_000,
+                    extensions: { prf: { eval: { first: prfSalt } } },
+                }
+            });
+            if (!cred) throw new Error('biometric-registration-cancelled');
+            const ext = cred.getClientExtensionResults ? cred.getClientExtensionResults() : {};
+            const prfOut = ext.prf && ext.prf.results && ext.prf.results.first;
+            if (!prfOut) {
+                // PRF not supported on this authenticator; degrade to "unlock with biometric then still ask password once" mode.
+                throw new Error('biometric-prf-unsupported');
+            }
+            // Wrap the password with an AES key derived from PRF output.
+            const wrapKey = await crypto.subtle.importKey('raw', prfOut, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt']);
+            const iv = crypto.getRandomValues(new Uint8Array(12));
+            const ct = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, wrapKey, new TextEncoder().encode(password)));
+            const envelope = { credId: b64enc(new Uint8Array(cred.rawId)), prfSalt: b64enc(prfSalt), iv: b64enc(iv), ct: b64enc(ct) };
+            localStorage.setItem(LS_BIO_ENV, JSON.stringify(envelope));
+            localStorage.setItem(LS_BIO_CRED, envelope.credId);
+            return true;
+        }
+
+        async function unlockWithBiometric() {
+            const env = JSON.parse(localStorage.getItem(LS_BIO_ENV) || 'null');
+            if (!env) throw new Error('no-biometric-envelope');
+            const credId  = b64dec(env.credId);
+            const prfSalt = b64dec(env.prfSalt);
+            const challenge = crypto.getRandomValues(new Uint8Array(32));
+            const assertion = await navigator.credentials.get({
+                publicKey: {
+                    challenge,
+                    allowCredentials: [{ type: 'public-key', id: credId }],
+                    userVerification: 'required',
+                    timeout: 60_000,
+                    extensions: { prf: { eval: { first: prfSalt } } },
+                }
+            });
+            if (!assertion) throw new Error('biometric-cancelled');
+            const ext = assertion.getClientExtensionResults ? assertion.getClientExtensionResults() : {};
+            const prfOut = ext.prf && ext.prf.results && ext.prf.results.first;
+            if (!prfOut) throw new Error('biometric-prf-missing');
+            const wrapKey = await crypto.subtle.importKey('raw', prfOut, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt']);
+            const pw = new TextDecoder().decode(await crypto.subtle.decrypt(
+                { name: 'AES-GCM', iv: b64dec(env.iv) }, wrapKey, b64dec(env.ct)
+            ));
+            return pw;
+        }
+
+        function disableBiometric() {
+            localStorage.removeItem(LS_BIO_ENV);
+            localStorage.removeItem(LS_BIO_CRED);
+        }
+        function biometricEnrolled() { return !!localStorage.getItem(LS_BIO_ENV); }
+
+        function wipeAll() {
+            localStorage.removeItem(LS_ENC);
+            localStorage.removeItem(LS_KDF);
+            localStorage.removeItem(LS_LEGACY);
+            disableBiometric();
+        }
+
+        return { hasEncrypted, hasLegacy, saveEncrypted, loadDecrypted, biometricSupported,
+                 enrollBiometric, unlockWithBiometric, disableBiometric, biometricEnrolled, wipeAll };
+    })();
+
+    // Session variables — held only in memory while unlocked.
+    let sessionPassword = null;   // needed to re-encrypt on writes
+    let isLocked = true;
+    let lockTimer = null;
+    let saveQueue = Promise.resolve();  // serialize concurrent saveState() calls
+
+    // ============================================================================
+    // Boot
+    // ============================================================================
+    document.addEventListener('DOMContentLoaded', async () => {
+        if (!window.solanaWeb3) {
+            showToast('Solana Web3.js failed to load. Check your internet.', 'error');
+            return;
+        }
+        // Update the demo banner to reflect the new encrypted-storage reality.
+        const banner = document.getElementById('demoBanner');
+        if (banner) {
+            banner.style.background = 'linear-gradient(90deg,#4c1d95,#7c3aed)';
+            banner.innerHTML = '<i class="fas fa-shield-halved mr-2"></i>Keys are encrypted at rest with your password. Biometrics use WebAuthn PRF (device-bound). Back up your mnemonic offline.';
+        }
+        wireSecurityUI();
+        await bootFlow();
+    });
+
+    // Decide first-run vs unlock vs no-wallet.
+    async function bootFlow() {
+        if (SEC.hasEncrypted()) {
+            showUnlockScreen();
+        } else if (SEC.hasLegacy()) {
+            // Legacy plaintext state exists — force the user to set a password before we touch it.
+            showToast('Migrating unencrypted wallet — please set a password.', 'info');
+            showSetupScreen(/*migrateLegacy*/true);
+        } else {
+            // Brand-new install: still require password before any wallet is created.
+            showSetupScreen(false);
+        }
+    }
+
+    // Called once the wallet has been unlocked / set up. Boots the real app.
+    async function bootUnlocked() {
+        rebuildConnection();
+        fetchSolPrice();
+        setInterval(fetchSolPrice, 60_000);
+        renderAll();
+        startAutoRefresh();
+        const ar = document.getElementById('autoRefresh'); if (ar) ar.checked = !!state.autoRefresh;
+        const su = document.getElementById('showUsd');     if (su) su.checked = !!state.showUsd;
+        const bt = document.getElementById('biometricToggle'); if (bt) bt.checked = !!SEC.biometricEnrolled();
+        const al = document.getElementById('autoLockSelect');  if (al) al.value = String(state.autoLockMinutes || 5);
+        await refreshAllWalletActivity({ autoSelect: !state.activeWalletId && state.wallets.length > 0 });
+        if (getActiveWallet()) await refreshWallet();
+        armAutoLock();
+    }
+
+    // ============================================================================
+    // Persistence (encrypted)
+    // ----------------------------------------------------------------------------
+    // saveState() is called from many call sites (createNewWallet, importWallet,
+    // refreshWallet, changeNetwork, settings toggles, transaction confirmation,
+    // deleteWallet, switchToWallet). Those call sites are unchanged — they still
+    // call saveState() synchronously; we serialize the async encryption inside a
+    // queue so ordering is preserved and callers do not need to await.
+    // ============================================================================
+    function saveState() {
+        if (isLocked || !sessionPassword) return;   // never write plaintext, never write while locked
+        const snapshot = JSON.parse(JSON.stringify(state));
+        saveQueue = saveQueue.then(() => SEC.saveEncrypted(snapshot, sessionPassword))
+                             .catch(e => console.error('saveState (encrypted)', e));
+    }
+    // Legacy plaintext loadState is now handled by unlock/migration flow; keep
+    // the symbol as a no-op so any missed reference does not throw.
+    function loadState() { /* replaced by encrypted unlock flow */ }
+
+    // ============================================================================
+    // Network / connection
+    // ============================================================================
+    function sanitizeRpcUrl(url) {
+        return String(url || '').trim().replace(/\/+$/, '');
+    }
+    function isValidRpcUrl(url) {
+        // Connection() throws synchronously on anything that isn't a clean http(s) URL.
+        // Validate here so garbage never gets into the fallback list in the first place.
+        try {
+            const u = new URL(url);
+            return u.protocol === 'http:' || u.protocol === 'https:';
+        } catch {
+            return false;
+        }
+    }
+    function getRpcUrls() {
+        const rawCustom = String(state.customRpc || '').split(/[\n,]+/).map(sanitizeRpcUrl).filter(Boolean);
+        const custom = rawCustom.filter(isValidRpcUrl);
+        const invalidCustom = rawCustom.filter(u => !isValidRpcUrl(u));
+        if (invalidCustom.length > 0) {
+            console.warn('Ignoring invalid custom RPC entr' + (invalidCustom.length === 1 ? 'y' : 'ies') + ':', invalidCustom);
+        }
+        const defaults = (NETWORKS[state.network] || NETWORKS.mainnet).map(sanitizeRpcUrl).filter(Boolean);
+        return Array.from(new Set([...custom, ...defaults]));
+    }
+    function getConnectionForUrl(url) {
+        const key = sanitizeRpcUrl(url);
+        if (!rpcConnections.has(key)) {
+            rpcConnections.set(key, new window.solanaWeb3.Connection(key, { commitment: 'confirmed', confirmTransactionInitialTimeout: 20_000 }));
+        }
+        return rpcConnections.get(key);
+    }
+    function withTimeout(promise, ms, label = 'request') {
+        return Promise.race([
+            promise,
+            new Promise((_, reject) => setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms)),
+        ]);
+    }
+    function isRateLimitError(err) {
+        const msg = String((err && (err.message || err)) || '').toLowerCase();
+        return msg.includes('429') || msg.includes('too many requests') || msg.includes('rate limit') || msg.includes('rate-limited');
+    }
+    async function withRpcFallback(label, worker, timeoutMs = 15_000) {
+        const urls = getRpcUrls();
+        let lastErr = null;
+        for (const url of urls) {
+            // A 429 is often transient (a shared public RPC momentarily over its quota).
+            // Give it one quick backoff-retry on the SAME endpoint before writing it off —
+            // immediately jumping to the next URL wastes an endpoint that would likely
+            // have worked a moment later, and if every endpoint is rate-limited at once
+            // (common right after a burst of refreshes), retrying without backoff just
+            // burns through all of them without giving any a chance to recover.
+            const maxAttempts = 2;
+            for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+                try {
+                    // getConnectionForUrl (and the underlying `new Connection(...)`) is
+                    // inside this try on purpose: Connection() throws SYNCHRONOUSLY on a
+                    // malformed URL, and previously that throw happened outside any
+                    // try/catch here, which aborted the entire fallback loop on the first
+                    // bad endpoint — including skipping every working default endpoint
+                    // after it. Now a bad URL is just treated like any other failed
+                    // endpoint and the loop moves on.
+                    const conn = getConnectionForUrl(url);
+                    const result = await withTimeout(worker(conn, url), timeoutMs, label);
+                    connection = conn;
+                    state.lastGoodRpc = url;
+                    updateNetworkIndicator(true, url);
+                    return result;
+                } catch (err) {
+                    lastErr = err;
+                    console.warn(`RPC ${label} failed on ${url} (attempt ${attempt}/${maxAttempts}):`, err);
+                    if (attempt < maxAttempts && isRateLimitError(err)) {
+                        await new Promise(r => setTimeout(r, 500 * attempt)); // 500ms, then 1000ms if ever raised
+                        continue;
+                    }
+                    break; // not a rate-limit error, or out of retries — try the next URL
+                }
+            }
+        }
+        updateNetworkIndicator(false);
+        throw lastErr || new Error(`${label} failed on all RPC endpoints`);
+    }
+    function rebuildConnection() {
+        const [first] = getRpcUrls();
+        if (!first) {
+            console.warn('rebuildConnection: no valid RPC URLs available');
+            updateNetworkIndicator(false);
+            updateNetworkBanner();
+            return;
+        }
+        try {
+            connection = getConnectionForUrl(first);
+            updateNetworkIndicator(true, first);
+        } catch (e) {
+            console.warn('rebuildConnection failed for', first, e);
+            updateNetworkIndicator(false);
+        }
+        updateNetworkBanner();
+    }
+
+    // Prompts for a Helius API key and wires up BOTH the standard mainnet endpoint
+    // and the lower-latency "Gatekeeper Beta" endpoint (same key, same standard
+    // JSON-RPC methods — confirmed via Helius's own docs, no code changes needed
+    // elsewhere in this app). The key is stored only in this wallet's own encrypted
+    // local state (via saveState(), same as any other Custom RPC entry) — it is
+    // NEVER written into this file's source, so sharing/deploying this HTML never
+    // leaks a personal key to anyone else who opens it.
+    function quickSetupHelius() {
+        const existing = String(state.customRpc || '');
+        const key = prompt(
+            'Paste your Helius API key (from helius.dev — free tier, no credit card).\n' +
+            'This is stored only in your own encrypted wallet data, never in this file.'
+        );
+        if (!key) return;
+        const trimmedKey = key.trim();
+        if (!trimmedKey || /[\/\s]/.test(trimmedKey)) {
+            showToast('That doesn\'t look like a valid API key (no spaces or slashes expected)', 'error');
+            return;
+        }
+        const primary = `https://mainnet.helius-rpc.com/?api-key=${trimmedKey}`;
+        const gatekeeperBeta = `https://beta.helius-rpc.com/?api-key=${trimmedKey}`;
+        const combined = [primary, gatekeeperBeta].join('\n');
+        state.customRpc = existing ? `${combined}\n${existing}` : combined;
+        const rpcInput = document.getElementById('customRpc');
+        if (rpcInput) rpcInput.value = state.customRpc;
+        saveState();
+        rebuildConnection();
+        showToast('Helius endpoints added as your Custom RPC — try refreshing your wallet now', 'success');
+    }
+
+    // Prominent banner shown when on devnet/testnet.
+    function updateNetworkBanner() {
+        let el = document.getElementById('networkBanner');
+        if (!el) return;
+        if (state.network === 'devnet' || state.network === 'testnet') {
+            el.classList.remove('hidden');
+            el.innerHTML = `<i class="fas fa-triangle-exclamation mr-2"></i>You are on <b>${state.network.toUpperCase()}</b> — coins here have no real value and Jupiter swap is disabled.`;
+        } else {
+            el.classList.add('hidden');
+        }
+        updateSwapAvailability();
+    }
+    async function changeNetwork(net) {
+        if (!NETWORKS[net]) return;
+        state.network = net;
+        currentSwapQuote = null;
+        saveState();
+        rebuildConnection();
+        showToast(`Switched to ${net}`, 'info');
+        await refreshAllWalletActivity();
+        await refreshWallet();
+    }
+    function updateNetworkIndicator(online, url = '') {
+        const el = document.getElementById('networkStatus');
+        if (!el) return;
+        el.classList.toggle('online',  online);
+        el.classList.toggle('offline', !online);
+        const label = online ? `${state.network}` : 'Offline';
+        const hint = url ? ` title="${url.replace(/</g, '&lt;')}"` : '';
+        el.innerHTML = online
+            ? `<i class="fas fa-circle text-xs"></i><span${hint}>${label}</span>`
+            : `<i class="fas fa-circle text-xs"></i><span>Offline</span>`;
+    }
+
+    async function refreshAllWalletActivity({ autoSelect = false } = {}) {
+        if (!state.wallets.length) return;
+        const updates = await Promise.all(state.wallets.map(async (wallet) => {
+            try {
+                const sigs = await withRpcFallback('activity scan', conn => conn.getSignaturesForAddress(new window.solanaWeb3.PublicKey(wallet.address), { limit: 25 }), 12_000);
+                const latest = sigs.find(s => s.blockTime)?.blockTime || 0;
+                return { id: wallet.id, activityScore: sigs.length, lastActivityAt: latest };
+            } catch (e) {
+                console.warn('activity scan failed', wallet.address, e);
+                return { id: wallet.id, activityScore: wallet.activityScore || 0, lastActivityAt: wallet.lastActivityAt || 0 };
+            }
+        }));
+        for (const u of updates) {
+            const wallet = state.wallets.find(w => w.id === u.id);
+            if (wallet) {
+                wallet.activityScore = u.activityScore;
+                wallet.lastActivityAt = u.lastActivityAt;
+            }
+        }
+        renderWalletSwitcher();
+        if (autoSelect) selectMostActiveWallet({ silent: true });
+    }
+    function getWalletActivityScore(wallet) {
+        return Number(wallet?.activityScore || 0);
+    }
+    function getWalletsByActivity() {
+        return [...state.wallets].sort((a, b) => {
+            const byScore = getWalletActivityScore(b) - getWalletActivityScore(a);
+            if (byScore !== 0) return byScore;
+            return Number(b.lastActivityAt || 0) - Number(a.lastActivityAt || 0);
+        });
+    }
+    function selectMostActiveWallet({ silent = false } = {}) {
+        const ranked = getWalletsByActivity();
+        const winner = ranked[0];
+        if (!winner) { showToast('No wallet available', 'info'); return; }
+        state.activeWalletId = winner.id;
+        saveState();
+        renderAll();
+        refreshWalletDebounced(100);
+        if (!silent) showToast(`Selected ${winner.name} (${getWalletActivityScore(winner)} recent tx)`, 'success');
+    }
+
+    // ============================================================================
+    // Wallet lifecycle
+    // ============================================================================
+    async function createNewWallet() {
+        try {
+            // Require password re-entry before revealing a fresh mnemonic on screen —
+            // prevents someone who walked up to an unlocked screen from seeing it.
+            if (SEC.hasEncrypted()) {
+                const pw = await askPasswordAgain('Enter your password to reveal a new mnemonic.');
+                if (!pw) return;
+            }
+            pendingMnemonic = await bip39_generateMnemonic();
+            document.getElementById('mnemonicWords').textContent = pendingMnemonic;
+            document.getElementById('createWalletModal').classList.remove('hidden');
+        } catch (e) {
+            console.error(e);
+            showToast('Mnemonic generation failed: ' + e.message, 'error');
+        }
+    }
+    async function confirmCreateWallet() {
+        if (!pendingMnemonic) return;
+        try {
+            const kp = await mnemonicToKeypair(pendingMnemonic, DEFAULT_ACCOUNT_INDEX);
+            const wallet = {
+                id: Date.now().toString(),
+                name: `Wallet ${state.wallets.length + 1}`,
+                address: kp.publicKey.toString(),
+                secretKey: Array.from(kp.secretKey),
+                mnemonic: pendingMnemonic,
+                derivationIndex: DEFAULT_ACCOUNT_INDEX,
+                derivationPath: derivationPathForIndex(DEFAULT_ACCOUNT_INDEX),
+                balance: 0,
+                tokens: [],
+                transactions: [],
+                nfts: [],
+            };
+            state.wallets.push(wallet);
+            state.activeWalletId = wallet.id;
+            // Drop mnemonic reference from module scope; it now lives only inside the
+            // encrypted state blob and (temporarily) in wallet.mnemonic.
+            pendingMnemonic = null;
+            saveState();
+            closeCreateWalletModal();
+            renderAll();
+            showToast('Wallet created', 'success');
+            fireConfetti();
+            await refreshAllWalletActivity();
+            await refreshWallet();
+        } catch (e) {
+            console.error(e);
+            showToast('Create failed: ' + e.message, 'error');
+        }
+    }
+    function closeCreateWalletModal() {
+        document.getElementById('createWalletModal').classList.add('hidden');
+        pendingMnemonic = null;
+    }
+
+    let importMode = 'mnemonic';
+    function importWallet() {
+        setImportMode('mnemonic');
+        document.getElementById('importWalletModal').classList.remove('hidden');
+    }
+    function setImportMode(mode) {
+        importMode = mode;
+        document.getElementById('importMnemonicFields').classList.toggle('hidden', mode !== 'mnemonic');
+        document.getElementById('importPrivateKeyFields').classList.toggle('hidden', mode !== 'privateKey');
+        document.getElementById('importModeMnemonicBtn').classList.toggle('tab-active', mode === 'mnemonic');
+        document.getElementById('importModePrivateKeyBtn').classList.toggle('tab-active', mode === 'privateKey');
+        const btn = document.getElementById('importConfirmBtn');
+        if (mode === 'privateKey') {
+            btn.disabled = false;
+            btn.classList.remove('opacity-50', 'cursor-not-allowed');
+            btn.innerHTML = 'Import Wallet';
+        } else {
+            onImportChainChange();
+        }
+    }
+    function onImportChainChange() {
+        const chain = document.getElementById('importPreviewChain').value;
+        const note = document.getElementById('importChainNote');
+        const btn = document.getElementById('importConfirmBtn');
+        const isEvm = chain === 'ethereum';
+        note.classList.toggle('hidden', !isEvm);
+        btn.disabled = isEvm;
+        btn.classList.toggle('opacity-50', isEvm);
+        btn.classList.toggle('cursor-not-allowed', isEvm);
+        btn.innerHTML = isEvm ? 'Preview only — use an EVM wallet to import this' : 'Import Wallet';
+        // Different chain selected — old preview rows (if any) no longer apply.
+        importPreviewCache = null;
+        document.getElementById('importAddressPreview').classList.add('hidden');
+    }
+    async function fetchEvmBalanceAndTxCount(address) {
+        for (const url of EVM_PREVIEW_RPC_URLS) {
+            try {
+                const provider = new ethers.JsonRpcProvider(url);
+                const [balanceWei, txCount] = await withTimeout(
+                    Promise.all([provider.getBalance(address), provider.getTransactionCount(address)]),
+                    8_000, 'evm preview'
+                );
+                return { balance: Number(ethers.formatEther(balanceWei)), txCount };
+            } catch (err) {
+                console.warn(`EVM preview RPC failed on ${url}:`, err);
+            }
+        }
+        throw new Error('All EVM preview RPCs failed');
+    }
+    function importChain() {
+        const el = document.getElementById('importPreviewChain');
+        return el ? el.value : 'solana';
+    }
+    function closeImportWalletModal() {
+        document.getElementById('importWalletModal').classList.add('hidden');
+        document.getElementById('importMnemonic').value = '';
+        document.getElementById('importAccountIndex').value = '0';
+        document.getElementById('importPrivateKey').value = '';
+        const chainSel = document.getElementById('importPreviewChain');
+        if (chainSel) { chainSel.value = 'solana'; }
+        setImportMode('mnemonic');
+        const preview = document.getElementById('importAddressPreview');
+        preview.classList.add('hidden');
+        preview.innerHTML = '';
+        importPreviewCache = null;
+    }
+    // Pure render helper — takes currentIndex as a parameter (not closed over) so a
+    // cached set of rows can be re-rendered with a new highlight without re-deriving
+    // or re-fetching anything from RPC. clickable=false is used for the Ethereum
+    // preview, where rows are informational only and can't be "selected for import".
+    function renderImportPreviewRows(rows, currentIndex, clickable = true) {
+        return rows.map(r => `
+            <${clickable ? 'button type="button"' : 'div'}
+                class="w-full text-left px-3 py-2 rounded-lg border transition-all ${clickable && r.index === currentIndex ? 'border-purple-400 bg-purple-500/10' : 'border-white/10 bg-white/[0.02]'} ${clickable ? 'hover:bg-white/[0.06]' : ''}"
+                ${clickable ? `onclick="selectImportAddress(${r.index})"` : ''}>
+                <div class="flex items-center justify-between gap-2">
+                    <span class="text-xs font-medium text-slate-300">Account #${r.index}</span>
+                    <span class="text-[10px] ${r.status === 'active' ? 'text-emerald-400' : r.status === 'empty' ? 'text-slate-500' : 'text-slate-600'}">
+                        ${r.alreadyImported ? 'already imported · ' : ''}${r.label}
+                    </span>
+                </div>
+                <div class="wallet-address text-xs text-slate-400 mt-0.5">${r.address}</div>
+            </${clickable ? 'button' : 'div'}>
+        `).join('');
+    }
+    // Derives addresses for account indices 0-4 AND checks their on-chain balance +
+    // tx count, so the user can see which one actually has funds/activity instead of
+    // guessing blind. Uses the same withRpcFallback the rest of the app uses — there
+    // is no separate "healthy connection" helper. Branches to a read-only Ethereum
+    // preview (via ethers.js) when that chain is selected — see importChain().
+    async function previewImportAddresses() {
+        const m = document.getElementById('importMnemonic').value.trim().toLowerCase().replace(/\s+/g, ' ');
+        const preview = document.getElementById('importAddressPreview');
+        if (!m) { showToast('Enter a mnemonic first', 'error'); return; }
+        if (!(await bip39_validateMnemonic(m))) { showToast('Invalid mnemonic', 'error'); return; }
+
+        const chain = importChain();
+        preview.classList.remove('hidden');
+        preview.innerHTML = `<div class="text-xs text-slate-400 py-2"><i class="fas fa-spinner fa-spin mr-2"></i>Deriving addresses and checking balances…</div>`;
+
+        if (chain === 'ethereum') {
+            try {
+                if (typeof ethers === 'undefined') throw new Error('ethers.js failed to load from CDN');
+                const base = [];
+                for (let i = 0; i < 5; i++) {
+                    const path = `m/44'/60'/${i}'/0/0`;
+                    const hd = ethers.HDNodeWallet.fromPhrase(m, '', path);
+                    base.push({ index: i, address: hd.address });
+                }
+                let rows = base.map(r => ({ ...r, label: 'checking balance…', status: 'pending', alreadyImported: false }));
+                preview.innerHTML = renderImportPreviewRows(rows, -1, false);
+
+                const checks = await Promise.allSettled(base.map(r => fetchEvmBalanceAndTxCount(r.address)));
+                rows = base.map((r, i) => {
+                    const check = checks[i];
+                    if (check.status === 'fulfilled') {
+                        const { balance, txCount } = check.value;
+                        const active = balance > 0 || txCount > 0;
+                        return { ...r, alreadyImported: false, status: active ? 'active' : 'empty',
+                            label: `${balance.toFixed(5)} ETH · ${txCount > 0 ? txCount + '+ tx' : 'no tx'}` };
+                    }
+                    console.warn(`EVM balance check failed for index ${r.index}`, check.reason);
+                    return { ...r, alreadyImported: false, status: 'unknown', label: 'balance unavailable' };
+                });
+                preview.innerHTML = renderImportPreviewRows(rows, -1, false)
+                    + `<p class="text-xs text-amber-400/80 mt-2"><i class="fas fa-triangle-exclamation mr-1"></i>Preview only — this wallet can't import or use Ethereum addresses.</p>`;
+                importPreviewCache = null; // nothing here is selectable, so nothing to cache for reuse
+            } catch (e) {
+                console.error(e);
+                preview.innerHTML = `<div class="text-xs text-red-400 py-2">Could not preview Ethereum addresses: ${e.message}</div>`;
+                importPreviewCache = null;
+            }
+            return;
+        }
+
+        try {
+            const currentIndex = parseInt(document.getElementById('importAccountIndex').value, 10) || 0;
+
+            // Phase 1: derive addresses (fast, local, no network) and render immediately
+            // so the user isn't staring at a blank spinner while balances load.
+            const base = [];
+            for (let i = 0; i < 5; i++) {
+                const kp = await mnemonicToKeypair(m, i);
+                base.push({ index: i, address: kp.publicKey.toString() });
+            }
+
+            let rows = base.map(r => ({ ...r, label: 'checking balance…', status: 'pending',
+                alreadyImported: state.wallets.some(w => w.address === r.address) }));
+            preview.innerHTML = renderImportPreviewRows(rows, currentIndex);
+            importPreviewCache = { rows, mnemonic: m };
+
+            // Phase 2: check on-chain balance + tx count per index, in parallel, using the
+            // same withRpcFallback fallback chain the rest of the app uses. Short timeout
+            // so one slow index can't hold up the whole picker.
+            const checks = await Promise.allSettled(base.map(async (r) => {
+                const pubkey = new window.solanaWeb3.PublicKey(r.address);
+                const [balLamports, sigs] = await Promise.all([
+                    withRpcFallback(`preview balance #${r.index}`, conn => conn.getBalance(pubkey), 8_000),
+                    withRpcFallback(`preview sigs #${r.index}`, conn => conn.getSignaturesForAddress(pubkey, { limit: 1 }), 8_000),
+                ]);
+                return { balance: balLamports / LAMPORTS_PER_SOL, txCount: sigs.length };
+            }));
+
+            rows = base.map((r, i) => {
+                const alreadyImported = state.wallets.some(w => w.address === r.address);
+                const check = checks[i];
+                if (check.status === 'fulfilled') {
+                    const { balance, txCount } = check.value;
+                    const active = balance > 0 || txCount > 0;
+                    return { ...r, alreadyImported, status: active ? 'active' : 'empty',
+                        label: `${balance.toFixed(4)} SOL · ${txCount > 0 ? txCount + '+ tx' : 'no tx'}` };
+                }
+                console.warn(`balance check failed for index ${r.index}`, check.reason);
+                return { ...r, alreadyImported, status: 'unknown', label: 'balance unavailable (RPC)' };
+            });
+            const latestIndex = parseInt(document.getElementById('importAccountIndex').value, 10) || 0;
+            preview.innerHTML = renderImportPreviewRows(rows, latestIndex);
+            importPreviewCache = { rows, mnemonic: m };
+        } catch (e) {
+            console.error(e);
+            preview.innerHTML = `<div class="text-xs text-red-400 py-2">Could not derive addresses: ${e.message}</div>`;
+            importPreviewCache = null;
+        }
+    }
+    function selectImportAddress(index) {
+        document.getElementById('importAccountIndex').value = String(index);
+        const preview = document.getElementById('importAddressPreview');
+        const currentMnemonic = document.getElementById('importMnemonic').value.trim().toLowerCase().replace(/\s+/g, ' ');
+        if (importPreviewCache && importPreviewCache.mnemonic === currentMnemonic) {
+            // Same mnemonic as last preview — just re-highlight from cache, no network calls.
+            preview.innerHTML = renderImportPreviewRows(importPreviewCache.rows, index);
+            return;
+        }
+        // Mnemonic changed since the last preview (or no cache yet) — do a full preview.
+        previewImportAddresses();
+    }
+    async function confirmImportWallet() {
+        if (importMode === 'privateKey') {
+            return confirmImportPrivateKey();
+        }
+        if (importChain() === 'ethereum') {
+            showToast('This wallet only supports Solana — switch "Preview chain" back to Solana to import', 'error');
+            return;
+        }
+        const m = document.getElementById('importMnemonic').value.trim().toLowerCase().replace(/\s+/g, ' ');
+        if (!m) { showToast('Enter a mnemonic', 'error'); return; }
+        if (!(await bip39_validateMnemonic(m))) { showToast('Invalid mnemonic', 'error'); return; }
+        const accountIndex = Math.max(0, parseInt(document.getElementById('importAccountIndex').value, 10) || 0);
+        try {
+            const kp = await mnemonicToKeypair(m, accountIndex);
+            const address = kp.publicKey.toString();
+            if (state.wallets.some(w => w.address === address)) {
+                showToast('Wallet already imported', 'info');
+                closeImportWalletModal();
+                return;
+            }
+            const wallet = {
+                id: Date.now().toString(),
+                name: accountIndex === 0 ? `Wallet ${state.wallets.length + 1}` : `Wallet ${state.wallets.length + 1} (acct #${accountIndex})`,
+                address,
+                secretKey: Array.from(kp.secretKey),
+                mnemonic: m,
+                derivationIndex: accountIndex,
+                derivationPath: derivationPathForIndex(accountIndex),
+                balance: 0,
+                tokens: [],
+                transactions: [],
+                nfts: [],
+            };
+            state.wallets.push(wallet);
+            state.activeWalletId = wallet.id;
+            saveState();
+            closeImportWalletModal();
+            renderAll();
+            showToast('Wallet imported', 'success');
+            await refreshAllWalletActivity();
+            await refreshWallet();
+        } catch (e) {
+            console.error(e);
+            showToast('Import failed: ' + e.message, 'error');
+        }
+    }
+
+    /** Import a wallet from a raw private key (base58 or JSON byte array). No
+     *  mnemonic is available for this kind of import, so wallet.mnemonic is left
+     *  unset — export/backup UI should fall back to showing the raw key instead. */
+    async function confirmImportPrivateKey() {
+        const raw = document.getElementById('importPrivateKey').value.trim();
+        if (!raw) { showToast('Enter a private key', 'error'); return; }
+        try {
+            const kp = privateKeyToKeypair(raw);
+            const address = kp.publicKey.toString();
+            if (state.wallets.some(w => w.address === address)) {
+                showToast('Wallet already imported', 'info');
+                closeImportWalletModal();
+                return;
+            }
+            const wallet = {
+                id: Date.now().toString(),
+                name: `Wallet ${state.wallets.length + 1}`,
+                address,
+                secretKey: Array.from(kp.secretKey),
+                mnemonic: null,
+                derivationIndex: null,
+                derivationPath: null,
+                balance: 0,
+                tokens: [],
+                transactions: [],
+                nfts: [],
+            };
+            state.wallets.push(wallet);
+            state.activeWalletId = wallet.id;
+            saveState();
+            closeImportWalletModal();
+            renderAll();
+            showToast('Wallet imported from private key', 'success');
+            await refreshAllWalletActivity();
+            await refreshWallet();
+        } catch (e) {
+            console.error(e);
+            showToast('Import failed: ' + e.message, 'error');
+        }
+    }
+
+    function deleteWallet() {
+        const w = getActiveWallet();
+        if (!w) { showToast('No active wallet', 'info'); return; }
+        const backupHint = w.mnemonic ? 'your mnemonic' : 'your private key';
+        if (!confirm(`Delete "${w.name}"? Ensure ${backupHint} is saved elsewhere.`)) return;
+        state.wallets = state.wallets.filter(x => x.id !== w.id);
+        state.activeWalletId = state.wallets[0]?.id || null;
+        saveState();
+        renderAll();
+        showToast('Wallet deleted', 'info');
+    }
+
+    function exportWallet() {
+        const w = getActiveWallet();
+        if (!w) { showToast('No active wallet', 'info'); return; }
+        const blob = new Blob([JSON.stringify({
+            name: w.name, address: w.address, mnemonic: w.mnemonic, secretKey: w.secretKey,
+        }, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = `${w.name.replace(/\s+/g, '_')}.json`; a.click();
+        URL.revokeObjectURL(url);
+        showToast('Wallet exported', 'success');
+    }
+
+    function switchToWallet(id) {
+        state.activeWalletId = id;
+        saveState();
+        renderAll();
+        refreshWallet();
+    }
+    function getActiveWallet() {
+        return state.wallets.find(w => w.id === state.activeWalletId);
+    }
+
+    // ============================================================================
+    // Live blockchain data
+    // ============================================================================
+    // Debounced wrapper — avoid spamming RPC when the user is switching tabs quickly.
+    let refreshDebounceTimer = null;
+    let lastRefreshAt = 0;
+    function refreshWalletDebounced(delay = 400) {
+        clearTimeout(refreshDebounceTimer);
+        refreshDebounceTimer = setTimeout(() => refreshWallet(), delay);
+    }
+
+    async function refreshWallet() {
+        const w = getActiveWallet();
+        if (!w || refreshInFlight) return;
+        // Coalesce rapid successive calls (e.g. tab switches).
+        const now = Date.now();
+        if (now - lastRefreshAt < 800) return;
+        lastRefreshAt = now;
+        refreshInFlight = true;
+        try {
+            const pubkey = new window.solanaWeb3.PublicKey(w.address);
+
+            // Each RPC method gets its own independent fallback pass instead of being
+            // bundled into one Promise.all. Bundling them meant that a single method
+            // failing on an endpoint (most commonly getParsedTokenAccountsByOwner,
+            // which many free/public RPCs restrict or rate-limit harder than plain
+            // getBalance) rejected the whole worker, which made withRpcFallback treat
+            // that entire endpoint as dead and jump to the next one — even though
+            // balance and history would have succeeded fine. With Promise.allSettled,
+            // one struggling data source degrades gracefully instead of blocking
+            // everything else.
+            const [balanceResult, tokenResult, sigsResult] = await Promise.allSettled([
+                withRpcFallback('get balance', conn => conn.getBalance(pubkey), 10_000),
+                withRpcFallback('get token accounts', conn => conn.getParsedTokenAccountsByOwner(pubkey, {
+                    programId: new window.solanaWeb3.PublicKey(SPL_TOKEN_PROGRAM_ID),
+                }), 12_000),
+                withRpcFallback('get signatures', conn => conn.getSignaturesForAddress(pubkey, { limit: 20 }), 10_000),
+            ]);
+
+            const failures = [];
+
+            if (balanceResult.status === 'fulfilled') {
+                w.balance = balanceResult.value / LAMPORTS_PER_SOL;
+            } else {
+                failures.push('balance');
+                console.warn('balance fetch failed', balanceResult.reason);
+            }
+
+            if (tokenResult.status === 'fulfilled') {
+                const tokens = [], nfts = [];
+                for (const { account } of tokenResult.value.value) {
+                    const info = account.data.parsed.info;
+                    const amount = info.tokenAmount.uiAmount || 0;
+                    const decimals = info.tokenAmount.decimals;
+                    const mint = info.mint;
+                    if (amount === 0) continue;
+                    if (decimals === 0 && amount === 1) nfts.push({ mint, amount });
+                    else tokens.push({ mint, amount, decimals });
+                }
+                w.tokens = tokens;
+                w.nfts = nfts;
+            } else {
+                failures.push('token balances');
+                console.warn('token account fetch failed', tokenResult.reason);
+            }
+
+            if (sigsResult.status === 'fulfilled') {
+                const sigs = sigsResult.value;
+                w.transactions = sigs.map(s => ({
+                    signature: s.signature, slot: s.slot, blockTime: s.blockTime, err: s.err, memo: s.memo,
+                }));
+                w.activityScore = sigs.length;
+                w.lastActivityAt = sigs.find(s => s.blockTime)?.blockTime || w.lastActivityAt || 0;
+            } else {
+                failures.push('transaction history');
+                console.warn('signature fetch failed', sigsResult.reason);
+            }
+
+            if (failures.length < 3) renderAll();
+
+            if (failures.length === 3) {
+                // Every data source failed on every fallback endpoint — this is a
+                // genuine outage, not a single restricted method. Show the hard error.
+                updateNetworkIndicator(false);
+                showToast('RPC error: ' + friendlyError(balanceResult.reason), 'error');
+            } else if (failures.length > 0) {
+                updateNetworkIndicator(true, state.lastGoodRpc || getRpcUrls()[0]);
+                showToast(`Partial update — ${failures.join(' & ')} unavailable on current RPC`, 'info');
+            } else {
+                updateNetworkIndicator(true, state.lastGoodRpc || getRpcUrls()[0]);
+            }
+        } catch (e) {
+            console.error('refreshWallet', e);
+            updateNetworkIndicator(false);
+            showToast('RPC error: ' + friendlyError(e), 'error');
+        } finally {
+            refreshInFlight = false;
+        }
+    }
+
+    function getSwapTokens() {
+        return state.network === 'mainnet' ? JUPITER_MAINNET_TOKENS : [];
+    }
+    function getSwapTokenByMint(mint) {
+        return getSwapTokens().find(t => t.mint === mint) || null;
+    }
+    function base64ToBytes(base64) {
+        return Uint8Array.from(atob(base64), c => c.charCodeAt(0));
+    }
+    function toRawAmount(amount, decimals) {
+        const [whole, frac = ''] = String(amount).trim().split('.');
+        const normalizedWhole = whole && whole !== 'NaN' ? whole : '0';
+        const normalizedFrac = (frac + '0'.repeat(decimals)).slice(0, decimals);
+        return BigInt(`${normalizedWhole}${normalizedFrac}`).toString();
+    }
+    function formatTokenAmount(raw, decimals, symbol = '') {
+        const n = Number(raw) / Math.pow(10, decimals);
+        if (!Number.isFinite(n)) return `0 ${symbol}`.trim();
+        return `${n.toLocaleString(undefined, { maximumFractionDigits: Math.min(decimals, 6) })}${symbol ? ' ' + symbol : ''}`;
+    }
+    function populateSwapTokenSelects() {
+        const from = document.getElementById('swapFromToken');
+        const to = document.getElementById('swapToToken');
+        if (!from || !to) return;
+        const tokens = getSwapTokens();
+        const htmlOptions = tokens.map(t => `<option value="${t.mint}">${t.symbol} · ${t.name}</option>`).join('');
+        from.innerHTML = htmlOptions;
+        to.innerHTML = htmlOptions;
+        if (!from.value && tokens[0]) from.value = tokens[0].mint;
+        if (!to.value && tokens[1]) to.value = tokens[1].mint;
+        if (from.value === to.value && tokens[1]) to.value = tokens[1].mint;
+    }
+    function updateSwapAvailability() {
+        const notice = document.getElementById('swapNetworkNotice');
+        const executeBtn = document.getElementById('swapExecuteBtn');
+        if (!notice || !executeBtn) return;
+        if (state.network !== 'mainnet') {
+            notice.classList.remove('hidden');
+            notice.innerHTML = '<i class="fas fa-triangle-exclamation mr-2"></i>Jupiter swap is enabled only on mainnet in this file.';
+            executeBtn.disabled = true;
+            executeBtn.style.opacity = '0.6';
+        } else {
+            notice.classList.add('hidden');
+            executeBtn.disabled = false;
+            executeBtn.style.opacity = '1';
+        }
+        populateSwapTokenSelects();
+    }
+    function clearSwapQuote() {
+        currentSwapQuote = null;
+        const card = document.getElementById('swapQuoteCard');
+        if (card) card.classList.add('hidden');
+    }
+    function flipSwapTokens() {
+        const from = document.getElementById('swapFromToken');
+        const to = document.getElementById('swapToToken');
+        if (!from || !to) return;
+        const temp = from.value;
+        from.value = to.value;
+        to.value = temp;
+        clearSwapQuote();
+    }
+    function setSwapMaxAmount() {
+        const w = getActiveWallet();
+        const fromMint = document.getElementById('swapFromToken')?.value;
+        const amountEl = document.getElementById('swapAmount');
+        if (!w || !amountEl) return;
+        if (fromMint === JUPITER_MAINNET_TOKENS[0].mint) {
+            amountEl.value = Math.max(0, (Number(w.balance || 0) - 0.01)).toFixed(6);
+        } else {
+            const token = (w.tokens || []).find(t => t.mint === fromMint);
+            amountEl.value = token ? String(token.amount) : '';
+        }
+        clearSwapQuote();
+    }
+    async function jupiterFetch(path, options = {}) {
+        let lastErr = null;
+        for (const base of JUPITER_API_BASES) {
+            try {
+                const res = await fetch(base + path, options);
+                if (!res.ok) {
+                    const text = await res.text().catch(() => '');
+                    throw new Error(text || `Jupiter HTTP ${res.status}`);
+                }
+                return await res.json();
+            } catch (e) {
+                lastErr = e;
+                console.warn('Jupiter endpoint failed', base, e);
+            }
+        }
+        throw lastErr || new Error('Jupiter request failed');
+    }
+    async function fetchSwapQuote() {
+        const w = getActiveWallet();
+        if (!w) { showToast('No active wallet', 'error'); return; }
+        if (state.network !== 'mainnet') { showToast('Switch to mainnet for Jupiter swaps', 'error'); return; }
+        const fromMint = document.getElementById('swapFromToken')?.value;
+        const toMint = document.getElementById('swapToToken')?.value;
+        const amount = document.getElementById('swapAmount')?.value;
+        const slippageBps = Math.max(1, parseInt(document.getElementById('swapSlippage')?.value || '50', 10));
+        if (!fromMint || !toMint || fromMint === toMint) { showToast('Choose two different tokens', 'error'); return; }
+        if (!(Number(amount) > 0)) { showToast('Enter a valid swap amount', 'error'); return; }
+        const fromToken = getSwapTokenByMint(fromMint);
+        const toToken = getSwapTokenByMint(toMint);
+        if (!fromToken || !toToken) { showToast('Unsupported token selection', 'error'); return; }
+
+        const rawAmount = toRawAmount(amount, fromToken.decimals);
+        showLoadingOverlay('Fetching Jupiter quote…');
+        try {
+            const query = new URLSearchParams({
+                inputMint: fromMint,
+                outputMint: toMint,
+                amount: rawAmount,
+                slippageBps: String(slippageBps),
+                restrictIntermediateTokens: 'true',
+                instructionVersion: 'V2',
+            });
+            const quote = await jupiterFetch('/quote?' + query.toString());
+            currentSwapQuote = quote;
+            const card = document.getElementById('swapQuoteCard');
+            if (card) card.classList.remove('hidden');
+            const route = (quote.routePlan || []).map(r => r.swapInfo?.label).filter(Boolean);
+            document.getElementById('swapRouteLabel').textContent = route.length ? route.join(' → ') : 'Best route';
+            document.getElementById('swapQuoteOut').textContent = formatTokenAmount(quote.outAmount, toToken.decimals, toToken.symbol);
+            document.getElementById('swapPriceImpact').textContent = `${Number(quote.priceImpactPct || 0).toFixed(4)}%`;
+            document.getElementById('swapMinReceive').textContent = formatTokenAmount(quote.otherAmountThreshold, toToken.decimals, toToken.symbol);
+            document.getElementById('swapTimeTaken').textContent = `${Math.round(Number(quote.timeTaken || 0) * 1000)} ms`;
+            document.getElementById('swapQuoteMeta').textContent = `Input ${amount} ${fromToken.symbol} • ${quote.routePlan?.length || 0} hop(s) • Slippage ${slippageBps} bps`;
+            showToast('Quote updated', 'success');
+        } catch (e) {
+            console.error(e);
+            clearSwapQuote();
+            showToast('Quote failed: ' + friendlyError(e), 'error');
+        } finally {
+            hideLoadingOverlay();
+        }
+    }
+    async function executeSwap() {
+        const w = getActiveWallet();
+        if (!w) { showToast('No active wallet', 'error'); return; }
+        if (!currentSwapQuote) { showToast('Get a quote first', 'error'); return; }
+        if (state.network !== 'mainnet') { showToast('Switch to mainnet for Jupiter swaps', 'error'); return; }
+
+        const pw = await askPasswordAgain('Enter your password to authorize this Jupiter swap.');
+        if (!pw) return;
+        try {
+            await SEC.loadDecrypted(pw);
+        } catch {
+            showToast('Incorrect password — swap cancelled.', 'error');
+            return;
+        }
+
+        showLoadingOverlay('Building Jupiter swap…');
+        let secretKeyBytes = null;
+        try {
+            const swapResponse = await jupiterFetch('/swap', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    quoteResponse: currentSwapQuote,
+                    userPublicKey: w.address,
+                    wrapAndUnwrapSol: true,
+                    dynamicComputeUnitLimit: true,
+                    dynamicSlippage: true,
+                    prioritizationFeeLamports: {
+                        priorityLevelWithMaxLamports: {
+                            maxLamports: 1000000,
+                            priorityLevel: 'high',
+                        }
+                    }
+                })
+            });
+            if (swapResponse.simulationError) {
+                throw new Error(`Jupiter simulation failed: ${JSON.stringify(swapResponse.simulationError)}`);
+            }
+
+            setLoadingOverlay('Signing swap…');
+            const txBytes = base64ToBytes(swapResponse.swapTransaction);
+            const versioned = window.solanaWeb3.VersionedTransaction.deserialize(txBytes);
+            secretKeyBytes = new Uint8Array(w.secretKey);
+            const signer = window.solanaWeb3.Keypair.fromSecretKey(secretKeyBytes);
+            versioned.sign([signer]);
+
+            setLoadingOverlay('Broadcasting swap…');
+            const signature = await withRpcFallback('send swap', conn => conn.sendRawTransaction(versioned.serialize(), {
+                skipPreflight: false,
+                maxRetries: 2,
+            }), 30_000);
+
+            setLoadingOverlay('Confirming swap…');
+            await withRpcFallback('confirm swap', conn => conn.confirmTransaction({
+                signature,
+                blockhash: versioned.message.recentBlockhash,
+                lastValidBlockHeight: swapResponse.lastValidBlockHeight,
+            }, 'confirmed'), 45_000);
+
+            showToast('Swap confirmed', 'success');
+            currentSwapQuote = null;
+            await refreshAllWalletActivity();
+            await refreshWallet();
+            switchTab('history');
+        } catch (e) {
+            console.error(e);
+            showToast('Swap failed: ' + friendlyError(e), 'error');
+        } finally {
+            zeroArray(secretKeyBytes);
+            hideLoadingOverlay();
+        }
+    }
+
+    async function fetchSolPrice() {
+        try {
+            const r = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd');
+            const j = await r.json();
+            solPriceUsd = j.solana?.usd || 0;
+            renderBalance();
+            renderAssets();
+        } catch (e) { /* USD is optional */ }
+    }
+
+    function startAutoRefresh() {
+        if (refreshTimer) clearInterval(refreshTimer);
+        refreshTimer = setInterval(() => {
+            if (state.autoRefresh && getActiveWallet()) refreshWallet();
+        }, 45_000);
+    }
+
+    // ============================================================================
+    // Send SOL — real SystemProgram.transfer, signed and broadcast
+    // ============================================================================
+    async function sendSol() {
+        const w = getActiveWallet();
+        if (!w) { showToast('No active wallet', 'error'); return; }
+
+        const to = document.getElementById('sendAddress').value.trim();
+        const amount = parseFloat(document.getElementById('sendAmount').value);
+        const priorityFee = parseInt(document.getElementById('sendFee').value) || 0;
+
+        if (!to) { showToast('Enter recipient address', 'error'); return; }
+        if (!(amount > 0)) { showToast('Enter a valid amount', 'error'); return; }
+
+        let toPubkey;
+        try { toPubkey = new window.solanaWeb3.PublicKey(to); }
+        catch { showToast('Invalid recipient address', 'error'); return; }
+
+        if (amount > w.balance) { showToast('Insufficient balance', 'error'); return; }
+
+        // ---- Sensitive-action re-auth: verify password even when unlocked. ----
+        const pw = await askPasswordAgain('Enter your password to authorize this transaction.');
+        if (!pw) return;
+        try {
+            await SEC.loadDecrypted(pw); // throws if incorrect
+        } catch {
+            showToast('Incorrect password — transaction cancelled.', 'error');
+            return;
+        }
+
+        pendingTx = { to, amount, priorityFee, toPubkey };
+        document.getElementById('confirmDetails').innerHTML = `
+            <div class="glass-card p-3 rounded-xl"><p class="text-xs text-slate-400">From</p><p class="wallet-address text-sm">${w.address}</p></div>
+            <div class="glass-card p-3 rounded-xl"><p class="text-xs text-slate-400">To</p><p class="wallet-address text-sm">${to}</p></div>
+            <div class="glass-card p-3 rounded-xl"><p class="text-xs text-slate-400">Amount</p><p class="text-lg font-bold">${amount} SOL</p></div>
+            <div class="glass-card p-3 rounded-xl"><p class="text-xs text-slate-400">Priority fee</p><p class="text-sm">${priorityFee} µlamports/CU</p></div>
+            <div class="glass-card p-3 rounded-xl text-xs text-yellow-300"><i class="fas fa-triangle-exclamation mr-1"></i>Broadcasting to <b>${state.network}</b>.</div>`;
+        document.getElementById('confirmModal').classList.remove('hidden');
+    }
+
+    function closeConfirmModal() {
+        document.getElementById('confirmModal').classList.add('hidden');
+        pendingTx = null;
+    }
+
+    async function confirmTransaction(ev) {
+        if (!pendingTx) return;
+        const w = getActiveWallet();
+        if (!w) return;
+        const btn = (ev && ev.target) ? ev.target.closest('button') : null;
+        if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Sending...'; }
+        showLoadingOverlay('Preparing transaction…');
+
+        // Helper: build a signed tx with a fresh blockhash. Returns { tx, blockhash, lastValidBlockHeight, secretKeyBytes }.
+        const buildSignedTx = async () => {
+            const { toPubkey, amount, priorityFee } = pendingTx;
+            const secretKeyBytes = new Uint8Array(w.secretKey);
+            const fromKeypair = window.solanaWeb3.Keypair.fromSecretKey(secretKeyBytes);
+            const lamports = Math.round(amount * LAMPORTS_PER_SOL);
+
+            const instructions = [];
+            if (priorityFee > 0 && window.solanaWeb3.ComputeBudgetProgram) {
+                instructions.push(
+                    window.solanaWeb3.ComputeBudgetProgram.setComputeUnitPrice({ microLamports: priorityFee })
+                );
+            }
+            instructions.push(
+                window.solanaWeb3.SystemProgram.transfer({
+                    fromPubkey: fromKeypair.publicKey,
+                    toPubkey,
+                    lamports,
+                })
+            );
+
+            const { blockhash, lastValidBlockHeight } = await withRpcFallback('latest blockhash', conn => conn.getLatestBlockhash('confirmed'), 15_000);
+            const tx = new window.solanaWeb3.Transaction({
+                feePayer: fromKeypair.publicKey,
+                blockhash,
+                lastValidBlockHeight,
+            }).add(...instructions);
+            tx.sign(fromKeypair);
+            return { tx, blockhash, lastValidBlockHeight, secretKeyBytes };
+        };
+
+        let secretKeyBytes = null;
+        try {
+            const { amount } = pendingTx;
+
+            // ---- Simulate first to catch errors early ----
+            setLoadingOverlay('Simulating transaction…');
+            let built = await buildSignedTx();
+            secretKeyBytes = built.secretKeyBytes;
+            try {
+                const sim = await withRpcFallback('simulate transaction', conn => conn.simulateTransaction(built.tx), 20_000);
+                if (sim && sim.value && sim.value.err) {
+                    throw new Error('Simulation failed: ' + JSON.stringify(sim.value.err));
+                }
+            } catch (simErr) {
+                // Simulation is best-effort — some RPCs disallow it. Only fail on clear program errors.
+                if (String(simErr.message || '').startsWith('Simulation failed:')) throw simErr;
+                console.warn('simulate skipped:', simErr);
+            }
+
+            // ---- Broadcast, with one retry on transient blockhash errors ----
+            setLoadingOverlay('Broadcasting…');
+            let sig;
+            let attempt = 0;
+            const maxAttempts = 2;
+            let lastBlockhash = built.blockhash;
+            let lastValid = built.lastValidBlockHeight;
+            while (true) {
+                try {
+                    sig = await withRpcFallback('send transaction', conn => conn.sendRawTransaction(built.tx.serialize(), { skipPreflight: false, maxRetries: 2 }), 30_000);
+                    break;
+                } catch (sendErr) {
+                    const msg = (sendErr.message || '').toLowerCase();
+                    if (attempt < maxAttempts - 1 && (msg.includes('blockhash') || msg.includes('block height'))) {
+                        attempt++;
+                        showToast('Retrying with fresh blockhash…', 'info');
+                        built = await buildSignedTx();
+                        lastBlockhash = built.blockhash;
+                        lastValid = built.lastValidBlockHeight;
+                        continue;
+                    }
+                    throw sendErr;
+                }
+            }
+
+            setLoadingOverlay('Waiting for confirmation…');
+            showToast('Broadcast — waiting for confirmation…', 'info');
+            await withRpcFallback('confirm transaction', conn => conn.confirmTransaction({ signature: sig, blockhash: lastBlockhash, lastValidBlockHeight: lastValid }, 'confirmed'), 45_000);
+            showToast(`Sent ${amount} SOL`, 'success');
+            fireConfetti();
+            closeConfirmModal();
+
+            document.getElementById('sendAddress').value = '';
+            document.getElementById('sendAmount').value = '';
+            await refreshWallet();
+            switchTab('history');
+        } catch (e) {
+            console.error(e);
+            showToast('Send failed: ' + friendlyError(e), 'error');
+        } finally {
+            // Zero out the transient copy of the secret key we just built with.
+            zeroArray(secretKeyBytes);
+            hideLoadingOverlay();
+            if (btn) { btn.disabled = false; btn.innerHTML = 'Confirm'; }
+        }
+    }
+
+    // ============================================================================
+    // Rendering
+    // ============================================================================
+    function renderAll() {
+        renderWalletSwitcher();
+        renderBalance();
+        renderAssets();
+        renderReceive();
+        renderHistory();
+        renderNFTs();
+    }
+
+    function renderWalletSwitcher() {
+        const wrap = document.getElementById('walletSwitcherWrap');
+        const sel  = document.getElementById('walletSwitcher');
+        if (state.wallets.length === 0) {
+            wrap.classList.add('hidden');
+            const totalEl = document.getElementById('totalBalance');
+            if (totalEl) totalEl.textContent = '— SOL';
+            const usdEl = document.getElementById('usdBalance');
+            if (usdEl) usdEl.textContent = '';
+            const assets = document.getElementById('assetsList');
+            if (assets) assets.innerHTML = `
+                <div class="text-center py-8">
+                    <p class="text-slate-400 mb-4">No wallet yet</p>
+                    <div class="flex gap-3 justify-center flex-wrap">
+                        <button class="btn-gold" onclick="createNewWallet()"><i class="fas fa-plus mr-2"></i>Create Wallet</button>
+                        <button class="btn-outline" onclick="importWallet()"><i class="fas fa-upload mr-2"></i>Import</button>
+                    </div>
+                </div>`;
+            const loading = document.getElementById('assetsLoading');
+            if (loading) loading.classList.add('hidden');
+            return;
+        }
+        wrap.classList.remove('hidden');
+        const orderedWallets = getWalletsByActivity();
+        sel.innerHTML = orderedWallets.map(w =>
+            `<option value="${w.id}" ${w.id === state.activeWalletId ? 'selected' : ''}>${w.name} — ${shortAddr(w.address)}${w.derivationIndex ? ` — acct #${w.derivationIndex}` : ''} — ${getWalletActivityScore(w)} tx</option>`
+        ).join('');
+    }
+
+    function renderBalance() {
+        const w = getActiveWallet();
+        const totalEl = document.getElementById('totalBalance');
+        const usdEl   = document.getElementById('usdBalance');
+        if (!w || !totalEl) return;
+        totalEl.textContent = `${(w.balance || 0).toFixed(6)} SOL`;
+        if (state.showUsd && solPriceUsd > 0) {
+            usdEl.textContent = `$${((w.balance || 0) * solPriceUsd).toFixed(2)} USD`;
+            usdEl.style.display = '';
+        } else {
+            usdEl.textContent = state.showUsd ? '—' : '';
+        }
+    }
+
+    function renderAssets() {
+        const w = getActiveWallet();
+        const list = document.getElementById('assetsList');
+        const loading = document.getElementById('assetsLoading');
+        const empty = document.getElementById('assetsEmpty');
+        if (!w || !list) return;
+        loading.classList.add('hidden');
+        let items = [{ symbol: 'SOL', name: 'Solana', amount: w.balance || 0, decimals: 9, mint: null }];
+        for (const t of (w.tokens || [])) {
+            items.push({ symbol: shortAddr(t.mint), name: t.mint, amount: t.amount, decimals: t.decimals, mint: t.mint });
+        }
+        if (state.hideZeroBalances) {
+            items = items.filter(a => Number(a.amount) > 0);
+        }
+        if (items.length === 0) { empty.classList.remove('hidden'); list.innerHTML = ''; return; }
+        empty.classList.add('hidden');
+        list.innerHTML = items.map(a => `
+            <div class="asset-item flex items-center justify-between">
+                <div class="min-w-0 flex-1">
+                    <p class="font-semibold">${a.symbol}</p>
+                    <p class="text-xs text-slate-400 wallet-address truncate">${a.mint ? a.mint : 'Native SOL'}</p>
+                </div>
+                <div class="text-right ml-3">
+                    <p class="font-mono">${a.amount}</p>
+                    ${a.symbol === 'SOL' && solPriceUsd > 0 && state.showUsd
+                        ? `<p class="text-xs text-slate-400">$${(a.amount * solPriceUsd).toFixed(2)}</p>` : ''}
+                </div>
+            </div>`).join('');
+    }
+
+    // Render assets, respecting the "hide zero balances" toggle.
+    // (renderAssets is defined earlier; this comment placed next to renderReceive for grouping.)
+
+    function renderReceive() {
+        const w = getActiveWallet();
+        const addrEl = document.getElementById('receiveAddress');
+        const qrBox  = document.getElementById('qrCode');
+        if (!w || !qrBox) return;
+        addrEl.textContent = w.address;
+        qrBox.innerHTML = '';
+        if (window.QRCode) {
+            new window.QRCode(qrBox, {
+                text: w.address,
+                width: 200, height: 200,
+                colorDark: '#000000', colorLight: '#ffffff',
+                correctLevel: window.QRCode.CorrectLevel.M,
+            });
+        } else {
+            qrBox.innerHTML = '<i class="fas fa-qrcode text-6xl text-slate-600"></i>';
+        }
+    }
+
+    // Export the active wallet's transaction history to a CSV file.
+    function exportHistoryCsv() {
+        const w = getActiveWallet();
+        if (!w) { showToast('No active wallet', 'error'); return; }
+        const txs = w.transactions || [];
+        if (txs.length === 0) { showToast('No transactions to export', 'info'); return; }
+        const rows = [['signature','slot','block_time_iso','status','memo']];
+        for (const t of txs) {
+            rows.push([
+                t.signature || '',
+                t.slot != null ? String(t.slot) : '',
+                t.blockTime ? new Date(t.blockTime * 1000).toISOString() : '',
+                t.err ? 'failed' : 'confirmed',
+                (t.memo || '').replace(/[\r\n,]/g, ' '),
+            ]);
+        }
+        const csv = rows.map(r => r.map(f => `"${String(f).replace(/"/g, '""')}"`).join(',')).join('\n');
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `solana-tx-history-${w.address.slice(0,8)}-${Date.now()}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 100);
+        showToast('History exported', 'success');
+    }
+
+    function renderHistory() {
+        const w = getActiveWallet();
+        const list = document.getElementById('historyList');
+        const empty = document.getElementById('historyEmpty');
+        if (!w || !list) return;
+        const txs = w.transactions || [];
+        if (txs.length === 0) {
+            list.innerHTML = '';
+            empty.classList.remove('hidden');
+            return;
+        }
+        empty.classList.add('hidden');
+        list.innerHTML = txs.map(t => {
+            const dt = t.blockTime ? new Date(t.blockTime * 1000).toLocaleString() : 'Pending';
+            const ok = !t.err;
+            const explorer = `https://explorer.solana.com/tx/${t.signature}${state.network !== 'mainnet' ? '?cluster=' + state.network : ''}`;
+            return `
+            <div class="transaction-row flex items-center justify-between">
+                <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-2 mb-1">
+                        <i class="fas ${ok ? 'fa-check-circle text-green-400' : 'fa-xmark-circle text-red-400'}"></i>
+                        <span class="text-sm">${ok ? 'Confirmed' : 'Failed'}</span>
+                    </div>
+                    <p class="wallet-address text-xs text-slate-400 truncate">${t.signature}</p>
+                    <p class="text-xs text-slate-500">${dt}</p>
+                </div>
+                <a href="${explorer}" target="_blank" rel="noreferrer" class="btn-outline text-xs px-3 py-1 ml-3">
+                    <i class="fas fa-external-link-alt"></i>
+                </a>
+            </div>`;
+        }).join('');
+    }
+
+    function renderNFTs() {
+        const w = getActiveWallet();
+        const list = document.getElementById('nftsList');
+        if (!w || !list) return;
+        const nfts = w.nfts || [];
+        if (nfts.length === 0) {
+            list.innerHTML = `
+                <div class="col-span-full text-center py-8 text-slate-400">
+                    <i class="fas fa-image text-4xl mb-3"></i>
+                    <p>No NFTs found</p>
+                </div>`;
+            return;
+        }
+        list.innerHTML = nfts.map(n => {
+            const explorer = `https://explorer.solana.com/address/${n.mint}${state.network !== 'mainnet' ? '?cluster=' + state.network : ''}`;
+            return `
+            <a href="${explorer}" target="_blank" rel="noreferrer" class="asset-item block text-center">
+                <div class="w-full aspect-square rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center mb-2">
+                    <i class="fas fa-image text-3xl"></i>
+                </div>
+                <p class="text-xs wallet-address truncate">${n.mint}</p>
+            </a>`;
+        }).join('');
+    }
+
+    // ============================================================================
+    // Tabs + tiny UI helpers
+    // ============================================================================
+    function switchTab(name, ev) {
+        document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active'));
+        const target = document.getElementById(name);
+        if (target) target.classList.add('active');
+        if (ev && ev.target) {
+            const btn = ev.target.closest('.tab-button');
+            if (btn) btn.classList.add('active');
+        }
+        if (name === 'receive') renderReceive();
+        if (name === 'history') renderHistory();
+        if (name === 'nfts')    renderNFTs();
+    }
+
+    function copyAddress() {
+        const w = getActiveWallet();
+        if (!w) return;
+        navigator.clipboard.writeText(w.address)
+            .then(() => showToast('Address copied', 'success'))
+            .catch(() => showToast('Copy failed', 'error'));
+    }
+
+    function shortAddr(a) {
+        if (!a) return '';
+        if (a.length <= 10) return a;
+        return `${a.slice(0, 4)}…${a.slice(-4)}`;
+    }
+
+    function showToast(msg, type = 'info') {
+        const container = document.getElementById('toastContainer');
+        if (!container) { console.log(msg); return; }
+        const el = document.createElement('div');
+        el.className = `toast ${type}`;
+        el.textContent = msg;
+        container.appendChild(el);
+        setTimeout(() => el.remove(), 3500);
+    }
+
+    // Settings toggle handlers
+    document.addEventListener('change', async (e) => {
+        if (e.target && e.target.id === 'autoRefresh') { state.autoRefresh = e.target.checked; saveState(); }
+        if (e.target && e.target.id === 'showUsd')     { state.showUsd = e.target.checked; saveState(); renderBalance(); renderAssets(); }
+        if (e.target && e.target.id === 'biometricToggle') { void toggleBiometric(e.target.checked); }
+        if (e.target && e.target.id === 'hideZeroBalances') { state.hideZeroBalances = e.target.checked; saveState(); renderAssets(); }
+        if (e.target && e.target.id === 'autoLockSelect') {
+            // Sensitive-setting change: require password re-entry to prevent tampering
+            // by someone at an unlocked screen.
+            const previous = String(state.autoLockMinutes || 5);
+            const nextVal = parseInt(e.target.value, 10) || 5;
+            if (String(nextVal) === previous) return;
+            const pw = await askPasswordAgain('Confirm your password to change the auto-lock timeout.');
+            if (!pw) { e.target.value = previous; return; }
+            try { await SEC.loadDecrypted(pw); }
+            catch { showToast('Incorrect password', 'error'); e.target.value = previous; return; }
+            state.autoLockMinutes = nextVal;
+            saveState();
+            armAutoLock();
+            showToast('Auto-lock updated', 'success');
+        }
+    });
+
+    // ---- Custom RPC endpoint handler (debounced blur commit) ----
+    document.addEventListener('change', (e) => {
+        if (e.target && e.target.id === 'customRpc') {
+            const v = (e.target.value || '').trim();
+            if (v && !/^https?:\/\//i.test(v)) {
+                showToast('RPC URL must start with http(s)://', 'error');
+                e.target.value = state.customRpc || '';
+                return;
+            }
+            state.customRpc = v;
+            saveState();
+            rebuildConnection();
+            showToast(v ? 'Using custom RPC' : 'Cleared custom RPC', 'success');
+            refreshWalletDebounced(200);
+        }
+    });
+
+    // ---- Lock wallet if the tab is closed while unlocked ----
+    window.addEventListener('beforeunload', () => {
+        try { if (!isLocked) lockWallet(); } catch (_) {}
+    });
+
+    // ============================================================================
+    // Loading overlay + confetti (lightweight UX polish)
+    // ============================================================================
+    function showLoadingOverlay(msg) {
+        let el = document.getElementById('loadingOverlay');
+        if (!el) {
+            el = document.createElement('div');
+            el.id = 'loadingOverlay';
+            el.style.cssText = 'position:fixed;inset:0;z-index:20000;display:flex;align-items:center;justify-content:center;background:rgba(15,12,41,0.75);backdrop-filter:blur(4px);';
+            el.innerHTML = `<div class="glass-card p-6 rounded-xl text-center" style="min-width:260px;">
+                <i class="fas fa-spinner fa-spin text-3xl text-yellow-400 mb-3"></i>
+                <p id="loadingOverlayMsg" class="text-sm text-slate-200">Working…</p>
+            </div>`;
+            document.body.appendChild(el);
+        }
+        setLoadingOverlay(msg);
+        el.style.display = 'flex';
+    }
+    function setLoadingOverlay(msg) {
+        const t = document.getElementById('loadingOverlayMsg');
+        if (t && msg) t.textContent = msg;
+    }
+    function hideLoadingOverlay() {
+        const el = document.getElementById('loadingOverlay');
+        if (el) el.style.display = 'none';
+    }
+
+    // Tiny canvas-free confetti — inject some colored divs that fall & fade.
+    function fireConfetti() {
+        try {
+            const N = 60;
+            const colors = ['#f5af19','#f12711','#a855f7','#22d3ee','#22c55e','#fbbf24'];
+            const host = document.createElement('div');
+            host.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:19999;overflow:hidden;';
+            document.body.appendChild(host);
+            for (let i = 0; i < N; i++) {
+                const s = document.createElement('div');
+                const size = 6 + Math.random() * 8;
+                s.style.cssText = `position:absolute;top:-20px;left:${Math.random()*100}%;` +
+                    `width:${size}px;height:${size}px;background:${colors[i%colors.length]};` +
+                    `border-radius:2px;transform:rotate(${Math.random()*360}deg);` +
+                    `animation:confettiFall ${1200 + Math.random()*1200}ms ease-out forwards;`;
+                host.appendChild(s);
+            }
+            setTimeout(() => host.remove(), 2600);
+        } catch (_) {}
+    }
+
+    // ============================================================================
+    // Security UI glue
+    // ============================================================================
+    function $(id){ return document.getElementById(id); }
+
+    function wireSecurityUI() {
+        $('setupBtn').addEventListener('click', onSetupSubmit);
+        $('unlockBtn').addEventListener('click', onUnlockSubmit);
+        $('unlockPassword').addEventListener('keydown', e => { if (e.key === 'Enter') onUnlockSubmit(); });
+        $('setupPasswordConfirm').addEventListener('keydown', e => { if (e.key === 'Enter') onSetupSubmit(); });
+        $('biometricUnlockBtn').addEventListener('click', onBiometricUnlock);
+        $('resetWalletBtn').addEventListener('click', () => {
+            if (confirm('This will erase all encrypted wallet data on this device. Continue only if you have your mnemonic backup.')) {
+                SEC.wipeAll();
+                location.reload();
+            }
+        });
+        $('reauthCancel').addEventListener('click', () => { reauthResolve && reauthResolve(null); hideReauth(); });
+        $('reauthOk').addEventListener('click', onReauthOk);
+        $('reauthPassword').addEventListener('keydown', e => { if (e.key === 'Enter') onReauthOk(); });
+
+        // Auto-lock: reset timer on any interaction.
+        ['click','keydown','mousemove','touchstart'].forEach(evt =>
+            document.addEventListener(evt, () => { if (!isLocked) armAutoLock(); }, { passive: true }));
+    }
+
+    function showSetupScreen(migrateLegacy) {
+        $('setupScreen').classList.remove('hidden');
+        $('setupScreen').dataset.migrate = migrateLegacy ? '1' : '';
+        setTimeout(() => $('setupPassword').focus(), 50);
+    }
+    function hideSetupScreen() { $('setupScreen').classList.add('hidden'); }
+
+    async function onSetupSubmit() {
+        const pw  = $('setupPassword').value;
+        const pw2 = $('setupPasswordConfirm').value;
+        const err = $('setupError');
+        err.classList.add('hidden');
+        if (pw.length < 8) { err.textContent = 'Password must be at least 8 characters.'; err.classList.remove('hidden'); return; }
+        if (pw !== pw2)    { err.textContent = 'Passwords do not match.'; err.classList.remove('hidden'); return; }
+        try {
+            // If migrating legacy plaintext, load it first into `state`.
+            if ($('setupScreen').dataset.migrate === '1') {
+                try {
+                    const legacy = JSON.parse(localStorage.getItem('solanaWalletState') || '{}');
+                    state = { ...state, ...legacy };
+                } catch(e){ console.warn('legacy parse', e); }
+            }
+            sessionPassword = pw;
+            isLocked = false;
+            await SEC.saveEncrypted(state, pw);   // synchronous write — legacy is removed inside saveEncrypted
+            hideSetupScreen();
+            $('setupPassword').value = ''; $('setupPasswordConfirm').value = '';
+            showToast('Wallet secured. Remember your password!', 'success');
+            await bootUnlocked();
+        } catch (e) {
+            console.error(e);
+            err.textContent = 'Setup failed: ' + e.message;
+            err.classList.remove('hidden');
+        }
+    }
+
+    function showUnlockScreen() {
+        $('unlockScreen').classList.remove('hidden');
+        const bioBtn = $('biometricUnlockBtn');
+        if (SEC.biometricEnrolled()) bioBtn.classList.remove('hidden'); else bioBtn.classList.add('hidden');
+        setTimeout(() => $('unlockPassword').focus(), 50);
+    }
+    function hideUnlockScreen() { $('unlockScreen').classList.add('hidden'); }
+
+    async function onUnlockSubmit() {
+        const pw = $('unlockPassword').value;
+        const err = $('unlockError');
+        err.classList.add('hidden');
+        if (!pw) return;
+        try {
+            const loaded = await SEC.loadDecrypted(pw);
+            state = { ...state, ...loaded };
+            sessionPassword = pw;
+            isLocked = false;
+            $('unlockPassword').value = '';
+            hideUnlockScreen();
+            await bootUnlocked();
+        } catch (e) {
+            err.textContent = 'Wrong password or corrupted data.';
+            err.classList.remove('hidden');
+        }
+    }
+
+    async function onBiometricUnlock() {
+        const err = $('unlockError');
+        err.classList.add('hidden');
+        try {
+            const pw = await SEC.unlockWithBiometric();
+            const loaded = await SEC.loadDecrypted(pw);
+            state = { ...state, ...loaded };
+            sessionPassword = pw;
+            isLocked = false;
+            hideUnlockScreen();
+            await bootUnlocked();
+        } catch (e) {
+            console.warn('biometric unlock', e);
+            err.textContent = 'Biometric unlock failed. Use password.';
+            err.classList.remove('hidden');
+        }
+    }
+
+    // ---- Auto-lock ----
+    function armAutoLock() {
+        clearTimeout(lockTimer);
+        const minutes = Math.max(1, Number(state.autoLockMinutes) || 5);
+        lockTimer = setTimeout(lockWallet, minutes * 60_000);
+    }
+    function lockWallet() {
+        // Flush any pending encrypted write, then wipe session secrets.
+        saveQueue.finally(() => {
+            sessionPassword = null;
+            isLocked = true;
+            clearTimeout(lockTimer);
+            if (refreshTimer) { clearInterval(refreshTimer); refreshTimer = null; }
+            // Blank the visible wallet UI so nothing sensitive lingers.
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            showUnlockScreen();
+            showToast('Wallet locked', 'info');
+        });
+    }
+
+    // ---- Re-auth prompt (used before destructive/sensitive actions) ----
+    let reauthResolve = null;
+    function askPasswordAgain(message) {
+        return new Promise(resolve => {
+            reauthResolve = resolve;
+            $('reauthMessage').textContent = message || 'Re-enter your password to continue.';
+            $('reauthError').classList.add('hidden');
+            $('reauthPassword').value = '';
+            $('reauthModal').classList.remove('hidden');
+            setTimeout(() => $('reauthPassword').focus(), 50);
+        });
+    }
+    function hideReauth() { $('reauthModal').classList.add('hidden'); reauthResolve = null; }
+    async function onReauthOk() {
+        const pw = $('reauthPassword').value;
+        try {
+            // Verify by trying to decrypt — cheaper than storing a separate hash.
+            await SEC.loadDecrypted(pw);
+            const r = reauthResolve; hideReauth(); r && r(pw);
+        } catch(e) {
+            $('reauthError').textContent = 'Wrong password.';
+            $('reauthError').classList.remove('hidden');
+        }
+    }
+
+    // ---- Biometric enrollment toggle ----
+    async function toggleBiometric(enable) {
+        const toggle = $('biometricToggle');
+        if (enable) {
+            if (!(await SEC.biometricSupported())) {
+                showToast('No platform authenticator available on this device.', 'error');
+                if (toggle) toggle.checked = false;
+                return;
+            }
+            // Require password re-entry to bind biometrics to it.
+            const pw = await askPasswordAgain('Enter your password to enable biometrics.');
+            if (!pw) { if (toggle) toggle.checked = false; return; }
+            try {
+                await SEC.enrollBiometric(pw);
+                state.biometricEnabled = true;
+                saveState();
+                showToast('Biometrics enabled', 'success');
+            } catch(e) {
+                console.error(e);
+                if (e.message === 'biometric-prf-unsupported') {
+                    showToast('This authenticator does not support the PRF extension — biometric-only unlock is unavailable. Try a different device or browser.', 'error');
+                } else {
+                    showToast('Biometric enrollment failed: ' + e.message, 'error');
+                }
+                if (toggle) toggle.checked = false;
+            }
+        } else {
+            SEC.disableBiometric();
+            state.biometricEnabled = false;
+            saveState();
+            showToast('Biometrics disabled', 'info');
+        }
+    }
+
+    // Manual lock button (from Settings).
+    function lockWalletNow() { lockWallet(); }
+
+    // Password change: re-encrypt existing blob with a new password.
+    async function changePassword() {
+        const oldPw = await askPasswordAgain('Enter your current password.');
+        if (!oldPw) return;
+        const newPw = prompt('New password (min 8 chars):');
+        if (!newPw || newPw.length < 8) { showToast('Password too short', 'error'); return; }
+        const confirmPw = prompt('Confirm new password:');
+        if (newPw !== confirmPw) { showToast('Passwords do not match', 'error'); return; }
+        try {
+            const loaded = await SEC.loadDecrypted(oldPw);
+            await SEC.saveEncrypted(loaded, newPw);
+            sessionPassword = newPw;
+            // If biometrics were on, they were bound to the old password — force re-enrollment.
+            if (SEC.biometricEnrolled()) {
+                SEC.disableBiometric();
+                state.biometricEnabled = false;
+                saveState();
+                showToast('Password changed. Re-enable biometrics in settings.', 'success');
+            } else {
+                showToast('Password changed', 'success');
+            }
+        } catch(e) {
+            showToast('Password change failed: ' + e.message, 'error');
+        }
+    }
+
+    // ============================================================================
+    // Address book — labels for frequently-used recipient addresses
+    // ============================================================================
+    function addToAddressBook() {
+        const label = (prompt('Label (e.g. "Exchange deposit"):') || '').trim();
+        if (!label) return;
+        const address = (prompt('Solana address:') || '').trim();
+        if (!address) return;
+        try { new window.solanaWeb3.PublicKey(address); }
+        catch { showToast('Invalid address', 'error'); return; }
+        state.addressBook = state.addressBook || [];
+        if (state.addressBook.some(e => e.address === address)) {
+            showToast('Address already saved', 'info');
+            return;
+        }
+        state.addressBook.push({ label, address });
+        saveState();
+        renderAddressBook();
+        showToast('Saved to address book', 'success');
+    }
+    function removeFromAddressBook(address) {
+        state.addressBook = (state.addressBook || []).filter(e => e.address !== address);
+        saveState();
+        renderAddressBook();
+    }
+    function pickFromAddressBook(address) {
+        const el = document.getElementById('sendAddress');
+        if (el) { el.value = address; showToast('Recipient set', 'success'); switchTab('send'); }
+    }
+    function renderAddressBook() {
+        const list = document.getElementById('addressBookList');
+        if (!list) return;
+        const book = state.addressBook || [];
+        if (book.length === 0) {
+            list.innerHTML = '<p class="text-sm text-slate-500">No saved addresses yet.</p>';
+            return;
+        }
+        list.innerHTML = book.map(e => `
+            <div class="flex items-center justify-between glass-card p-3 rounded-xl">
+                <div class="flex-1 min-w-0 mr-3">
+                    <p class="text-sm font-medium">${e.label.replace(/</g,'&lt;')}</p>
+                    <p class="wallet-address text-xs text-slate-400 truncate">${e.address}</p>
+                </div>
+                <div class="flex gap-2">
+                    <button class="btn-outline text-xs px-2 py-1" onclick="pickFromAddressBook('${e.address}')" title="Use"><i class="fas fa-paper-plane"></i></button>
+                    <button class="btn-outline text-xs px-2 py-1 text-red-400" onclick="removeFromAddressBook('${e.address}')" title="Remove"><i class="fas fa-trash"></i></button>
+                </div>
+            </div>`).join('');
+    }
+
+    // Re-render address book & network banner whenever the app boots unlocked or state changes.
+    const _origRenderAll = renderAll;
+    renderAll = function() {
+        _origRenderAll();
+        renderAddressBook();
+        updateNetworkBanner();
+        // Sync settings inputs that were added post-boot
+        const rpc = document.getElementById('customRpc'); if (rpc && rpc.value !== (state.customRpc || '')) rpc.value = state.customRpc || '';
+        const hz  = document.getElementById('hideZeroBalances'); if (hz) hz.checked = !!state.hideZeroBalances;
+        const ns  = document.querySelector('select[onchange="changeNetwork(this.value)"]'); if (ns) ns.value = state.network || 'mainnet';
+        updateSwapAvailability();
+    };
+
+    // Expose to inline onclick handlers
+    Object.assign(window, {
+        createNewWallet, confirmCreateWallet, closeCreateWalletModal,
+        importWallet, closeImportWalletModal, confirmImportWallet,
+        previewImportAddresses, selectImportAddress, onImportChainChange,
+        deleteWallet, exportWallet, switchToWallet,
+        sendSol, closeConfirmModal, confirmTransaction,
+        switchTab, copyAddress, changeNetwork, selectMostActiveWallet,
+        lockWalletNow, changePassword, quickSetupHelius,
+        exportHistoryCsv, addToAddressBook, removeFromAddressBook, pickFromAddressBook,
+        fetchSwapQuote, executeSwap, flipSwapTokens, setSwapMaxAmount,
+    });
+    </script>
+
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js/v4513226cdae34746b4dedf0b4dfa099e1781791509496" integrity="sha512-ZE9pZaUXND66v380QUtch/5sE9tPFh2zg45pR2PB0CVkCtOREv2AJKkSidISWkysEuQ0EH8faUU5du78bx87UQ==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79","server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
+</body>
+</html>
