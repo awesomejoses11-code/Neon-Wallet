@@ -283,8 +283,8 @@
 </head>
 <body>
     <div id="demoBanner" style="background: linear-gradient(90deg,#eb3349,#f45c43); color:white; padding:10px 16px; text-align:center; font-size:13px; font-weight:600;">
-        <i class="fas fa-triangle-exclamation mr-2"></i>
-        Local-first wallet. Keys stay on this device and are encrypted at rest. Back up your mnemonic offline.
+        
+  
     </div>
 
     <!-- ============================================================
@@ -1359,12 +1359,7 @@
             showToast('Solana Web3.js failed to load. Check your internet.', 'error');
             return;
         }
-        // Update the demo banner to reflect the new encrypted-storage reality.
-        const banner = document.getElementById('demoBanner');
-        if (banner) {
-            banner.style.background = 'linear-gradient(90deg,#4c1d95,#7c3aed)';
-            banner.innerHTML = '<i class="fas fa-shield-halved mr-2"></i>Keys are encrypted at rest with your password. Biometrics use WebAuthn PRF (device-bound). Back up your mnemonic offline.';
-        }
+        
         wireSecurityUI();
         await bootFlow();
     });
