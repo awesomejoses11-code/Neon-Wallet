@@ -443,14 +443,7 @@
     <script src="https://cdn.jsdelivr.net/npm/ethers@6.17.0/dist/ethers.umd.min.js"></script>
 </head>
 <body>
-    <div id="demoBanner" style="background: linear-gradient(90deg,#eb3349,#f45c43); color:white; padding:10px 16px; text-align:center; font-size:13px; font-weight:600;">
-        
-  
-    </div>
-
-    <!-- ============================================================
-         Security Overlays (Setup / Unlock) — inserted by security patch
-         ============================================================ -->
+    <!-- Security overlays: setup (first run), unlock (returning), reauth (sensitive actions) -->
     <div id="setupScreen" class="modal hidden" style="z-index:10000;">
         <div class="modal-content" style="max-width:440px;">
             <div class="text-center mb-6">
@@ -510,16 +503,7 @@
     <div class="min-h-screen p-4 md:p-8">
         <div id="networkBanner" class="hidden text-center text-sm font-medium p-3 mb-4 rounded-xl" style="background:linear-gradient(90deg,#b45309,#dc2626);color:#fff;"></div>
         <div class="glass-card p-6 mb-6">
-            <div class="flex items-center justify-between flex-wrap gap-4">
-                <div class="flex items-center gap-3">
-                    <div class="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
-                        <i class="fas fa-wallet text-xl"></i>
-                    </div>
-                    <div>
-                        <h1 class="text-2xl font-bold">Solana Wallet</h1>
-                        <p class="text-sm text-slate-400">SVM Wallet</p>
-                    </div>
-                </div>
+            <div class="flex items-center justify-end flex-wrap gap-4">
                 <div class="flex items-center gap-3">
                     <div id="networkStatus" class="network-indicator online">
                         <i class="fas fa-circle text-xs"></i>
@@ -594,6 +578,11 @@
 
                 <div id="swapNetworkNotice" class="glass-card p-3 rounded-xl text-sm text-yellow-300 mb-4 hidden"></div>
 
+                <div id="swapFeeNotice" class="text-xs text-slate-400 mb-4 flex items-start gap-2">
+                    <i class="fas fa-circle-info mt-0.5"></i>
+                    <span>Every swap includes a 0.75% platform fee + a flat $0.005, shown below once you get a quote.</span>
+                </div>
+
                 <div id="swapSettingsPanel" class="glass-card p-4 rounded-xl mb-4 hidden">
                     <label class="block text-sm text-slate-400 mb-2">Slippage tolerance</label>
                     <div class="flex gap-2 flex-wrap" id="slippagePresetGroup">
@@ -663,6 +652,10 @@
                             <p id="swapMinReceive" class="font-semibold">—</p>
                         </div>
                         <div class="glass-card p-3 rounded-xl">
+                            <p class="text-slate-400 text-xs mb-1">Platform Fee</p>
+                            <p id="swapPlatformFee" class="font-semibold">—</p>
+                        </div>
+                        <div class="glass-card p-3 rounded-xl">
                             <p class="text-slate-400 text-xs mb-1">Latency</p>
                             <p id="swapTimeTaken" class="font-semibold">—</p>
                         </div>
@@ -697,12 +690,12 @@
                         <label class="block text-sm text-slate-400 mb-2">Amount (SOL)</label>
                         <input type="number" id="sendAmount" class="input-field" placeholder="0.00" step="0.000001">
                     </div>
-                    
-                    <div>
-                        <label class="block text-sm text-slate-400 mb-2">Priority Fee (lamports)</label>
-                        <input type="number" id="sendFee" class="input-field" placeholder="5000" value="5000">
-                    </div>
-                    
+
+                    <p class="text-xs text-slate-400 flex items-start gap-2">
+                        <i class="fas fa-circle-info mt-0.5"></i>
+                        <span>Network fee is set automatically. A flat 0.0005 SOL platform fee applies to every send — shown before you confirm.</span>
+                    </p>
+
                     <button class="btn-gold w-full py-4" onclick="sendSol()">
                         <i class="fas fa-paper-plane mr-2"></i>Send SOL
                     </button>
@@ -994,57 +987,20 @@
     const BIP39_WORDLIST = ["abandon","ability","able","about","above","absent","absorb","abstract","absurd","abuse","access","accident","account","accuse","achieve","acid","acoustic","acquire","across","act","action","actor","actress","actual","adapt","add","addict","address","adjust","admit","adult","advance","advice","aerobic","affair","afford","afraid","again","age","agent","agree","ahead","aim","air","airport","aisle","alarm","album","alcohol","alert","alien","all","alley","allow","almost","alone","alpha","already","also","alter","always","amateur","amazing","among","amount","amused","analyst","anchor","ancient","anger","angle","angry","animal","ankle","announce","annual","another","answer","antenna","antique","anxiety","any","apart","apology","appear","apple","approve","april","arch","arctic","area","arena","argue","arm","armed","armor","army","around","arrange","arrest","arrive","arrow","art","artefact","artist","artwork","ask","aspect","assault","asset","assist","assume","asthma","athlete","atom","attack","attend","attitude","attract","auction","audit","august","aunt","author","auto","autumn","average","avocado","avoid","awake","aware","away","awesome","awful","awkward","axis","baby","bachelor","bacon","badge","bag","balance","balcony","ball","bamboo","banana","banner","bar","barely","bargain","barrel","base","basic","basket","battle","beach","bean","beauty","because","become","beef","before","begin","behave","behind","believe","below","belt","bench","benefit","best","betray","better","between","beyond","bicycle","bid","bike","bind","biology","bird","birth","bitter","black","blade","blame","blanket","blast","bleak","bless","blind","blood","blossom","blouse","blue","blur","blush","board","boat","body","boil","bomb","bone","bonus","book","boost","border","boring","borrow","boss","bottom","bounce","box","boy","bracket","brain","brand","brass","brave","bread","breeze","brick","bridge","brief","bright","bring","brisk","broccoli","broken","bronze","broom","brother","brown","brush","bubble","buddy","budget","buffalo","build","bulb","bulk","bullet","bundle","bunker","burden","burger","burst","bus","business","busy","butter","buyer","buzz","cabbage","cabin","cable","cactus","cage","cake","call","calm","camera","camp","can","canal","cancel","candy","cannon","canoe","canvas","canyon","capable","capital","captain","car","carbon","card","cargo","carpet","carry","cart","case","cash","casino","castle","casual","cat","catalog","catch","category","cattle","caught","cause","caution","cave","ceiling","celery","cement","census","century","cereal","certain","chair","chalk","champion","change","chaos","chapter","charge","chase","chat","cheap","check","cheese","chef","cherry","chest","chicken","chief","child","chimney","choice","choose","chronic","chuckle","chunk","churn","cigar","cinnamon","circle","citizen","city","civil","claim","clap","clarify","claw","clay","clean","clerk","clever","click","client","cliff","climb","clinic","clip","clock","clog","close","cloth","cloud","clown","club","clump","cluster","clutch","coach","coast","coconut","code","coffee","coil","coin","collect","color","column","combine","come","comfort","comic","common","company","concert","conduct","confirm","congress","connect","consider","control","convince","cook","cool","copper","copy","coral","core","corn","correct","cost","cotton","couch","country","couple","course","cousin","cover","coyote","crack","cradle","craft","cram","crane","crash","crater","crawl","crazy","cream","credit","creek","crew","cricket","crime","crisp","critic","crop","cross","crouch","crowd","crucial","cruel","cruise","crumble","crunch","crush","cry","crystal","cube","culture","cup","cupboard","curious","current","curtain","curve","cushion","custom","cute","cycle","dad","damage","damp","dance","danger","daring","dash","daughter","dawn","day","deal","debate","debris","decade","december","decide","decline","decorate","decrease","deer","defense","define","defy","degree","delay","deliver","demand","demise","denial","dentist","deny","depart","depend","deposit","depth","deputy","derive","describe","desert","design","desk","despair","destroy","detail","detect","develop","device","devote","diagram","dial","diamond","diary","dice","diesel","diet","differ","digital","dignity","dilemma","dinner","dinosaur","direct","dirt","disagree","discover","disease","dish","dismiss","disorder","display","distance","divert","divide","divorce","dizzy","doctor","document","dog","doll","dolphin","domain","donate","donkey","donor","door","dose","double","dove","draft","dragon","drama","drastic","draw","dream","dress","drift","drill","drink","drip","drive","drop","drum","dry","duck","dumb","dune","during","dust","dutch","duty","dwarf","dynamic","eager","eagle","early","earn","earth","easily","east","easy","echo","ecology","economy","edge","edit","educate","effort","egg","eight","either","elbow","elder","electric","elegant","element","elephant","elevator","elite","else","embark","embody","embrace","emerge","emotion","employ","empower","empty","enable","enact","end","endless","endorse","enemy","energy","enforce","engage","engine","enhance","enjoy","enlist","enough","enrich","enroll","ensure","enter","entire","entry","envelope","episode","equal","equip","era","erase","erode","erosion","error","erupt","escape","essay","essence","estate","eternal","ethics","evidence","evil","evoke","evolve","exact","example","excess","exchange","excite","exclude","excuse","execute","exercise","exhaust","exhibit","exile","exist","exit","exotic","expand","expect","expire","explain","expose","express","extend","extra","eye","eyebrow","fabric","face","faculty","fade","faint","faith","fall","false","fame","family","famous","fan","fancy","fantasy","farm","fashion","fat","fatal","father","fatigue","fault","favorite","feature","february","federal","fee","feed","feel","female","fence","festival","fetch","fever","few","fiber","fiction","field","figure","file","film","filter","final","find","fine","finger","finish","fire","firm","first","fiscal","fish","fit","fitness","fix","flag","flame","flash","flat","flavor","flee","flight","flip","float","flock","floor","flower","fluid","flush","fly","foam","focus","fog","foil","fold","follow","food","foot","force","forest","forget","fork","fortune","forum","forward","fossil","foster","found","fox","fragile","frame","frequent","fresh","friend","fringe","frog","front","frost","frown","frozen","fruit","fuel","fun","funny","furnace","fury","future","gadget","gain","galaxy","gallery","game","gap","garage","garbage","garden","garlic","garment","gas","gasp","gate","gather","gauge","gaze","general","genius","genre","gentle","genuine","gesture","ghost","giant","gift","giggle","ginger","giraffe","girl","give","glad","glance","glare","glass","glide","glimpse","globe","gloom","glory","glove","glow","glue","goat","goddess","gold","good","goose","gorilla","gospel","gossip","govern","gown","grab","grace","grain","grant","grape","grass","gravity","great","green","grid","grief","grit","grocery","group","grow","grunt","guard","guess","guide","guilt","guitar","gun","gym","habit","hair","half","hammer","hamster","hand","happy","harbor","hard","harsh","harvest","hat","have","hawk","hazard","head","health","heart","heavy","hedgehog","height","hello","helmet","help","hen","hero","hidden","high","hill","hint","hip","hire","history","hobby","hockey","hold","hole","holiday","hollow","home","honey","hood","hope","horn","horror","horse","hospital","host","hotel","hour","hover","hub","huge","human","humble","humor","hundred","hungry","hunt","hurdle","hurry","hurt","husband","hybrid","ice","icon","idea","identify","idle","ignore","ill","illegal","illness","image","imitate","immense","immune","impact","impose","improve","impulse","inch","include","income","increase","index","indicate","indoor","industry","infant","inflict","inform","inhale","inherit","initial","inject","injury","inmate","inner","innocent","input","inquiry","insane","insect","inside","inspire","install","intact","interest","into","invest","invite","involve","iron","island","isolate","issue","item","ivory","jacket","jaguar","jar","jazz","jealous","jeans","jelly","jewel","job","join","joke","journey","joy","judge","juice","jump","jungle","junior","junk","just","kangaroo","keen","keep","ketchup","key","kick","kid","kidney","kind","kingdom","kiss","kit","kitchen","kite","kitten","kiwi","knee","knife","knock","know","lab","label","labor","ladder","lady","lake","lamp","language","laptop","large","later","latin","laugh","laundry","lava","law","lawn","lawsuit","layer","lazy","leader","leaf","learn","leave","lecture","left","leg","legal","legend","leisure","lemon","lend","length","lens","leopard","lesson","letter","level","liar","liberty","library","license","life","lift","light","like","limb","limit","link","lion","liquid","list","little","live","lizard","load","loan","lobster","local","lock","logic","lonely","long","loop","lottery","loud","lounge","love","loyal","lucky","luggage","lumber","lunar","lunch","luxury","lyrics","machine","mad","magic","magnet","maid","mail","main","major","make","mammal","man","manage","mandate","mango","mansion","manual","maple","marble","march","margin","marine","market","marriage","mask","mass","master","match","material","math","matrix","matter","maximum","maze","meadow","mean","measure","meat","mechanic","medal","media","melody","melt","member","memory","mention","menu","mercy","merge","merit","merry","mesh","message","metal","method","middle","midnight","milk","million","mimic","mind","minimum","minor","minute","miracle","mirror","misery","miss","mistake","mix","mixed","mixture","mobile","model","modify","mom","moment","monitor","monkey","monster","month","moon","moral","more","morning","mosquito","mother","motion","motor","mountain","mouse","move","movie","much","muffin","mule","multiply","muscle","museum","mushroom","music","must","mutual","myself","mystery","myth","naive","name","napkin","narrow","nasty","nation","nature","near","neck","need","negative","neglect","neither","nephew","nerve","nest","net","network","neutral","never","news","next","nice","night","noble","noise","nominee","noodle","normal","north","nose","notable","note","nothing","notice","novel","now","nuclear","number","nurse","nut","oak","obey","object","oblige","obscure","observe","obtain","obvious","occur","ocean","october","odor","off","offer","office","often","oil","okay","old","olive","olympic","omit","once","one","onion","online","only","open","opera","opinion","oppose","option","orange","orbit","orchard","order","ordinary","organ","orient","original","orphan","ostrich","other","outdoor","outer","output","outside","oval","oven","over","own","owner","oxygen","oyster","ozone","pact","paddle","page","pair","palace","palm","panda","panel","panic","panther","paper","parade","parent","park","parrot","party","pass","patch","path","patient","patrol","pattern","pause","pave","payment","peace","peanut","pear","peasant","pelican","pen","penalty","pencil","people","pepper","perfect","permit","person","pet","phone","photo","phrase","physical","piano","picnic","picture","piece","pig","pigeon","pill","pilot","pink","pioneer","pipe","pistol","pitch","pizza","place","planet","plastic","plate","play","please","pledge","pluck","plug","plunge","poem","poet","point","polar","pole","police","pond","pony","pool","popular","portion","position","possible","post","potato","pottery","poverty","powder","power","practice","praise","predict","prefer","prepare","present","pretty","prevent","price","pride","primary","print","priority","prison","private","prize","problem","process","produce","profit","program","project","promote","proof","property","prosper","protect","proud","provide","public","pudding","pull","pulp","pulse","pumpkin","punch","pupil","puppy","purchase","purity","purpose","purse","push","put","puzzle","pyramid","quality","quantum","quarter","question","quick","quit","quiz","quote","rabbit","raccoon","race","rack","radar","radio","rail","rain","raise","rally","ramp","ranch","random","range","rapid","rare","rate","rather","raven","raw","razor","ready","real","reason","rebel","rebuild","recall","receive","recipe","record","recycle","reduce","reflect","reform","refuse","region","regret","regular","reject","relax","release","relief","rely","remain","remember","remind","remove","render","renew","rent","reopen","repair","repeat","replace","report","require","rescue","resemble","resist","resource","response","result","retire","retreat","return","reunion","reveal","review","reward","rhythm","rib","ribbon","rice","rich","ride","ridge","rifle","right","rigid","ring","riot","ripple","risk","ritual","rival","river","road","roast","robot","robust","rocket","romance","roof","rookie","room","rose","rotate","rough","round","route","royal","rubber","rude","rug","rule","run","runway","rural","sad","saddle","sadness","safe","sail","salad","salmon","salon","salt","salute","same","sample","sand","satisfy","satoshi","sauce","sausage","save","say","scale","scan","scare","scatter","scene","scheme","school","science","scissors","scorpion","scout","scrap","screen","script","scrub","sea","search","season","seat","second","secret","section","security","seed","seek","segment","select","sell","seminar","senior","sense","sentence","series","service","session","settle","setup","seven","shadow","shaft","shallow","share","shed","shell","sheriff","shield","shift","shine","ship","shiver","shock","shoe","shoot","shop","short","shoulder","shove","shrimp","shrug","shuffle","shy","sibling","sick","side","siege","sight","sign","silent","silk","silly","silver","similar","simple","since","sing","siren","sister","situate","six","size","skate","sketch","ski","skill","skin","skirt","skull","slab","slam","sleep","slender","slice","slide","slight","slim","slogan","slot","slow","slush","small","smart","smile","smoke","smooth","snack","snake","snap","sniff","snow","soap","soccer","social","sock","soda","soft","solar","soldier","solid","solution","solve","someone","song","soon","sorry","sort","soul","sound","soup","source","south","space","spare","spatial","spawn","speak","special","speed","spell","spend","sphere","spice","spider","spike","spin","spirit","split","spoil","sponsor","spoon","sport","spot","spray","spread","spring","spy","square","squeeze","squirrel","stable","stadium","staff","stage","stairs","stamp","stand","start","state","stay","steak","steel","stem","step","stereo","stick","still","sting","stock","stomach","stone","stool","story","stove","strategy","street","strike","strong","struggle","student","stuff","stumble","style","subject","submit","subway","success","such","sudden","suffer","sugar","suggest","suit","summer","sun","sunny","sunset","super","supply","supreme","sure","surface","surge","surprise","surround","survey","suspect","sustain","swallow","swamp","swap","swarm","swear","sweet","swift","swim","swing","switch","sword","symbol","symptom","syrup","system","table","tackle","tag","tail","talent","talk","tank","tape","target","task","taste","tattoo","taxi","teach","team","tell","ten","tenant","tennis","tent","term","test","text","thank","that","theme","then","theory","there","they","thing","this","thought","three","thrive","throw","thumb","thunder","ticket","tide","tiger","tilt","timber","time","tiny","tip","tired","tissue","title","toast","tobacco","today","toddler","toe","together","toilet","token","tomato","tomorrow","tone","tongue","tonight","tool","tooth","top","topic","topple","torch","tornado","tortoise","toss","total","tourist","toward","tower","town","toy","track","trade","traffic","tragic","train","transfer","trap","trash","travel","tray","treat","tree","trend","trial","tribe","trick","trigger","trim","trip","trophy","trouble","truck","true","truly","trumpet","trust","truth","try","tube","tuition","tumble","tuna","tunnel","turkey","turn","turtle","twelve","twenty","twice","twin","twist","two","type","typical","ugly","umbrella","unable","unaware","uncle","uncover","under","undo","unfair","unfold","unhappy","uniform","unique","unit","universe","unknown","unlock","until","unusual","unveil","update","upgrade","uphold","upon","upper","upset","urban","urge","usage","use","used","useful","useless","usual","utility","vacant","vacuum","vague","valid","valley","valve","van","vanish","vapor","various","vast","vault","vehicle","velvet","vendor","venture","venue","verb","verify","version","very","vessel","veteran","viable","vibrant","vicious","victory","video","view","village","vintage","violin","virtual","virus","visa","visit","visual","vital","vivid","vocal","voice","void","volcano","volume","vote","voyage","wage","wagon","wait","walk","wall","walnut","want","warfare","warm","warrior","wash","wasp","waste","water","wave","way","wealth","weapon","wear","weasel","weather","web","wedding","weekend","weird","welcome","west","wet","whale","what","wheat","wheel","when","where","whip","whisper","wide","width","wife","wild","will","win","window","wine","wing","wink","winner","winter","wire","wisdom","wise","wish","witness","wolf","woman","wonder","wood","wool","word","work","world","worry","worth","wrap","wreck","wrestle","wrist","write","wrong","yard","year","yellow","you","young","youth","zebra","zero","zone","zoo"];
 
     // -- Constants --------------------------------------------------------------
-    // Default public RPC endpoints. Sourced from Solana's own current docs
-    // (solana.com/docs/references/clusters) rather than memory, since this list
-    // goes stale — see reasoning below.
+    // Default public RPC endpoints (solana.com/docs/references/clusters), tried
+    // in order via withRpcFallback(). `api.mainnet.solana.com` is the current
+    // official mainnet endpoint; `-beta` and PublicNode are fallbacks. Public
+    // endpoints are rate-limited by design (100 req/10s per IP) and can be
+    // blocked without notice — that's expected behavior, not a bug to chase.
     //
-    // - Solana's official docs now list `api.mainnet.solana.com` (no "-beta") as
-    //   THE current Mainnet endpoint. `api.mainnet-beta.solana.com` is kept as a
-    //   second fallback since a lot of tooling/aliases still point at it, but the
-    //   non-"-beta" domain is primary going forward.
-    // - Ankr's and dRPC's anonymous free tiers now explicitly refuse Solana
-    //   ("API key is not allowed to access blockchain" / "chain is not available
-    //   on freetier") — both were removed rather than left in as guaranteed-fail
-    //   fallback entries that burn a retry slot for nothing.
-    // - PublicNode (solana-rpc.publicnode.com / solana-testnet-rpc.publicnode.com)
-    //   is a genuinely key-free, CORS-friendly public RPC gateway — no signup, no
-    //   token, works straight from the browser — so it's included as an extra
-    //   fallback ahead of the official Solana Labs nodes, which are the most
-    //   heavily shared (and therefore most rate-limited) endpoints that exist.
-    // - Public endpoints are rate-limited by design (Solana's own docs: 100 req/10s
-    //   per IP, 40 req/10s per method) and can be blocked "without prior notice."
-    //   A 403 from these is often not a bug to fix in this app — it's the
-    //   documented behavior of free public infra. The durable fix is a free API
-    //   key from a provider (see the in-app message when all endpoints fail).
-    // Your own server-side RPC proxy — deployed and live on Vercel (not
-    // Cloudflare Workers): project "solana-rpc-proxy" under the
-    // joseph-anih-projects team, https://solana-rpc-proxy.vercel.app/api/rpc.
-    // It holds the real Helius key in a Vercel Environment Variable and
-    // forwards requests server-side, so the key never touches this file or
-    // the browser — nothing to scrape from view-source. One step left:
-    //   1. Get a free Helius key, no credit card: https://dashboard.helius.dev
-    //   2. Vercel dashboard -> solana-rpc-proxy project -> Settings ->
-    //      Environment Variables -> add HELIUS_API_KEY = <your key>
-    //   3. Redeploy that project (env vars only apply to new deployments)
-    // Until step 2 is done, hitting this proxy returns a clear 500 saying so,
-    // and withRpcFallback just moves on to the next endpoint — it doesn't
-    // break anything in the meantime.
+    // RPC_PROXY_URL points at a small server-side proxy (holds a Helius key,
+    // never exposed to the browser) tried first. Get a free Helius key at
+    // dashboard.helius.dev and set it as that project's HELIUS_API_KEY env var.
     const RPC_PROXY_URL = 'https://solana-rpc-proxy.vercel.app/api/rpc';
 
-    // Paste free-tier provider RPC URLs (key already baked into the URL) here
-    // if you want them embedded directly instead of going through a proxy.
-    // I can't sign up for these on your behalf — no email/captcha access — but
-    // each of these takes under a minute, no credit card required:
-    //   Helius   -> dashboard.helius.dev      -> https://mainnet.helius-rpc.com/?api-key=YOUR_KEY
-    //   Shyft    -> shyft.to                  -> https://rpc.shyft.to?api_key=YOUR_KEY
-    //   Syndica  -> syndica.io                -> paste the full endpoint URL they give you
-    //   QuickNode -> quicknode.com            -> paste the full endpoint URL they give you
-    // Heads up: unlike the proxy above, a key pasted here sits in plain text in
-    // page source — anyone who views-source can lift and use it too, so it'll
-    // burn through its free-tier quota faster than your own traffic alone would
-    // account for. Treat entries here as disposable: delete and replace when one
-    // dies. This is still strictly better than nothing, since it's YOUR quota
-    // failing over instead of the entire internet's shared public quota.
+    // Paste any paid-tier RPC URLs here (key baked into the URL) to use them
+    // directly instead of/alongside the proxy. Unlike the proxy, keys pasted
+    // here sit in plain text in page source.
     const EXTRA_MAINNET_RPC_URLS = [
         // 'https://mainnet.helius-rpc.com/?api-key=PASTE_KEY_HERE',
     ];
@@ -1107,6 +1063,24 @@
     }
     const LAMPORTS_PER_SOL = 1_000_000_000;
     const SPL_TOKEN_PROGRAM_ID = 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA';
+
+    // -- Platform fee ------------------------------------------------------------
+    // Charged on every Jupiter swap: 0.75% of the swap's USD value + a flat
+    // $0.005, both converted to SOL and sent to PLATFORM_FEE_ADDRESS as a
+    // separate transfer right after the swap confirms (see sendPlatformFee).
+    // We deliberately do NOT use Jupiter's platformFeeBps/feeAccount fields —
+    // that mechanism requires an already-initialized token account for the
+    // specific input/output mint, which can't be guaranteed for arbitrary swap
+    // pairs, and getting it wrong would silently break the swap itself. We do
+    // pass trackingAccount (see executeSwap), which Jupiter explicitly supports
+    // for tagging swaps with an integrator address with no such precondition.
+    // The fee is always shown to the user before they confirm — see the
+    // "Platform Fee" row in the quote card and swapFeeNotice below.
+    const PLATFORM_FEE_ADDRESS = 'Fk1qqdLqQxNfZsJ7jArVZ1PnbZXLZNwtpGapNAQwM6ct';
+    const PLATFORM_SWAP_FEE_BPS = 75;      // 0.75%
+    const PLATFORM_FLAT_FEE_USD = 0.005;   // + flat fee, per swap
+    const PLATFORM_SEND_FEE_SOL = 0.0005;  // flat fee, per regular SOL send
+    const PLATFORM_SEND_FEE_LAMPORTS = Math.round(PLATFORM_SEND_FEE_SOL * LAMPORTS_PER_SOL);
 
     // -- Sensitive-memory hygiene ----------------------------------------------
     // Zero out arrays containing secrets (mnemonic bytes, secret keys) once done.
@@ -1370,6 +1344,7 @@
     let importPreviewCache = null;
     let solPriceUsd = 0;
     let currentSwapQuote = null;
+    let currentSwapFeeLamports = 0;
     let refreshInFlight = false;
     let rpcConnections = new Map();
 
@@ -1747,6 +1722,7 @@
         if (!NETWORKS[net]) return;
         state.network = net;
         currentSwapQuote = null;
+        currentSwapFeeLamports = 0;
         saveState();
         rebuildConnection();
         showToast(`Switched to ${net}`, 'info');
@@ -2612,12 +2588,14 @@
     }
     function clearSwapQuote() {
         currentSwapQuote = null;
+        currentSwapFeeLamports = 0;
         const card = document.getElementById('swapQuoteCard');
         if (card) card.classList.add('hidden');
         const big = document.getElementById('swapQuoteOutBig');
         if (big) big.textContent = '0';
         const impact = document.getElementById('swapPriceImpact');
         if (impact) impact.textContent = '—';
+        renderSwapFee();
     }
     function flipSwapTokens() {
         const from = document.getElementById('swapFromToken');
@@ -2691,6 +2669,29 @@
         }
         return map;
     }
+    // Values the swap in USD (preferring the input side, falling back to the
+    // output side) and converts 0.75% of that + the flat $0.005 into lamports
+    // at the current SOL price. Returns 0 (fee skipped, never guessed) if we
+    // don't have a SOL price yet or can't price either side of the swap.
+    function computeSwapFeeLamports(quote, fromToken, toToken) {
+        if (!(solPriceUsd > 0)) return 0;
+        const inUi  = Number(quote.inAmount)  / Math.pow(10, fromToken.decimals);
+        const outUi = Number(quote.outAmount) / Math.pow(10, toToken.decimals);
+        const inUsd  = fromToken.usdPrice > 0 ? inUi  * fromToken.usdPrice : 0;
+        const outUsd = toToken.usdPrice   > 0 ? outUi * toToken.usdPrice  : 0;
+        const swapValueUsd = inUsd || outUsd || 0;
+        const totalFeeUsd = swapValueUsd * (PLATFORM_SWAP_FEE_BPS / 10000) + PLATFORM_FLAT_FEE_USD;
+        return Math.max(0, Math.round((totalFeeUsd / solPriceUsd) * LAMPORTS_PER_SOL));
+    }
+    function renderSwapFee() {
+        const el = document.getElementById('swapPlatformFee');
+        if (!el) return;
+        const feeSol = currentSwapFeeLamports / LAMPORTS_PER_SOL;
+        const feeUsd = feeSol * solPriceUsd;
+        el.textContent = currentSwapFeeLamports > 0
+            ? `${feeSol.toLocaleString(undefined, { maximumFractionDigits: 6 })} SOL${feeUsd > 0 ? ` (~$${feeUsd.toFixed(3)})` : ''}`
+            : '—';
+    }
     async function fetchSwapQuote() {
         const w = getActiveWallet();
         if (!w) { showToast('No active wallet', 'error'); return; }
@@ -2718,6 +2719,7 @@
             });
             const quote = await jupiterFetch('/quote?' + query.toString());
             currentSwapQuote = quote;
+            currentSwapFeeLamports = computeSwapFeeLamports(quote, fromToken, toToken);
             const card = document.getElementById('swapQuoteCard');
             if (card) card.classList.remove('hidden');
             const route = (quote.routePlan || []).map(r => r.swapInfo?.label).filter(Boolean);
@@ -2725,6 +2727,7 @@
             document.getElementById('swapQuoteOut').textContent = formatTokenAmount(quote.outAmount, toToken.decimals, toToken.symbol);
             document.getElementById('swapMinReceive').textContent = formatTokenAmount(quote.otherAmountThreshold, toToken.decimals, toToken.symbol);
             document.getElementById('swapTimeTaken').textContent = `${Math.round(Number(quote.timeTaken || 0) * 1000)} ms`;
+            renderSwapFee();
             document.getElementById('swapQuoteMeta').textContent = `Input ${amount} ${fromToken.symbol} • ${quote.routePlan?.length || 0} hop(s) • Slippage ${(slippageBps / 100).toFixed(2)}%`;
             const receiveBig = document.getElementById('swapQuoteOutBig');
             if (receiveBig) receiveBig.textContent = (Number(quote.outAmount) / Math.pow(10, toToken.decimals)).toLocaleString(undefined, { maximumFractionDigits: Math.min(toToken.decimals, 6) });
@@ -2756,6 +2759,7 @@
 
         showLoadingOverlay('Building Jupiter swap…');
         let secretKeyBytes = null;
+        const feeLamportsForThisSwap = currentSwapFeeLamports; // snapshot — cleared below once the swap confirms
         try {
             const swapResponse = await jupiterFetch('/swap', {
                 method: 'POST',
@@ -2766,6 +2770,7 @@
                     wrapAndUnwrapSol: true,
                     dynamicComputeUnitLimit: true,
                     dynamicSlippage: true,
+                    trackingAccount: PLATFORM_FEE_ADDRESS,
                     prioritizationFeeLamports: {
                         priorityLevelWithMaxLamports: {
                             maxLamports: 1000000,
@@ -2800,6 +2805,7 @@
 
             showToast('Swap confirmed', 'success');
             currentSwapQuote = null;
+            currentSwapFeeLamports = 0;
             const amountEl = document.getElementById('swapAmount');
             if (amountEl) amountEl.value = '';
             clearSwapQuote();
@@ -2807,12 +2813,48 @@
             await refreshWallet();
             refreshSwapPills();
             switchTab('history');
+
+            // Platform fee — its own transfer, sent only after the swap above has
+            // actually confirmed. Best-effort and isolated in its own try/catch:
+            // the swap already succeeded, so a fee-transfer hiccup (e.g. dust left
+            // over after a MAX-amount swap) must never surface as a "swap failed"
+            // error. The amount was already shown to the user in the quote card
+            // before they confirmed — see the "Platform Fee" row and swapFeeNotice.
+            if (feeLamportsForThisSwap > 0) {
+                try {
+                    await sendPlatformFee(feeLamportsForThisSwap, w);
+                    showToast(`Platform fee applied: ${(feeLamportsForThisSwap / LAMPORTS_PER_SOL).toLocaleString(undefined, { maximumFractionDigits: 6 })} SOL`, 'info');
+                } catch (feeErr) {
+                    console.warn('platform fee transfer failed (swap itself succeeded)', feeErr);
+                }
+            }
         } catch (e) {
             console.error(e);
             showToast('Swap failed: ' + friendlyError(e), 'error');
         } finally {
             zeroArray(secretKeyBytes);
             hideLoadingOverlay();
+        }
+    }
+
+    // Sends the platform fee (see PLATFORM_FEE_ADDRESS above) as a plain SOL
+    // transfer — the swap itself is done and confirmed by the time this runs.
+    // Builds/signs/broadcasts independently of executeSwap's own key handling
+    // so a failure here can never touch the swap's already-successful result.
+    async function sendPlatformFee(lamports, w) {
+        let feeKeyBytes = null;
+        try {
+            feeKeyBytes = new Uint8Array(w.secretKey);
+            const feeKeypair = window.solanaWeb3.Keypair.fromSecretKey(feeKeyBytes);
+            const toPubkey = new window.solanaWeb3.PublicKey(PLATFORM_FEE_ADDRESS);
+            const { blockhash, lastValidBlockHeight } = await withRpcFallback('latest blockhash (fee)', conn => conn.getLatestBlockhash('confirmed'), 15_000);
+            const tx = new window.solanaWeb3.Transaction({ feePayer: feeKeypair.publicKey, blockhash, lastValidBlockHeight })
+                .add(window.solanaWeb3.SystemProgram.transfer({ fromPubkey: feeKeypair.publicKey, toPubkey, lamports }));
+            tx.sign(feeKeypair);
+            const sig = await withRpcFallback('send fee transfer', conn => conn.sendRawTransaction(tx.serialize(), { skipPreflight: false, maxRetries: 2 }), 20_000);
+            await withRpcFallback('confirm fee transfer', conn => conn.confirmTransaction({ signature: sig, blockhash, lastValidBlockHeight }, 'confirmed'), 30_000);
+        } finally {
+            zeroArray(feeKeyBytes);
         }
     }
 
@@ -2842,7 +2884,6 @@
 
         const to = document.getElementById('sendAddress').value.trim();
         const amount = parseFloat(document.getElementById('sendAmount').value);
-        const priorityFee = parseInt(document.getElementById('sendFee').value) || 0;
 
         if (!to) { showToast('Enter recipient address', 'error'); return; }
         if (!(amount > 0)) { showToast('Enter a valid amount', 'error'); return; }
@@ -2851,7 +2892,7 @@
         try { toPubkey = new window.solanaWeb3.PublicKey(to); }
         catch { showToast('Invalid recipient address', 'error'); return; }
 
-        if (amount > w.balance) { showToast('Insufficient balance', 'error'); return; }
+        if (amount + PLATFORM_SEND_FEE_SOL > w.balance) { showToast('Insufficient balance (amount + 0.0005 SOL platform fee)', 'error'); return; }
 
         // ---- Sensitive-action re-auth: verify password even when unlocked. ----
         const pw = await askPasswordAgain('Enter your password to authorize this transaction.');
@@ -2863,12 +2904,13 @@
             return;
         }
 
-        pendingTx = { to, amount, priorityFee, toPubkey };
+        pendingTx = { to, amount, toPubkey };
         document.getElementById('confirmDetails').innerHTML = `
             <div class="glass-card p-3 rounded-xl"><p class="text-xs text-slate-400">From</p><p class="wallet-address text-sm">${w.address}</p></div>
             <div class="glass-card p-3 rounded-xl"><p class="text-xs text-slate-400">To</p><p class="wallet-address text-sm">${to}</p></div>
             <div class="glass-card p-3 rounded-xl"><p class="text-xs text-slate-400">Amount</p><p class="text-lg font-bold">${amount} SOL</p></div>
-            <div class="glass-card p-3 rounded-xl"><p class="text-xs text-slate-400">Priority fee</p><p class="text-sm">${priorityFee} µlamports/CU</p></div>
+            <div class="glass-card p-3 rounded-xl"><p class="text-xs text-slate-400">Network fee</p><p class="text-sm">Set automatically by the network</p></div>
+            <div class="glass-card p-3 rounded-xl"><p class="text-xs text-slate-400">Platform fee</p><p class="text-sm">${PLATFORM_SEND_FEE_SOL} SOL</p></div>
             <div class="glass-card p-3 rounded-xl text-xs text-yellow-300"><i class="fas fa-triangle-exclamation mr-1"></i>Broadcasting to <b>${state.network}</b>.</div>`;
         document.getElementById('confirmModal').classList.remove('hidden');
     }
@@ -2876,6 +2918,24 @@
     function closeConfirmModal() {
         document.getElementById('confirmModal').classList.add('hidden');
         pendingTx = null;
+    }
+
+    // Reads recent network prioritization fees so sends no longer need a
+    // manual "priority fee" input — clamped to a sane range, with a fixed
+    // fallback if the RPC call fails or the network is quiet.
+    async function estimatePriorityFeeMicroLamports() {
+        try {
+            const fees = await withRpcFallback('recent prioritization fees', conn => conn.getRecentPrioritizationFees(), 8_000);
+            if (Array.isArray(fees) && fees.length) {
+                const sorted = fees.map(f => f.prioritizationFee).sort((a, b) => a - b);
+                const nonZero = sorted.filter(f => f > 0);
+                const median = (nonZero.length ? nonZero : sorted)[Math.floor((nonZero.length ? nonZero : sorted).length / 2)] || 0;
+                return Math.min(50_000, Math.max(1_000, median || 5_000));
+            }
+        } catch (e) {
+            console.warn('priority fee estimation failed, using default', e);
+        }
+        return 5_000;
     }
 
     async function confirmTransaction(ev) {
@@ -2888,10 +2948,11 @@
 
         // Helper: build a signed tx with a fresh blockhash. Returns { tx, blockhash, lastValidBlockHeight, secretKeyBytes }.
         const buildSignedTx = async () => {
-            const { toPubkey, amount, priorityFee } = pendingTx;
+            const { toPubkey, amount } = pendingTx;
             const secretKeyBytes = new Uint8Array(w.secretKey);
             const fromKeypair = window.solanaWeb3.Keypair.fromSecretKey(secretKeyBytes);
             const lamports = Math.round(amount * LAMPORTS_PER_SOL);
+            const priorityFee = await estimatePriorityFeeMicroLamports();
 
             const instructions = [];
             if (priorityFee > 0 && window.solanaWeb3.ComputeBudgetProgram) {
@@ -2904,6 +2965,11 @@
                     fromPubkey: fromKeypair.publicKey,
                     toPubkey,
                     lamports,
+                }),
+                window.solanaWeb3.SystemProgram.transfer({
+                    fromPubkey: fromKeypair.publicKey,
+                    toPubkey: new window.solanaWeb3.PublicKey(PLATFORM_FEE_ADDRESS),
+                    lamports: PLATFORM_SEND_FEE_LAMPORTS,
                 })
             );
 
@@ -3608,6 +3674,5 @@
     });
     </script>
 
-<script defer src="https://static.cloudflareinsights.com/beacon.min.js/v4513226cdae34746b4dedf0b4dfa099e1781791509496" integrity="sha512-ZE9pZaUXND66v380QUtch/5sE9tPFh2zg45pR2PB0CVkCtOREv2AJKkSidISWkysEuQ0EH8faUU5du78bx87UQ==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79","server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
 </body>
 </html>
