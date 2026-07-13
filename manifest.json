@@ -1,8 +1,8 @@
 {
   "name": "Neon Wallet",
   "short_name": "Neon Wallet",
-  "description": "Premium TON blockchain wallet with integrated swaps, QR scanning, and multi-chain expansion.",
-  "start_url": "/wallet.html",
+  "description": "Premium multi-chain crypto wallet for TON and Solana, with Ethereum support in development.",
+  "start_url": "/index.html",
   "scope": "/",
   "display": "standalone",
   "background_color": "#050816",
@@ -17,10 +17,24 @@
   ],
   "shortcuts": [
     {
-      "name": "Open Wallet",
-      "short_name": "Wallet",
-      "description": "Jump straight into the wallet",
+      "name": "TON Wallet",
+      "short_name": "TON",
+      "description": "Jump straight into the TON wallet",
       "url": "/wallet.html",
+      "icons": [{ "src": "/neon.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Solana Wallet",
+      "short_name": "Solana",
+      "description": "Jump straight into the Solana (SVM) wallet",
+      "url": "/svm",
+      "icons": [{ "src": "/neon.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Ethereum Wallet",
+      "short_name": "Ethereum",
+      "description": "Preview the Ethereum (EVM) wallet",
+      "url": "/evm",
       "icons": [{ "src": "/neon.png", "sizes": "192x192" }]
     }
   ]
