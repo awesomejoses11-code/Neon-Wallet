@@ -1,0 +1,2701 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
+    <meta name="description" content="Neon Wallet — Ethereum, Base, Arbitrum &amp; Polygon wallet with SushiSwap swaps.">
+    <meta name="theme-color" content="#FFD700">
+    <meta name="color-scheme" content="dark">
+    <title>Neon Wallet · EVM Wallet</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #050b1a 0%, #14275c 50%, #0a1830 100%);
+            min-height: 100vh;
+            color: #fff;
+        }
+
+        /* Confetti animation used after successful send / wallet creation. */
+        @keyframes confettiFall {
+            0%   { transform: translateY(-10vh) rotate(0deg);   opacity: 1; }
+            100% { transform: translateY(110vh) rotate(720deg); opacity: 0; }
+        }
+        
+        .glass-card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+        }
+        
+        .btn-gold {
+            background: linear-gradient(135deg, #f5af19 0%, #f12711 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-gold:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(245, 175, 25, 0.3);
+        }
+        
+        .btn-outline {
+            background: transparent;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-outline:hover {
+            border-color: #f5af19;
+            background: rgba(245, 175, 25, 0.1);
+        }
+
+        .btn-outline.tab-active {
+            border-color: #f5af19;
+            background: rgba(245, 175, 25, 0.15);
+            color: #f5af19;
+        }
+        
+        .tab-button {
+            background: transparent;
+            border: none;
+            color: rgba(255, 255, 255, 0.5);
+            padding: 12px 20px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            border-bottom: 3px solid transparent;
+        }
+        
+        .tab-button:hover {
+            color: rgba(255, 255, 255, 0.8);
+        }
+        
+        .tab-button.active {
+            color: #f5af19;
+            border-bottom-color: #f5af19;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .hidden-section {
+            display: none !important;
+        }
+        
+        .wallet-address {
+            font-family: 'Courier New', monospace;
+            word-break: break-all;
+        }
+        
+        .asset-item {
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 12px;
+            transition: all 0.3s ease;
+        }
+        
+        .asset-item:hover {
+            background: rgba(255, 255, 255, 0.08);
+        }
+        
+        .input-field {
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 12px 16px;
+            color: white;
+            font-size: 16px;
+            width: 100%;
+            outline: none;
+            transition: all 0.3s ease;
+        }
+        
+        .input-field:focus {
+            border-color: #f5af19;
+            box-shadow: 0 0 10px rgba(245, 175, 25, 0.2);
+        }
+        
+        .input-field::placeholder {
+            color: rgba(255, 255, 255, 0.4);
+        }
+
+        /* --- Phantom-style swap panel --- */
+        .swap-card {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 20px;
+            padding: 18px;
+        }
+        .swap-card-label {
+            color: rgba(255, 255, 255, 0.55);
+            font-size: 14px;
+        }
+        .swap-amount-input {
+            background: transparent;
+            border: none;
+            outline: none;
+            color: #fff;
+            font-size: 34px;
+            font-weight: 600;
+            width: 60%;
+            min-width: 0;
+            padding: 0;
+        }
+        .swap-amount-input::placeholder { color: rgba(255,255,255,0.3); }
+        .swap-amount-input::-webkit-outer-spin-button,
+        .swap-amount-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+        .swap-amount-input[type=number] { -moz-appearance: textfield; }
+        .swap-amount-readonly {
+            font-size: 34px;
+            font-weight: 600;
+            color: rgba(255,255,255,0.85);
+            width: 60%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .swap-card-sub {
+            text-align: right;
+            font-size: 13px;
+            color: rgba(255,255,255,0.4);
+            margin-top: 6px;
+        }
+        .token-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(255, 255, 255, 0.08);
+            border: none;
+            border-radius: 999px;
+            padding: 8px 14px 8px 8px;
+            color: #fff;
+            font-weight: 600;
+            cursor: pointer;
+            flex-shrink: 0;
+            transition: background 0.2s ease;
+        }
+        .token-pill:hover { background: rgba(255, 255, 255, 0.14); }
+        .token-pill-symbol { font-size: 15px; }
+        .token-verified-badge {
+            color: #4fa3ff;
+            font-size: 13px;
+        }
+        .token-icon-wrap {
+            border-radius: 50%;
+            overflow: hidden;
+            position: relative;
+            flex-shrink: 0;
+            background: rgba(255,255,255,0.12);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .token-icon-fallback {
+            font-weight: 700;
+            color: rgba(255,255,255,0.8);
+        }
+        .swap-flip-wrap {
+            display: flex;
+            justify-content: center;
+            position: relative;
+            height: 0;
+            z-index: 2;
+        }
+        .swap-flip-btn {
+            position: relative;
+            top: -18px;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: 4px solid #0a1830;
+            background: linear-gradient(135deg, #4fa3ff 0%, #1d5fd6 100%);
+            color: #fff;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.2s ease;
+        }
+        .swap-flip-btn:hover { transform: translateY(1px) scale(1.05); }
+        .swap-max-btn {
+            background: rgba(79, 163, 255, 0.15);
+            color: #4fa3ff;
+            border: none;
+            border-radius: 999px;
+            padding: 4px 12px;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+        .swap-max-btn:hover { background: rgba(79, 163, 255, 0.28); }
+        .token-picker-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 50;
+            padding: 20px;
+        }
+        .token-picker-modal {
+            background: #0d1830;
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 20px;
+            padding: 20px;
+            width: 100%;
+            max-width: 380px;
+            max-height: 70vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .token-picker-list {
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .token-picker-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: transparent;
+            border: none;
+            border-radius: 12px;
+            padding: 10px;
+            text-align: left;
+            cursor: pointer;
+            color: #fff;
+            transition: background 0.2s ease;
+        }
+        .token-picker-item:hover { background: rgba(255,255,255,0.06); }
+        .token-picker-item-symbol {
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .token-picker-item-name {
+            font-size: 12px;
+            color: rgba(255,255,255,0.45);
+        }
+
+        /* Native <select> popups render with the OS's own background, not this
+           page's dark glass background — so options inherited color:white with
+           no explicit background just vanish (white text on the OS's white
+           popup) until hovered. This forces a readable dark background + white
+           text on every option in every themed select, everywhere in the app. */
+        select.input-field option {
+            background: #0d1830;
+            color: #ffffff;
+        }
+        
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        
+        .modal-content {
+            background: linear-gradient(135deg, #0e1c3a 0%, #152f66 100%);
+            border-radius: 20px;
+            padding: 30px;
+            max-width: 500px;
+            width: 90%;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .spinner {
+            border: 3px solid rgba(255, 255, 255, 0.1);
+            border-top: 3px solid #f5af19;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 16px 24px;
+            border-radius: 12px;
+            color: white;
+            font-weight: 500;
+            z-index: 2000;
+            animation: slideIn 0.3s ease;
+        }
+        
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        
+        .toast.success {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+        }
+        
+        .toast.error {
+            background: linear-gradient(135deg, #eb3349 0%, #f45c43 100%);
+        }
+        
+        .toast.info {
+            background: linear-gradient(135deg, #4f8ef7 0%, #2f6fe0 100%);
+        }
+        
+        .network-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 20px;
+        }
+        
+        .network-indicator.online {
+            color: #38ef7d;
+        }
+        
+        .network-indicator.offline {
+            color: #f45c43;
+        }
+        
+        .qr-code {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .transaction-row {
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 12px;
+            transition: all 0.3s ease;
+        }
+        
+        .transaction-row:hover {
+            background: rgba(255, 255, 255, 0.08);
+        }
+        
+        .balance-display {
+            font-size: 48px;
+            font-weight: 700;
+            background: linear-gradient(135deg, #f5af19 0%, #f12711 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+    </style>
+</head>
+<body>
+    <div id="setupScreen" class="modal hidden" style="z-index:10000;">
+        <div class="modal-content" style="max-width:440px;">
+            <div class="text-center mb-6">
+                <div class="w-16 h-16 mx-auto rounded-full bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center mb-3">
+                    <i class="fas fa-shield-halved text-2xl"></i>
+                </div>
+                <h2 class="text-2xl font-bold">Secure Your Wallet</h2>
+                <p class="text-sm text-slate-400 mt-2">Set a password to encrypt your keys. This password is required every time you open the wallet.</p>
+            </div>
+            <label class="text-xs text-slate-400">Password (min 8 chars)</label>
+            <input type="password" id="setupPassword" class="input-field w-full mb-3 mt-1" placeholder="Strong password" autocomplete="new-password">
+            <label class="text-xs text-slate-400">Confirm Password</label>
+            <input type="password" id="setupPasswordConfirm" class="input-field w-full mb-4 mt-1" placeholder="Repeat password" autocomplete="new-password">
+            <div id="setupError" class="text-red-400 text-sm mb-3 hidden"></div>
+            <button id="setupBtn" class="btn-gold w-full py-3">
+                <i class="fas fa-lock mr-2"></i>Encrypt &amp; Continue
+            </button>
+            <p class="text-xs text-slate-500 mt-4 text-center">Your password never leaves this device. If you forget it, your wallet cannot be recovered without the mnemonic phrase.</p>
+        </div>
+    </div>
+
+    <div id="unlockScreen" class="modal hidden" style="z-index:10000;">
+        <div class="modal-content" style="max-width:440px;">
+            <div class="text-center mb-6">
+                <div class="w-16 h-16 mx-auto rounded-full bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center mb-3">
+                    <i class="fas fa-lock text-2xl"></i>
+                </div>
+                <h2 class="text-2xl font-bold">Unlock Wallet</h2>
+                <p class="text-sm text-slate-400 mt-2">Enter your password to decrypt your wallet.</p>
+            </div>
+            <input type="password" id="unlockPassword" class="input-field w-full mb-3" placeholder="Password" autocomplete="current-password">
+            <div id="unlockError" class="text-red-400 text-sm mb-3 hidden"></div>
+            <button id="unlockBtn" class="btn-gold w-full py-3 mb-3">
+                <i class="fas fa-unlock mr-2"></i>Unlock
+            </button>
+            <button id="biometricUnlockBtn" class="btn-outline w-full py-3 hidden">
+                <i class="fas fa-fingerprint mr-2"></i>Use Biometrics
+            </button>
+            <button id="resetWalletBtn" class="text-xs text-slate-500 hover:text-red-400 mt-4 w-full text-center">
+                Forgot password? Erase encrypted data
+            </button>
+        </div>
+    </div>
+
+    <div id="reauthModal" class="modal hidden" style="z-index:10001;">
+        <div class="modal-content" style="max-width:400px;">
+            <h2 class="text-xl font-bold mb-3"><i class="fas fa-key mr-2 text-yellow-400"></i>Confirm Password</h2>
+            <p class="text-sm text-slate-400 mb-4" id="reauthMessage">Re-enter your password to continue.</p>
+            <input type="password" id="reauthPassword" class="input-field w-full mb-3" placeholder="Password">
+            <div id="reauthError" class="text-red-400 text-sm mb-3 hidden"></div>
+            <div class="flex gap-3">
+                <button class="btn-outline flex-1 py-3" id="reauthCancel">Cancel</button>
+                <button class="btn-gold flex-1 py-3" id="reauthOk">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="min-h-screen p-4 md:p-8">
+        <div id="networkBanner" class="hidden text-center text-sm font-medium p-3 mb-4 rounded-xl" style="background:linear-gradient(90deg,#b45309,#dc2626);color:#fff;"></div>
+
+        <div class="glass-card p-6 mb-6">
+            <div class="flex items-center justify-between flex-wrap gap-4">
+                <div class="flex items-center gap-3">
+                    <div class="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center">
+                        <i class="fas fa-wallet text-xl"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-2xl font-bold">EVM Wallet</h1>
+                        <p class="text-sm text-slate-400">Ethereum · Base · Arbitrum · Polygon</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-3">
+                    <div id="networkStatus" class="network-indicator online">
+                        <i class="fas fa-circle text-xs"></i>
+                        <span>Online</span>
+                    </div>
+                    <button class="btn-outline px-4 py-2" onclick="lockWalletNow()" title="Lock wallet">
+                        <i class="fas fa-lock"></i>
+                    </button>
+                    <button class="btn-outline px-4 py-2" onclick="switchTab('settings', event)" title="Settings">
+                        <i class="fas fa-cog"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Chain switcher: one HD wallet works across all EVM chains, this just
+             changes which RPC/token-list/explorer is active. -->
+        <div class="glass-card p-4 mb-6">
+            <p class="text-xs text-slate-400 uppercase mb-3">Network</p>
+            <div id="chainSwitcher" class="flex gap-2 flex-wrap"></div>
+        </div>
+
+        <div id="walletSwitcherWrap" class="glass-card p-4 mb-6 hidden">
+            <div class="flex items-center gap-3">
+                <span class="text-xs text-slate-400 uppercase">Active Wallet</span>
+                <select id="walletSwitcher" class="input-field flex-1" onchange="switchToWallet(this.value)"></select>
+                <button class="btn-outline px-3 py-2 text-xs" onclick="createNewWallet()" title="Add new wallet">
+                    <i class="fas fa-plus"></i>
+                </button>
+            </div>
+        </div>
+
+        <div class="glass-card mb-6">
+            <div class="flex border-b border-slate-700/50 overflow-x-auto whitespace-nowrap">
+                <button class="tab-button active" onclick="switchTab('wallet', event)">Wallet</button>
+                <button class="tab-button" onclick="switchTab('swap', event)">Swap</button>
+                <button class="tab-button" onclick="switchTab('nfts', event)">NFTs</button>
+            </div>
+        </div>
+
+        <div id="wallet" class="tab-content active">
+            <div class="grid grid-cols-2 gap-3 mb-6">
+                <button class="btn-gold py-3" onclick="switchTab('send', event)">
+                    <i class="fas fa-paper-plane mr-2"></i>Send
+                </button>
+                <button class="btn-outline py-3" onclick="switchTab('receive', event)">
+                    <i class="fas fa-qrcode mr-2"></i>Receive
+                </button>
+            </div>
+
+            <div class="glass-card p-5 rounded-xl mb-6">
+                <p class="text-xs text-slate-400 uppercase mb-3">Total Balance</p>
+                <div id="totalBalance" class="balance-display">$0.00</div>
+            </div>
+
+            <div class="glass-card p-5 rounded-xl">
+                <p class="text-xs text-slate-400 uppercase mb-3">Assets</p>
+                <div id="assetsList" class="space-y-2"></div>
+                <div id="assetsLoading" class="text-sm text-slate-400 text-center py-2">
+                    <i class="fas fa-spinner fa-spin mr-2"></i>Loading assets...
+                </div>
+                <div id="assetsEmpty" class="text-sm text-slate-400 text-center py-2 hidden">No assets found</div>
+            </div>
+        </div>
+
+        <div id="send" class="tab-content">
+            <div class="glass-card p-6 rounded-xl">
+                <h2 class="text-xl font-bold mb-6">Send</h2>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm text-slate-400 mb-2">Asset</label>
+                        <select id="sendToken" class="input-field" onchange="onSendTokenChange()"></select>
+                    </div>
+                    <div>
+                        <div class="flex items-center justify-between mb-2">
+                            <label class="block text-sm text-slate-400">Recipient Address</label>
+                            <button type="button" class="text-xs text-blue-300 hover:text-blue-200 underline" onclick="switchTab('settings')">Address book</button>
+                        </div>
+                        <input type="text" id="sendAddress" class="input-field" placeholder="0x…">
+                    </div>
+                    <div>
+                        <div class="flex items-center justify-between mb-2">
+                            <label class="block text-sm text-slate-400">Amount</label>
+                            <button type="button" class="text-xs text-blue-300 hover:text-blue-200 underline" onclick="setSendMaxAmount()">Max</button>
+                        </div>
+                        <input type="number" id="sendAmount" class="input-field" placeholder="0.00" step="0.000001">
+                        <p class="text-xs text-slate-500 mt-1" id="sendBalanceHint"></p>
+                    </div>
+                    <div id="sendGasEstimate" class="text-xs text-slate-400"></div>
+                    <p class="text-xs text-slate-400 flex items-start gap-2">
+                        <i class="fas fa-circle-info mt-0.5"></i>
+                        <span id="sendFeeNotice">A flat $0.005 network-token fee applies to every send — shown before you confirm.</span>
+                    </p>
+                    <button class="btn-gold w-full py-4" onclick="sendEvmTransaction()">
+                        <i class="fas fa-paper-plane mr-2"></i>Send
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div id="receive" class="tab-content">
+            <div class="glass-card p-6 rounded-xl">
+                <h2 class="text-xl font-bold mb-6">Receive</h2>
+                <div class="text-center mb-6">
+                    <div id="qrCode" class="qr-code mb-4">
+                        <i class="fas fa-qrcode text-6xl text-slate-600"></i>
+                    </div>
+                    <p class="text-sm text-slate-400 mb-2">Your address (works on Ethereum, Base, Arbitrum &amp; Polygon)</p>
+                    <p id="receiveAddress" class="wallet-address text-sm text-slate-300 break-all"></p>
+                    <button class="btn-outline mt-4" onclick="copyAddress()">
+                        <i class="fas fa-copy mr-2"></i>Copy Address
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div id="swap" class="tab-content">
+            <div class="glass-card p-6 rounded-xl max-w-md mx-auto">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-xl font-bold">Swap</h2>
+                    <button class="btn-outline text-sm px-3 py-2" onclick="document.getElementById('swapSettingsPanel').classList.toggle('hidden')" title="Slippage settings">
+                        <i class="fas fa-sliders"></i>
+                    </button>
+                </div>
+
+                <div id="swapNetworkNotice" class="glass-card p-3 rounded-xl text-sm text-yellow-300 mb-4 hidden"></div>
+
+                <div id="swapFeeNotice" class="text-xs text-slate-400 mb-4 flex items-start gap-2">
+                    <i class="fas fa-circle-info mt-0.5"></i>
+                    <span>Every swap includes a 0.85% referral fee, shown below once you get a quote.</span>
+                </div>
+
+                <div id="swapSettingsPanel" class="glass-card p-4 rounded-xl mb-4 hidden">
+                    <label class="block text-sm text-slate-400 mb-2">Slippage tolerance</label>
+                    <div class="flex gap-2 flex-wrap" id="slippagePresetGroup">
+                        <button type="button" class="btn-outline px-3 py-2 text-sm" data-pct="0.1" onclick="setSlippagePreset(0.1)">0.1%</button>
+                        <button type="button" class="btn-gold px-3 py-2 text-sm" data-pct="0.5" onclick="setSlippagePreset(0.5)">0.5%</button>
+                        <button type="button" class="btn-outline px-3 py-2 text-sm" data-pct="1" onclick="setSlippagePreset(1)">1%</button>
+                        <button type="button" class="btn-outline px-3 py-2 text-sm" data-pct="custom" onclick="setSlippagePreset('custom')">Custom</button>
+                    </div>
+                    <input type="number" id="swapSlippageCustomPct" class="input-field mt-2 hidden" placeholder="Custom %, e.g. 2.5" step="0.1" min="0.01" max="50" oninput="updateCustomSlippage()">
+                    <input type="hidden" id="swapSlippage" value="0.5">
+                </div>
+
+                <input type="hidden" id="swapFromToken" value="">
+                <input type="hidden" id="swapToToken" value="">
+
+                <div class="relative">
+                    <div class="swap-card">
+                        <div class="flex items-center justify-between mb-1">
+                            <span class="swap-card-label">You Pay</span>
+                            <button class="swap-max-btn" onclick="setSwapMaxAmount()">MAX</button>
+                        </div>
+                        <div class="flex items-center justify-between gap-3 mt-1">
+                            <input type="number" id="swapAmount" class="swap-amount-input" placeholder="0" step="0.000001" oninput="onSwapAmountInput()">
+                            <button id="swapFromPill" class="token-pill" onclick="openTokenPicker('from')"></button>
+                        </div>
+                        <div class="swap-card-sub" id="swapFromBalance">Balance: —</div>
+                    </div>
+
+                    <div class="swap-flip-wrap">
+                        <button class="swap-flip-btn" onclick="flipSwapTokens()" title="Flip tokens">
+                            <i class="fas fa-arrow-up-arrow-down"></i>
+                        </button>
+                    </div>
+
+                    <div class="swap-card" style="margin-top:-8px;">
+                        <div class="flex items-center justify-between mb-1">
+                            <span class="swap-card-label">You Receive</span>
+                            <span class="text-xs text-slate-400" id="swapPriceImpact">—</span>
+                        </div>
+                        <div class="flex items-center justify-between gap-3 mt-1">
+                            <div class="swap-amount-readonly" id="swapQuoteOutBig">0</div>
+                            <button id="swapToPill" class="token-pill" onclick="openTokenPicker('to')"></button>
+                        </div>
+                        <div class="swap-card-sub" id="swapToBalance">Balance: —</div>
+                    </div>
+                </div>
+
+                <div class="flex gap-3 flex-wrap mt-4">
+                    <button id="swapExecuteBtn" class="btn-gold px-5 py-3 w-full" onclick="executeSwap()">
+                        <i class="fas fa-rocket mr-2"></i>Swap Now
+                    </button>
+                </div>
+
+                <div id="swapQuoteCard" class="glass-card p-4 rounded-xl hidden mt-4">
+                    <div class="flex items-center justify-between gap-3 flex-wrap mb-3">
+                        <p class="font-semibold">Quote Summary</p>
+                        <p id="swapRouteLabel" class="text-xs text-slate-400">Sushi</p>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3 text-sm">
+                        <div class="glass-card p-3 rounded-xl">
+                            <p class="text-slate-400 text-xs mb-1">Estimated Receive</p>
+                            <p id="swapQuoteOut" class="font-semibold">—</p>
+                        </div>
+                        <div class="glass-card p-3 rounded-xl">
+                            <p class="text-slate-400 text-xs mb-1">Swap Price</p>
+                            <p id="swapMinReceive" class="font-semibold">—</p>
+                        </div>
+                        <div class="glass-card p-3 rounded-xl">
+                            <p class="text-slate-400 text-xs mb-1">Referral Fee</p>
+                            <p id="swapReferralFee" class="font-semibold">—</p>
+                        </div>
+                    </div>
+                    <div id="swapQuoteMeta" class="text-xs text-slate-400 mt-3"></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="nfts" class="tab-content">
+            <div class="glass-card p-6 rounded-xl">
+                <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
+                    <h2 class="text-xl font-bold">NFTs <span class="text-sm font-normal text-slate-400" id="nftChainLabel"></span></h2>
+                    <button class="btn-outline text-sm px-3 py-2" onclick="loadNfts()">
+                        <i class="fas fa-rotate mr-2"></i>Refresh
+                    </button>
+                </div>
+                <div id="nftGrid" class="grid grid-cols-2 sm:grid-cols-3 gap-3"></div>
+                <div id="nftEmpty" class="text-center py-10 text-slate-500 hidden">
+                    <i class="fas fa-images text-3xl mb-3"></i>
+                    <p>No NFTs found on this network for this wallet.</p>
+                </div>
+                <div id="nftUnavailable" class="text-center py-10 text-slate-500 hidden">
+                    <i class="fas fa-plug-circle-xmark text-3xl mb-3"></i>
+                    <p class="mb-1">Couldn't reach the NFT proxy endpoint.</p>
+                    <p class="text-xs">This tab needs the <code class="wallet-address">/api/nft</code> route on your solana-rpc-proxy Vercel project — see Settings → RPC on this chain.</p>
+                </div>
+                <div id="nftLoading" class="text-center py-10 text-slate-500 hidden">
+                    <i class="fas fa-spinner fa-spin text-2xl mb-3"></i>
+                    <p>Loading NFTs…</p>
+                </div>
+            </div>
+        </div>
+
+        <div id="nftDetailModal" class="modal hidden">
+            <div class="modal-content max-w-md">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-bold" id="nftDetailName">NFT</h3>
+                    <button onclick="document.getElementById('nftDetailModal').classList.add('hidden')" class="text-slate-400 hover:text-white"><i class="fas fa-times"></i></button>
+                </div>
+                <img id="nftDetailImage" src="" alt="" class="w-full rounded-xl mb-4 bg-slate-800" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22200%22 height=%22200%22%3E%3Crect width=%22200%22 height=%22200%22 fill=%22%231e293b%22/%3E%3C/svg%3E'">
+                <p class="text-sm text-slate-400 mb-1" id="nftDetailCollection"></p>
+                <p class="wallet-address text-xs text-slate-500 mb-3" id="nftDetailContract"></p>
+                <a id="nftDetailExplorerLink" href="#" target="_blank" rel="noopener" class="btn-outline w-full py-2 text-center block text-sm">
+                    <i class="fas fa-arrow-up-right-from-square mr-2"></i>View on Explorer
+                </a>
+            </div>
+        </div>
+
+        <div id="settings" class="tab-content">
+            <div class="glass-card p-6 rounded-xl">
+                <h2 class="text-xl font-bold mb-4"><i class="fas fa-sliders mr-2 text-cyan-400"></i>Display</h2>
+                <div class="flex items-center justify-between py-2">
+                    <div>
+                        <p class="font-medium"><i class="fas fa-eye-slash mr-2 text-cyan-400"></i>Hide Zero Balances</p>
+                        <p class="text-sm text-slate-400">Hide listed tokens with a zero balance</p>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="hideZeroBalances" class="sr-only peer" onchange="onHideZeroBalancesChange(this.checked)">
+                        <div class="w-11 h-6 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-cyan-600"></div>
+                    </label>
+                </div>
+            </div>
+
+            <div class="glass-card p-6 rounded-xl mt-4">
+                <h2 class="text-xl font-bold mb-4"><i class="fas fa-shield-halved mr-2 text-cyan-400"></i>Security</h2>
+                <div class="space-y-4">
+                    <div class="flex items-center justify-between py-2 border-b border-slate-700/50">
+                        <div>
+                            <p class="font-medium"><i class="fas fa-fingerprint mr-2 text-cyan-400"></i>Biometric Unlock</p>
+                            <p class="text-sm text-slate-400">Use device biometrics (WebAuthn PRF)</p>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="biometricToggle" class="sr-only peer" onchange="toggleBiometric(this.checked)">
+                            <div class="w-11 h-6 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-cyan-600"></div>
+                        </label>
+                    </div>
+                    <div class="flex items-center justify-between py-2">
+                        <div>
+                            <p class="font-medium"><i class="fas fa-clock mr-2 text-cyan-400"></i>Auto-Lock</p>
+                            <p class="text-sm text-slate-400">Lock wallet after inactivity</p>
+                        </div>
+                        <select id="autoLockSelect" class="input-field w-32" onchange="onAutoLockChange(this.value)">
+                            <option value="1">1 minute</option>
+                            <option value="5" selected>5 minutes</option>
+                            <option value="15">15 minutes</option>
+                            <option value="30">30 minutes</option>
+                            <option value="60">1 hour</option>
+                        </select>
+                    </div>
+                    <button class="btn-outline w-full py-3" onclick="changePassword()">
+                        <i class="fas fa-key mr-2"></i>Change Password
+                    </button>
+                    <button class="btn-outline w-full py-3" onclick="lockWalletNow()">
+                        <i class="fas fa-lock mr-2"></i>Lock Wallet Now
+                    </button>
+                </div>
+            </div>
+
+            <div class="glass-card p-6 rounded-xl mt-4">
+                <h2 class="text-xl font-bold mb-4"><i class="fas fa-wallet mr-2 text-cyan-400"></i>Wallet Management</h2>
+                <div class="space-y-3">
+                    <button class="btn-outline w-full py-3" onclick="exportWallet()">
+                        <i class="fas fa-download mr-2"></i>Export Active Wallet
+                    </button>
+                    <button class="btn-outline w-full py-3" onclick="importWallet()">
+                        <i class="fas fa-file-import mr-2"></i>Import Wallet
+                    </button>
+                    <button class="btn-outline w-full py-3 text-red-400" onclick="deleteWallet()">
+                        <i class="fas fa-trash mr-2"></i>Delete Active Wallet
+                    </button>
+                </div>
+            </div>
+
+            <div class="glass-card p-6 rounded-xl mt-4">
+                <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
+                    <h2 class="text-xl font-bold"><i class="fas fa-address-book mr-2 text-cyan-400"></i>Address Book</h2>
+                    <button class="btn-outline text-sm px-3 py-2" onclick="addToAddressBook()">
+                        <i class="fas fa-plus mr-2"></i>Add
+                    </button>
+                </div>
+                <div id="addressBookList" class="space-y-2"></div>
+            </div>
+
+            <div class="glass-card p-6 rounded-xl mt-4">
+                <div class="flex items-center justify-between mb-2 flex-wrap gap-2">
+                    <h2 class="text-xl font-bold"><i class="fas fa-diagram-project mr-2 text-cyan-400"></i>Networks</h2>
+                    <button class="btn-outline text-sm px-3 py-2" onclick="importNetwork()">
+                        <i class="fas fa-plus mr-2"></i>Import Network
+                    </button>
+                </div>
+                <p class="text-xs text-slate-500 mb-3">Ethereum, Base, Arbitrum &amp; Polygon are built in. Add any other EVM network with your own RPC URL and chain ID.</p>
+                <div id="customNetworksList" class="space-y-2"></div>
+            </div>
+
+            <div class="glass-card p-6 rounded-xl mt-4">
+                <div class="flex items-center justify-between mb-2 flex-wrap gap-2">
+                    <h2 class="text-xl font-bold"><i class="fas fa-coins mr-2 text-cyan-400"></i>Tokens on <span id="importTokenChainName"></span></h2>
+                    <button class="btn-outline text-sm px-3 py-2" onclick="importToken()">
+                        <i class="fas fa-plus mr-2"></i>Import Token
+                    </button>
+                </div>
+                <p class="text-xs text-slate-500 mb-3">Paste an ERC-20 contract address on the currently selected network — symbol and decimals are read from the contract automatically.</p>
+                <div id="customTokensList" class="space-y-2"></div>
+            </div>
+
+            <div class="glass-card p-6 rounded-xl mt-4">
+                <div class="flex items-center justify-between mb-2 flex-wrap gap-2">
+                    <h2 class="text-xl font-bold"><i class="fas fa-server mr-2 text-cyan-400"></i>RPC on <span id="rpcChainName"></span></h2>
+                    <button class="btn-outline text-sm px-3 py-2" onclick="testChainRpcs()">
+                        <i class="fas fa-satellite-dish mr-2"></i>Test Connection
+                    </button>
+                </div>
+                <p class="text-xs text-slate-500 mb-3">Tried in order — your Alchemy proxy first, then public RPCs — until one answers, then that one is used for everything until it stops working. Add your own to jump the queue, e.g. a paid endpoint you trust more than the free ones.</p>
+                <div id="rpcTestResults" class="space-y-1 mb-3"></div>
+                <div class="flex gap-2">
+                    <input type="text" id="manualRpcInput" class="input-field flex-1" placeholder="https://your-rpc-url…">
+                    <button class="btn-outline px-4 py-2 text-sm" onclick="addManualRpc()">Add</button>
+                </div>
+                <div id="manualRpcList" class="space-y-2 mt-3"></div>
+            </div>
+        </div>
+
+        <div id="tokenPickerModal" class="token-picker-overlay hidden" onclick="closeTokenPickerOnOverlay(event)">
+            <div class="token-picker-modal" onclick="event.stopPropagation()">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="font-bold">Select token</h3>
+                    <button onclick="closeTokenPicker()" class="text-slate-400 hover:text-white"><i class="fas fa-xmark"></i></button>
+                </div>
+                <input type="text" id="tokenPickerSearch" class="input-field mb-3" placeholder="Search name or symbol" oninput="renderTokenPickerList()">
+                <div id="tokenPickerList" class="token-picker-list"></div>
+            </div>
+        </div>
+
+    </div>
+
+    <div id="createWalletModal" class="modal hidden">
+        <div class="modal-content">
+            <h2 class="text-2xl font-bold mb-4">Create New Wallet</h2>
+            <p class="text-slate-400 mb-6">Your mnemonic phrase will be shown once. Store it securely!</p>
+            <div id="mnemonicDisplay" class="glass-card p-4 rounded-xl mb-6 text-center">
+                <p class="text-sm text-slate-400 mb-2">Your 12-word mnemonic:</p>
+                <p id="mnemonicWords" class="font-mono text-sm break-all" style="filter:blur(6px); cursor:pointer; user-select:all;" onclick="this.style.filter='none'" title="Click to reveal"></p>
+                <p class="text-xs text-slate-500 mt-2"><i class="fas fa-eye mr-1"></i>Click to reveal. Never share this phrase.</p>
+            </div>
+            <div class="flex gap-3">
+                <button class="btn-outline flex-1 py-3" onclick="closeCreateWalletModal()">Cancel</button>
+                <button class="btn-gold flex-1 py-3" onclick="confirmCreateWallet()">I've saved it</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="importWalletModal" class="modal hidden">
+        <div class="modal-content">
+            <h2 class="text-2xl font-bold mb-4">Import Wallet</h2>
+            <div class="flex gap-2 mb-4">
+                <button type="button" id="importModeMnemonicBtn" class="btn-outline flex-1 py-2 text-sm" onclick="setImportMode('mnemonic')">
+                    <i class="fas fa-key mr-1"></i>Mnemonic
+                </button>
+                <button type="button" id="importModePrivateKeyBtn" class="btn-outline flex-1 py-2 text-sm" onclick="setImportMode('privateKey')">
+                    <i class="fas fa-lock mr-1"></i>Private Key
+                </button>
+            </div>
+            <div class="space-y-4">
+                <div id="importMnemonicFields" class="space-y-4">
+                    <div>
+                        <label class="block text-sm text-slate-400 mb-2">Mnemonic Phrase</label>
+                        <textarea id="importMnemonic" class="input-field" rows="4" placeholder="Enter your 12-word mnemonic"></textarea>
+                    </div>
+                    <div>
+                        <div class="flex items-center justify-between mb-2">
+                            <label class="block text-sm text-slate-400">Account Index</label>
+                            <button type="button" class="text-xs text-blue-300 hover:text-blue-200 underline" onclick="previewImportAddresses()">
+                                <i class="fas fa-magnifying-glass mr-1"></i>Preview addresses
+                            </button>
+                        </div>
+                        <input type="number" id="importAccountIndex" class="input-field" min="0" step="1" value="0" />
+                        <p class="text-xs text-slate-500 mt-1">
+                            One mnemonic can hold multiple wallets. Index 0 is the default — click "Preview addresses" to see balances across indices 0-4 on the current network.
+                        </p>
+                    </div>
+                    <div id="importAddressPreview" class="hidden space-y-1 max-h-48 overflow-y-auto"></div>
+                </div>
+                <div id="importPrivateKeyFields" class="space-y-4 hidden">
+                    <div>
+                        <label class="block text-sm text-slate-400 mb-2">Private Key</label>
+                        <textarea id="importPrivateKey" class="input-field" rows="3" placeholder="0x… (64 hex characters)"></textarea>
+                        <p class="text-xs text-slate-500 mt-1">
+                            <i class="fas fa-circle-info mr-1"></i>
+                            A raw private key has no recovery phrase backing it up — if you lose it, this wallet can't help you recover it.
+                        </p>
+                    </div>
+                </div>
+                <button id="importConfirmBtn" class="btn-gold w-full py-3" onclick="confirmImportWallet()">Import Wallet</button>
+            </div>
+            <button class="btn-outline w-full py-3 mt-4" onclick="closeImportWalletModal()">Cancel</button>
+        </div>
+    </div>
+
+    <div id="toastContainer"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/ethers@6.17.0/dist/ethers.umd.min.js"></script>
+    <script>
+    // ============================================================================
+    // Chain configuration — one HD wallet/address works across every EVM chain
+    // here, so "chains" only changes which RPC, token list, and explorer are active.
+    // ============================================================================
+    const NATIVE_PSEUDO = '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE';
+    const CHAINS = {
+        ethereum: {
+            key: 'ethereum', chainId: 1, name: 'Ethereum', symbol: 'ETH', decimals: 18, useProxy: true,
+            basePublicRpcUrls: ['https://ethereum-rpc.publicnode.com', 'https://eth.llamarpc.com', 'https://rpc.ankr.com/eth'],
+            explorer: 'https://etherscan.io',
+            nativeLogo: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/info/logo.png',
+            tokens: [
+                { symbol: 'USDC', address: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48', decimals: 6, logoURI: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/assets/0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48/logo.png' },
+                { symbol: 'USDT', address: '0xdAC17F958D2ee523a2206206994597C13D831ec7', decimals: 6, logoURI: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/assets/0xdAC17F958D2ee523a2206206994597C13D831ec7/logo.png' },
+                { symbol: 'DAI', address: '0x6B175474E89094C44Da98b954EedeAC495271d0F', decimals: 18, logoURI: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/assets/0x6B175474E89094C44Da98b954EedeAC495271d0F/logo.png' },
+                { symbol: 'WETH', address: '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2', decimals: 18, logoURI: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/assets/0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2/logo.png' },
+            ],
+        },
+        base: {
+            key: 'base', chainId: 8453, name: 'Base', symbol: 'ETH', decimals: 18, useProxy: true,
+            basePublicRpcUrls: ['https://mainnet.base.org', 'https://base-rpc.publicnode.com', 'https://base.llamarpc.com'],
+            explorer: 'https://basescan.org',
+            nativeLogo: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/info/logo.png',
+            tokens: [
+                { symbol: 'USDC', address: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913', decimals: 6, logoURI: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/base/assets/0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913/logo.png' },
+                { symbol: 'WETH', address: '0x4200000000000000000000000000000000000006', decimals: 18, logoURI: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/base/assets/0x4200000000000000000000000000000000000006/logo.png' },
+                { symbol: 'DAI', address: '0x50c5725949A6F0c72E6C4a641F24049A917DB0Cb', decimals: 18, logoURI: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/base/assets/0x50c5725949A6F0c72E6C4a641F24049A917DB0Cb/logo.png' },
+            ],
+        },
+        arbitrum: {
+            key: 'arbitrum', chainId: 42161, name: 'Arbitrum', symbol: 'ETH', decimals: 18, useProxy: true,
+            basePublicRpcUrls: ['https://arb1.arbitrum.io/rpc', 'https://arbitrum-one-rpc.publicnode.com', 'https://arbitrum.llamarpc.com'],
+            explorer: 'https://arbiscan.io',
+            nativeLogo: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/info/logo.png',
+            tokens: [
+                { symbol: 'USDC', address: '0xaf88d065e77c8cC2239327C5EDb3A432268e5831', decimals: 6, logoURI: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/arbitrum/assets/0xaf88d065e77c8cC2239327C5EDb3A432268e5831/logo.png' },
+                { symbol: 'USDT', address: '0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9', decimals: 6, logoURI: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/arbitrum/assets/0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9/logo.png' },
+                { symbol: 'WETH', address: '0x82aF49447D8a07e3bd95BD0d56f35241523fBab1', decimals: 18, logoURI: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/arbitrum/assets/0x82aF49447D8a07e3bd95BD0d56f35241523fBab1/logo.png' },
+                { symbol: 'DAI', address: '0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1', decimals: 18, logoURI: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/arbitrum/assets/0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1/logo.png' },
+            ],
+        },
+        polygon: {
+            key: 'polygon', chainId: 137, name: 'Polygon', symbol: 'MATIC', decimals: 18, useProxy: true,
+            basePublicRpcUrls: ['https://polygon-rpc.com', 'https://polygon-bor-rpc.publicnode.com', 'https://polygon.llamarpc.com'],
+            explorer: 'https://polygonscan.com',
+            nativeLogo: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/polygon/info/logo.png',
+            tokens: [
+                { symbol: 'USDC', address: '0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359', decimals: 6, logoURI: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/polygon/assets/0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359/logo.png' },
+                { symbol: 'USDT', address: '0xc2132D05D31c914a87C6611C10748AEb04B58e8F', decimals: 6, logoURI: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/polygon/assets/0xc2132D05D31c914a87C6611C10748AEb04B58e8F/logo.png' },
+                { symbol: 'WETH', address: '0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619', decimals: 18, logoURI: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/polygon/assets/0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619/logo.png' },
+                { symbol: 'WMATIC', address: '0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270', decimals: 18, logoURI: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/polygon/assets/0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270/logo.png' },
+            ],
+        },
+    };
+    // Route each chain's RPC through the SAME Vercel proxy project already used
+    // by this wallet's SVM counterpart ("solana-rpc-proxy") — no second project,
+    // and no Cloudflare Worker: it's the same plain Vercel Node serverless
+    // function SVM already calls at a bare 'https://solana-rpc-proxy.vercel.app
+    // /api/rpc' (no query param), which forwards to Helius using a server-side
+    // key. For EVM, that same /api/rpc route needs one addition: when a `chain`
+    // query param is present, forward the JSON-RPC POST to the matching Alchemy
+    // subdomain using the Alchemy_API_Key env var (exact casing); when absent,
+    // it keeps behaving exactly as it does for the SVM wallet today. It also
+    // needs CORS headers (Access-Control-Allow-Origin + an OPTIONS handler) —
+    // a plain Vercel function has none by default, and that's the most likely
+    // reason a browser-side fetch to it fails silently. See Settings → "RPC on
+    // …" for a live per-endpoint connection test.
+    //
+    // This is only ever the FIRST url tried per chain (rebuildRpcUrls below) —
+    // manual URLs added in Settings go before it, and public RPCs go after it,
+    // so nothing here can brick Wallet/Send/Swap even if the route isn't live.
+    const RPC_PROXY_BASE = 'https://solana-rpc-proxy.vercel.app';
+    // Seed rpcUrls before `state` exists yet (proxy + public only). Once state
+    // is loaded — see rebuildRpcUrls further down — this gets rebuilt to also
+    // include any manual URLs the user saved in Settings.
+    Object.values(CHAINS).forEach(c => {
+        const proxy = c.useProxy ? [`${RPC_PROXY_BASE}/api/rpc?chain=${c.key}`] : [];
+        c.rpcUrls = [...proxy, ...(c.basePublicRpcUrls || [])];
+    });
+    const ERC20_ABI = [
+        'function balanceOf(address) view returns (uint256)',
+        'function transfer(address to, uint256 amount) returns (bool)',
+        'function symbol() view returns (string)',
+        'function name() view returns (string)',
+        'function decimals() view returns (uint8)',
+    ];
+
+    // ============================================================================
+    // Referral / platform fees
+    // ----------------------------------------------------------------------------
+    // FEE_ADDRESS receives both fees below, always paid in the active chain's
+    // native gas token (never in the swapped/sent ERC-20), as a separate transfer
+    // executed right after the user's own transaction confirms.
+    //
+    // Swap referral fee: Sushi's public Swap API (v7) does not expose a
+    // referrer/fee-account parameter the way Jupiter's platformFeeBps does — we
+    // checked docs.sushi.com and the SDK reference; tokenIn/tokenOut/amount/
+    // maxSlippage/sender/apiKey is the full parameter set. So instead of relying
+    // on an unsupported param, we send the referral fee as its own native-token
+    // transfer once the swap itself has confirmed — the same pattern already
+    // used by this wallet's SVM counterpart for its platform fee.
+    const FEE_ADDRESS = '0x33bcba2ce07507eb49c70a830fc0edf8b8d6e318';
+    const REFERRAL_SWAP_FEE_BPS = 85;      // 0.85% of the swap's input value, in native token
+    const WITHDRAWAL_FLAT_FEE_USD = 0.005; // flat fee per send, in native token
+
+    // Fallback native-token USD prices, used only if the live Sushi price API
+    // (fetchSushiPrice, already used elsewhere in this file) is unreachable or
+    // returns 0. These are rough, occasionally-updated ballpark figures — good
+    // enough to size a fraction-of-a-cent fee, not a pricing source for trading.
+    const FALLBACK_NATIVE_USD_PRICE = {
+        ethereum: 3500,  // ETH
+        base: 3500,      // ETH
+        arbitrum: 3500,  // ETH
+        polygon: 0.5,    // MATIC
+    };
+    async function getNativeUsdPrice(chainKey) {
+        const chain = CHAINS[chainKey];
+        try {
+            const live = await fetchSushiPrice(NATIVE_PSEUDO, chain.chainId);
+            if (live > 0) return { price: live, source: 'live' };
+        } catch (e) { console.warn('live native price fetch failed, using fallback', e); }
+        return { price: FALLBACK_NATIVE_USD_PRICE[chainKey] || 0, source: 'fallback' };
+    }
+    // Sends `amountWei` of the active chain's native token from `w` to FEE_ADDRESS.
+    // Failures here are swallowed by the caller — a fee-transfer hiccup should
+    // never undo or block a swap/send that has already succeeded.
+    async function sendNativeFee(chainKey, w, amountWei) {
+        if (!(amountWei > 0n)) return null;
+        let txHash;
+        await withRpcFallback(chainKey, async (provider) => {
+            const signer = new ethers.Wallet(w.privateKey, provider);
+            const tx = await signer.sendTransaction({ to: FEE_ADDRESS, value: amountWei });
+            txHash = tx.hash;
+        });
+        await confirmAcrossRpcs(chainKey, txHash);
+        return txHash;
+    }
+
+    // ============================================================================
+    // Security layer — password-based encryption (PBKDF2 + AES-GCM). Ported
+    // as-is from the SVM wallet: this part is entirely chain-agnostic, it just
+    // encrypts/decrypts a JSON blob.
+    // ============================================================================
+    const SEC = (() => {
+        const LS_ENC = 'evmEncryptedWallet';
+        const LS_KDF = 'evmWalletKdfParams';
+        const LS_BIO_ENV = 'evmBiometricEnvelope';
+        const LS_BIO_CRED = 'evmBiometricCredId';
+        const PBKDF2_ITERS = 600_000;
+        const b64enc = (u8) => btoa(String.fromCharCode(...u8));
+        const b64dec = (s) => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+
+        async function deriveKey(password, salt, iterations = PBKDF2_ITERS) {
+            const baseKey = await crypto.subtle.importKey('raw', new TextEncoder().encode(password), { name: 'PBKDF2' }, false, ['deriveKey']);
+            return crypto.subtle.deriveKey({ name: 'PBKDF2', salt, iterations, hash: 'SHA-256' }, baseKey, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
+        }
+        async function encryptJSON(obj, password) {
+            const salt = crypto.getRandomValues(new Uint8Array(16));
+            const iv = crypto.getRandomValues(new Uint8Array(12));
+            const key = await deriveKey(password, salt);
+            const pt = new TextEncoder().encode(JSON.stringify(obj));
+            const ct = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, pt));
+            const out = new Uint8Array(salt.length + iv.length + ct.length);
+            out.set(salt, 0); out.set(iv, salt.length); out.set(ct, salt.length + iv.length);
+            localStorage.setItem(LS_KDF, JSON.stringify({ iterations: PBKDF2_ITERS }));
+            return b64enc(out);
+        }
+        async function decryptToJSON(blobB64, password) {
+            const buf = b64dec(blobB64);
+            const salt = buf.slice(0, 16);
+            const iv = buf.slice(16, 28);
+            const ct = buf.slice(28);
+            const params = JSON.parse(localStorage.getItem(LS_KDF) || '{}');
+            const key = await deriveKey(password, salt, params.iterations || PBKDF2_ITERS);
+            const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ct);
+            return JSON.parse(new TextDecoder().decode(pt));
+        }
+        function hasEncrypted() { return !!localStorage.getItem(LS_ENC); }
+        async function saveEncrypted(stateObj, password) {
+            const blob = await encryptJSON(stateObj, password);
+            localStorage.setItem(LS_ENC, blob);
+        }
+        async function loadDecrypted(password) {
+            const blob = localStorage.getItem(LS_ENC);
+            if (!blob) throw new Error('no-encrypted-data');
+            return decryptToJSON(blob, password);
+        }
+
+        // ---- Biometrics: WebAuthn PRF extension wraps the password (ported from the SVM wallet) ----
+        async function biometricSupported() {
+            return !!(window.PublicKeyCredential && navigator.credentials && await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable().catch(() => false));
+        }
+        async function enrollBiometric(password) {
+            const challenge = crypto.getRandomValues(new Uint8Array(32));
+            const userId = crypto.getRandomValues(new Uint8Array(16));
+            const prfSalt = crypto.getRandomValues(new Uint8Array(32));
+            const cred = await navigator.credentials.create({
+                publicKey: {
+                    challenge,
+                    rp: { name: 'EVM Wallet (local)' },
+                    user: { id: userId, name: 'wallet-user', displayName: 'Wallet User' },
+                    pubKeyCredParams: [{ type: 'public-key', alg: -7 }, { type: 'public-key', alg: -257 }],
+                    authenticatorSelection: { userVerification: 'required', residentKey: 'preferred' },
+                    timeout: 60_000,
+                    extensions: { prf: { eval: { first: prfSalt } } },
+                }
+            });
+            if (!cred) throw new Error('biometric-registration-cancelled');
+            const ext = cred.getClientExtensionResults ? cred.getClientExtensionResults() : {};
+            const prfOut = ext.prf && ext.prf.results && ext.prf.results.first;
+            if (!prfOut) throw new Error('biometric-prf-unsupported');
+            const wrapKey = await crypto.subtle.importKey('raw', prfOut, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt']);
+            const iv = crypto.getRandomValues(new Uint8Array(12));
+            const ct = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, wrapKey, new TextEncoder().encode(password)));
+            const envelope = { credId: b64enc(new Uint8Array(cred.rawId)), prfSalt: b64enc(prfSalt), iv: b64enc(iv), ct: b64enc(ct) };
+            localStorage.setItem(LS_BIO_ENV, JSON.stringify(envelope));
+            localStorage.setItem(LS_BIO_CRED, envelope.credId);
+            return true;
+        }
+        async function unlockWithBiometric() {
+            const env = JSON.parse(localStorage.getItem(LS_BIO_ENV) || 'null');
+            if (!env) throw new Error('no-biometric-envelope');
+            const credId = b64dec(env.credId);
+            const prfSalt = b64dec(env.prfSalt);
+            const challenge = crypto.getRandomValues(new Uint8Array(32));
+            const assertion = await navigator.credentials.get({
+                publicKey: {
+                    challenge,
+                    allowCredentials: [{ type: 'public-key', id: credId }],
+                    userVerification: 'required',
+                    timeout: 60_000,
+                    extensions: { prf: { eval: { first: prfSalt } } },
+                }
+            });
+            if (!assertion) throw new Error('biometric-cancelled');
+            const ext = assertion.getClientExtensionResults ? assertion.getClientExtensionResults() : {};
+            const prfOut = ext.prf && ext.prf.results && ext.prf.results.first;
+            if (!prfOut) throw new Error('biometric-prf-missing');
+            const wrapKey = await crypto.subtle.importKey('raw', prfOut, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt']);
+            const pw = new TextDecoder().decode(await crypto.subtle.decrypt({ name: 'AES-GCM', iv: b64dec(env.iv) }, wrapKey, b64dec(env.ct)));
+            return pw;
+        }
+        function disableBiometric() {
+            localStorage.removeItem(LS_BIO_ENV);
+            localStorage.removeItem(LS_BIO_CRED);
+        }
+        function biometricEnrolled() { return !!localStorage.getItem(LS_BIO_ENV); }
+
+        function wipeAll() {
+            localStorage.removeItem(LS_ENC);
+            localStorage.removeItem(LS_KDF);
+            disableBiometric();
+        }
+        return { hasEncrypted, saveEncrypted, loadDecrypted, biometricSupported,
+                 enrollBiometric, unlockWithBiometric, disableBiometric, biometricEnrolled, wipeAll };
+    })();
+
+    let sessionPassword = null;
+    let isLocked = true;
+    let saveQueue = Promise.resolve();
+    let lockTimer = null;
+
+    let state = {
+        wallets: [],       // { id, name, address, privateKey, mnemonic?, derivationIndex? }
+        activeWalletId: null,
+        activeNetwork: 'ethereum',
+        addressBook: [],
+        autoLockMinutes: 5,
+        biometricEnabled: false,
+        hideZeroBalances: false,
+        customNetworks: {},   // key -> { key, chainId, name, symbol, decimals, rpcUrls, explorer }
+        customTokens: {},     // chainKey -> [{ address, symbol, decimals, logoURI }]
+        manualRpcUrls: {},    // chainKey -> [url, ...] — user-supplied, tried before the proxy
+    };
+    // Now that `state` exists, rebuild every chain's rpcUrls to also include any
+    // manual URLs the user has saved. Call this again after adding/removing a
+    // manual URL, importing a network, or loading state from storage.
+    function rebuildRpcUrls(chain) {
+        const manual = (state.manualRpcUrls && state.manualRpcUrls[chain.key]) || [];
+        const proxy = chain.useProxy ? [`${RPC_PROXY_BASE}/api/rpc?chain=${chain.key}`] : [];
+        chain.rpcUrls = [...manual, ...proxy, ...(chain.basePublicRpcUrls || [])];
+        // providerCache/lastGoodRpcUrl are declared further down (with getProvider),
+        // but this function is only ever CALLED later, in response to user actions
+        // (never at top-level script execution), so both are already initialized
+        // by the time any real call reaches here.
+        delete providerCache[chain.key];
+        delete lastGoodRpcUrl[chain.key];
+    }
+    let pendingMnemonic = null;
+    let importMode = 'mnemonic';
+    let importPreviewCache = null;
+    let liveTokenBalances = {};  // address(lowercase) -> { amount, usdPrice }
+    let liveNativeBalance = 0;
+    let currentSwapQuote = null;
+    let currentSwapFeeWei = 0n; // referral fee, in native-token wei, snapshotted at quote time
+
+    function showToast(msg, type = 'info') {
+        const container = document.getElementById('toastContainer');
+        if (!container) { console.log(msg); return; }
+        const el = document.createElement('div');
+        el.className = `toast ${type}`;
+        el.textContent = msg;
+        container.appendChild(el);
+        setTimeout(() => el.remove(), 3500);
+    }
+
+    // ============================================================================
+    // BIP39 / HD derivation — delegated entirely to ethers.js, which bundles its
+    // own audited wordlist + checksum logic, so there's no hand-rolled BIP39 here.
+    // ============================================================================
+    function generateMnemonic() {
+        return ethers.Wallet.createRandom().mnemonic.phrase;
+    }
+    function isValidMnemonic(phrase) {
+        try { return ethers.Mnemonic.isValidMnemonic((phrase || '').trim().toLowerCase().replace(/\s+/g, ' ')); }
+        catch { return false; }
+    }
+    function derivationPathForIndex(i) { return `m/44'/60'/${i}'/0/0`; }
+    function deriveEvmAccount(mnemonic, index) {
+        const path = derivationPathForIndex(index);
+        const hd = ethers.HDNodeWallet.fromPhrase(mnemonic, '', path);
+        return { address: hd.address, privateKey: hd.privateKey, path };
+    }
+
+    // ============================================================================
+    // RPC — same withRpcFallback pattern as the TON/SVM wallets: try each URL in
+    // order, fall through on failure, surface a banner if every RPC is down.
+    // ----------------------------------------------------------------------------
+    // STICKY SELECTION: once one URL on a chain answers successfully, every
+    // subsequent call for that chain tries THAT url first and returns immediately
+    // on success — it does not also try the rest "just in case". This avoids
+    // paying the proxy's timeout on every single call when it's the one that's
+    // down; a chain only falls back through the full list again if its sticky
+    // endpoint stops working. Kept in memory only (not persisted), so a fresh
+    // page load naturally re-discovers whichever endpoint answers first.
+    // ============================================================================
+    const providerCache = {};
+    let lastGoodRpcUrl = {}; // chainKey -> url
+    function getProvider(chainKey) {
+        const chain = CHAINS[chainKey];
+        if (!providerCache[chainKey]) {
+            providerCache[chainKey] = chain.rpcUrls.map(url => new ethers.JsonRpcProvider(url, chain.chainId, { staticNetwork: true }));
+        }
+        return providerCache[chainKey];
+    }
+    async function withRpcFallback(chainKey, fn) {
+        const chain = CHAINS[chainKey];
+        const providers = getProvider(chainKey);
+        const stickyUrl = lastGoodRpcUrl[chainKey];
+        const stickyIdx = stickyUrl ? chain.rpcUrls.indexOf(stickyUrl) : -1;
+        const order = stickyIdx >= 0
+            ? [stickyIdx, ...providers.map((_, i) => i).filter(i => i !== stickyIdx)]
+            : providers.map((_, i) => i);
+        let lastErr = null;
+        for (const idx of order) {
+            try {
+                const result = await fn(providers[idx]);
+                lastGoodRpcUrl[chainKey] = chain.rpcUrls[idx];
+                setNetworkStatus(true);
+                return result;
+            } catch (err) {
+                lastErr = err;
+                console.warn(`RPC failed on ${chainKey} (${chain.rpcUrls[idx]}):`, err);
+            }
+        }
+        setNetworkStatus(false);
+        throw lastErr || new Error('All RPCs failed');
+    }
+    // Confirms an already-broadcast tx hash across every configured RPC for the
+    // chain, WITHOUT ever re-invoking the send. This is intentionally separate
+    // from withRpcFallback: if a send/swap's broadcast succeeds but the same
+    // RPC then wobbles during confirmation, retrying the *whole* send+wait
+    // callback would re-run signer.sendTransaction() and could double-broadcast.
+    // Once we have a hash, only confirmation is retried across providers.
+    async function confirmAcrossRpcs(chainKey, txHash) {
+        const providers = getProvider(chainKey);
+        let lastErr = null;
+        for (const provider of providers) {
+            try {
+                const receipt = await provider.waitForTransaction(txHash, 1, 120_000);
+                if (receipt) return receipt;
+            } catch (err) {
+                lastErr = err;
+                console.warn(`Confirmation check failed on ${chainKey}:`, err);
+            }
+        }
+        throw lastErr || new Error('Could not confirm transaction on any RPC (it may still land — check the explorer)');
+    }
+    function setNetworkStatus(online) {
+        const el = document.getElementById('networkStatus');
+        if (!el) return;
+        el.className = `network-indicator ${online ? 'online' : 'offline'}`;
+        el.innerHTML = `<i class="fas fa-circle text-xs"></i><span>${online ? 'Online' : 'Offline'}</span>`;
+    }
+
+    function activeChain() { return CHAINS[state.activeNetwork]; }
+    function getActiveWallet() { return state.wallets.find(w => w.id === state.activeWalletId) || null; }
+    // Merges a chain's built-in curated token list with any tokens the user has
+    // imported for that chain (state.customTokens[chainKey]), so every place that
+    // enumerates "the tokens on this chain" sees both without special-casing.
+    function chainTokens(chain) {
+        const custom = (state.customTokens && state.customTokens[chain.key]) || [];
+        return (chain.tokens || []).concat(custom);
+    }
+
+    // ============================================================================
+    // Persistence
+    // ============================================================================
+    function serializableState() {
+        return {
+            wallets: state.wallets, activeWalletId: state.activeWalletId, activeNetwork: state.activeNetwork,
+            addressBook: state.addressBook, autoLockMinutes: state.autoLockMinutes,
+            biometricEnabled: state.biometricEnabled, hideZeroBalances: state.hideZeroBalances,
+            customNetworks: state.customNetworks, customTokens: state.customTokens,
+            manualRpcUrls: state.manualRpcUrls,
+        };
+    }
+    function saveState() {
+        saveQueue = saveQueue.then(async () => {
+            if (!sessionPassword) return;
+            try { await SEC.saveEncrypted(serializableState(), sessionPassword); }
+            catch (e) { console.error('saveState failed', e); }
+        });
+        return saveQueue;
+    }
+
+    // ---- Auto-lock ----
+    function armAutoLock() {
+        clearTimeout(lockTimer);
+        const minutes = Math.max(1, Number(state.autoLockMinutes) || 5);
+        lockTimer = setTimeout(lockWalletNow, minutes * 60_000);
+    }
+    function onAutoLockChange(minutes) {
+        state.autoLockMinutes = Number(minutes) || 5;
+        saveState();
+        if (!isLocked) armAutoLock();
+    }
+    function onHideZeroBalancesChange(checked) {
+        state.hideZeroBalances = !!checked;
+        saveState();
+        renderAssets();
+    }
+
+    // ============================================================================
+    // Setup / unlock flow
+    // ============================================================================
+    function boot() {
+        if (SEC.hasEncrypted()) {
+            document.getElementById('unlockScreen').classList.remove('hidden');
+            const bioBtn = document.getElementById('biometricUnlockBtn');
+            if (bioBtn) bioBtn.classList.toggle('hidden', !SEC.biometricEnrolled());
+        } else {
+            document.getElementById('setupScreen').classList.remove('hidden');
+        }
+    }
+    document.getElementById('setupBtn').addEventListener('click', async () => {
+        const pw = document.getElementById('setupPassword').value;
+        const pw2 = document.getElementById('setupPasswordConfirm').value;
+        const errEl = document.getElementById('setupError');
+        errEl.classList.add('hidden');
+        if (pw.length < 8) { errEl.textContent = 'Password must be at least 8 characters.'; errEl.classList.remove('hidden'); return; }
+        if (pw !== pw2) { errEl.textContent = 'Passwords do not match.'; errEl.classList.remove('hidden'); return; }
+        sessionPassword = pw;
+        isLocked = false;
+        await saveState();
+        document.getElementById('setupScreen').classList.add('hidden');
+        renderChainSwitcher();
+        renderAll();
+        armAutoLock();
+        showToast('Wallet secured', 'success');
+    });
+    document.getElementById('unlockBtn').addEventListener('click', unlockAttempt);
+    document.getElementById('unlockPassword').addEventListener('keydown', (e) => { if (e.key === 'Enter') unlockAttempt(); });
+    document.getElementById('biometricUnlockBtn').addEventListener('click', onBiometricUnlock);
+    function rehydrateCustomNetworks() {
+        Object.values(state.customNetworks || {}).forEach(net => {
+            net.useProxy = false;
+            net.basePublicRpcUrls = net.basePublicRpcUrls || net.rpcUrls || [];
+            CHAINS[net.key] = net;
+        });
+        Object.values(CHAINS).forEach(rebuildRpcUrls);
+    }
+    async function unlockAttempt() {
+        const pw = document.getElementById('unlockPassword').value;
+        const errEl = document.getElementById('unlockError');
+        errEl.classList.add('hidden');
+        try {
+            const decrypted = await SEC.loadDecrypted(pw);
+            state = { ...state, ...decrypted };
+            rehydrateCustomNetworks();
+            sessionPassword = pw;
+            isLocked = false;
+            document.getElementById('unlockScreen').classList.add('hidden');
+            document.getElementById('unlockPassword').value = '';
+            renderChainSwitcher();
+            renderAll();
+            armAutoLock();
+            await refreshWallet();
+        } catch (e) {
+            errEl.textContent = 'Incorrect password.';
+            errEl.classList.remove('hidden');
+        }
+    }
+    async function onBiometricUnlock() {
+        const errEl = document.getElementById('unlockError');
+        errEl.classList.add('hidden');
+        try {
+            const pw = await SEC.unlockWithBiometric();
+            const decrypted = await SEC.loadDecrypted(pw);
+            state = { ...state, ...decrypted };
+            rehydrateCustomNetworks();
+            sessionPassword = pw;
+            isLocked = false;
+            document.getElementById('unlockScreen').classList.add('hidden');
+            renderChainSwitcher();
+            renderAll();
+            armAutoLock();
+            await refreshWallet();
+        } catch (e) {
+            console.warn('biometric unlock', e);
+            errEl.textContent = 'Biometric unlock failed. Use password.';
+            errEl.classList.remove('hidden');
+        }
+    }
+    document.getElementById('resetWalletBtn').addEventListener('click', () => {
+        if (!confirm('This erases the encrypted wallet data on this device permanently. Continue only if you have your mnemonic backed up elsewhere.')) return;
+        SEC.wipeAll();
+        location.reload();
+    });
+    function lockWalletNow() {
+        sessionPassword = null;
+        isLocked = true;
+        clearTimeout(lockTimer);
+        document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+        document.getElementById('unlockScreen').classList.remove('hidden');
+        const bioBtn = document.getElementById('biometricUnlockBtn');
+        if (bioBtn) bioBtn.classList.toggle('hidden', !SEC.biometricEnrolled());
+        showToast('Wallet locked', 'info');
+    }
+    async function toggleBiometric(enable) {
+        const toggle = document.getElementById('biometricToggle');
+        if (enable) {
+            if (!(await SEC.biometricSupported())) {
+                showToast('No platform authenticator available on this device.', 'error');
+                if (toggle) toggle.checked = false;
+                return;
+            }
+            const pw = await askPasswordAgain('Enter your password to enable biometrics.');
+            if (!pw) { if (toggle) toggle.checked = false; return; }
+            try {
+                await SEC.enrollBiometric(pw);
+                state.biometricEnabled = true;
+                saveState();
+                showToast('Biometrics enabled', 'success');
+            } catch (e) {
+                console.error(e);
+                if (e.message === 'biometric-prf-unsupported') {
+                    showToast('This authenticator does not support the PRF extension — biometric-only unlock is unavailable.', 'error');
+                } else {
+                    showToast('Biometric enrollment failed: ' + e.message, 'error');
+                }
+                if (toggle) toggle.checked = false;
+            }
+        } else {
+            SEC.disableBiometric();
+            state.biometricEnabled = false;
+            saveState();
+            showToast('Biometrics disabled', 'info');
+        }
+    }
+    async function changePassword() {
+        const oldPw = await askPasswordAgain('Enter your current password.');
+        if (!oldPw) return;
+        const newPw = prompt('New password (min 8 chars):');
+        if (!newPw || newPw.length < 8) { showToast('Password too short', 'error'); return; }
+        const confirmPw = prompt('Confirm new password:');
+        if (newPw !== confirmPw) { showToast('Passwords do not match', 'error'); return; }
+        try {
+            await SEC.saveEncrypted(serializableState(), newPw);
+            sessionPassword = newPw;
+            if (SEC.biometricEnrolled()) {
+                SEC.disableBiometric();
+                state.biometricEnabled = false;
+                showToast('Password changed. Re-enable biometrics in settings.', 'success');
+            } else {
+                showToast('Password changed', 'success');
+            }
+        } catch (e) {
+            showToast('Password change failed: ' + e.message, 'error');
+        }
+    }
+    async function exportWallet() {
+        const w = getActiveWallet();
+        if (!w) { showToast('No active wallet', 'info'); return; }
+        const pw = await askPasswordAgain('Enter your password to export this wallet.');
+        if (!pw) return;
+        const blob = new Blob([JSON.stringify({
+            name: w.name, address: w.address, mnemonic: w.mnemonic || null, privateKey: w.privateKey,
+        }, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = `${w.name.replace(/\s+/g, '_')}.json`; a.click();
+        URL.revokeObjectURL(url);
+        showToast('Wallet exported', 'success');
+    }
+    function deleteWallet() {
+        const w = getActiveWallet();
+        if (!w) { showToast('No active wallet', 'info'); return; }
+        const backupHint = w.mnemonic ? 'your mnemonic' : 'your private key';
+        if (!confirm(`Delete "${w.name}"? Ensure ${backupHint} is saved elsewhere.`)) return;
+        state.wallets = state.wallets.filter(x => x.id !== w.id);
+        state.activeWalletId = state.wallets[0]?.id || null;
+        saveState();
+        renderAll();
+        showToast('Wallet deleted', 'info');
+    }
+
+    // ============================================================================
+    // Address book
+    // ============================================================================
+    function addToAddressBook() {
+        const label = (prompt('Label (e.g. "Exchange deposit"):') || '').trim();
+        if (!label) return;
+        const address = (prompt('EVM address (0x…):') || '').trim();
+        if (!address) return;
+        if (!ethers.isAddress(address)) { showToast('Invalid address', 'error'); return; }
+        state.addressBook = state.addressBook || [];
+        if (state.addressBook.some(e => e.address.toLowerCase() === address.toLowerCase())) {
+            showToast('Address already saved', 'info');
+            return;
+        }
+        state.addressBook.push({ label, address });
+        saveState();
+        renderAddressBook();
+        showToast('Saved to address book', 'success');
+    }
+    function removeFromAddressBook(address) {
+        state.addressBook = (state.addressBook || []).filter(e => e.address.toLowerCase() !== address.toLowerCase());
+        saveState();
+        renderAddressBook();
+    }
+    function pickFromAddressBook(address) {
+        const el = document.getElementById('sendAddress');
+        if (el) { el.value = address; showToast('Recipient set', 'success'); switchTab('send'); }
+    }
+    function renderAddressBook() {
+        const list = document.getElementById('addressBookList');
+        if (!list) return;
+        const book = state.addressBook || [];
+        if (book.length === 0) {
+            list.innerHTML = '<p class="text-sm text-slate-500">No saved addresses yet.</p>';
+            return;
+        }
+        list.innerHTML = book.map(e => `
+            <div class="flex items-center justify-between glass-card p-3 rounded-xl">
+                <div class="flex-1 min-w-0 mr-3">
+                    <p class="text-sm font-medium">${escapeHtml(e.label)}</p>
+                    <p class="wallet-address text-xs text-slate-400 truncate">${escapeHtml(e.address)}</p>
+                </div>
+                <div class="flex gap-2">
+                    <button class="btn-outline text-xs px-2 py-1" onclick="pickFromAddressBook('${e.address}')" title="Use"><i class="fas fa-paper-plane"></i></button>
+                    <button class="btn-outline text-xs px-2 py-1 text-red-400" onclick="removeFromAddressBook('${e.address}')" title="Remove"><i class="fas fa-trash"></i></button>
+                </div>
+            </div>`).join('');
+    }
+    function askPasswordAgain(message) {
+        return new Promise((resolve) => {
+            const modal = document.getElementById('reauthModal');
+            document.getElementById('reauthMessage').textContent = message || 'Re-enter your password to continue.';
+            document.getElementById('reauthPassword').value = '';
+            document.getElementById('reauthError').classList.add('hidden');
+            modal.classList.remove('hidden');
+            const cleanup = () => { modal.classList.add('hidden'); okBtn.removeEventListener('click', onOk); cancelBtn.removeEventListener('click', onCancel); };
+            const okBtn = document.getElementById('reauthOk');
+            const cancelBtn = document.getElementById('reauthCancel');
+            const onOk = () => {
+                const pw = document.getElementById('reauthPassword').value;
+                if (pw !== sessionPassword) {
+                    document.getElementById('reauthError').textContent = 'Incorrect password.';
+                    document.getElementById('reauthError').classList.remove('hidden');
+                    return;
+                }
+                cleanup(); resolve(pw);
+            };
+            const onCancel = () => { cleanup(); resolve(null); };
+            okBtn.addEventListener('click', onOk);
+            cancelBtn.addEventListener('click', onCancel);
+        });
+    }
+
+    // ============================================================================
+    // Chain switcher
+    // ============================================================================
+    function renderChainSwitcher() {
+        const el = document.getElementById('chainSwitcher');
+        if (!el) return;
+        el.innerHTML = Object.values(CHAINS).map(c => `
+            <button class="${state.activeNetwork === c.key ? 'btn-gold' : 'btn-outline'} px-4 py-2 text-sm" onclick="switchNetwork('${c.key}')">
+                ${escapeHtml(c.name)}
+            </button>
+        `).join('');
+    }
+    async function switchNetwork(key) {
+        if (!CHAINS[key] || state.activeNetwork === key) return;
+        state.activeNetwork = key;
+        renderChainSwitcher();
+        clearSwapQuote();
+        saveState();
+        populateSwapTokenSelects();
+        populateSendTokenSelect();
+        renderCustomTokensList();
+        renderManualRpcList();
+        const results = document.getElementById('rpcTestResults'); if (results) results.innerHTML = '';
+        await refreshWallet();
+    }
+
+    // ============================================================================
+    // Import a custom network / custom token
+    // ----------------------------------------------------------------------------
+    // The four built-in chains (Ethereum, Base, Arbitrum, Polygon) and their
+    // curated token lists are untouched — this only adds extra entries on top,
+    // using RPC URLs and contract addresses the user supplies themselves.
+    // ============================================================================
+    function registerCustomNetwork(net) {
+        net.useProxy = false;
+        net.basePublicRpcUrls = net.basePublicRpcUrls || net.rpcUrls || [];
+        CHAINS[net.key] = net;
+        state.customNetworks = state.customNetworks || {};
+        state.customNetworks[net.key] = net;
+        rebuildRpcUrls(net);
+    }
+    async function importNetwork() {
+        const key = (prompt('Short key for this network (lowercase, no spaces, e.g. "mynet"):') || '').trim().toLowerCase().replace(/[^a-z0-9_-]/g, '');
+        if (!key) return;
+        if (CHAINS[key]) { showToast('A network with that key already exists', 'error'); return; }
+        const name = (prompt('Display name (e.g. "My L2"):') || '').trim();
+        if (!name) return;
+        const chainId = parseInt(prompt('Chain ID (number):') || '', 10);
+        if (!Number.isFinite(chainId) || chainId <= 0) { showToast('Invalid chain ID', 'error'); return; }
+        const symbol = (prompt('Native currency symbol (e.g. "ETH"):') || '').trim() || 'ETH';
+        const decimals = parseInt(prompt('Native currency decimals (usually 18):', '18') || '18', 10) || 18;
+        const rpcUrl = (prompt('RPC URL (https://…) — you provide this; it is not vetted, only checked for connectivity:') || '').trim();
+        if (!/^https?:\/\//i.test(rpcUrl)) { showToast('Enter a valid RPC URL', 'error'); return; }
+        const explorer = (prompt('Block explorer base URL (optional):') || '').trim();
+        showToast('Checking RPC…', 'info');
+        try {
+            const testProvider = new ethers.JsonRpcProvider(rpcUrl, chainId, { staticNetwork: true });
+            await testProvider.getBlockNumber();
+        } catch (e) {
+            console.warn('custom RPC check failed', e);
+            if (!confirm('Could not reach that RPC right now. Add the network anyway?')) return;
+        }
+        registerCustomNetwork({ key, chainId, name, symbol, decimals, basePublicRpcUrls: [rpcUrl], explorer: explorer || null, nativeLogo: '', tokens: [] });
+        saveState();
+        renderChainSwitcher();
+        renderCustomNetworksList();
+        showToast(`Network "${name}" added`, 'success');
+    }
+    function removeCustomNetwork(key) {
+        if (!state.customNetworks || !state.customNetworks[key]) return;
+        if (!confirm('Remove this network? Your other networks are unaffected.')) return;
+        delete state.customNetworks[key];
+        delete CHAINS[key];
+        delete providerCache[key];
+        if (state.activeNetwork === key) {
+            state.activeNetwork = 'ethereum';
+            renderChainSwitcher();
+            populateSwapTokenSelects();
+            populateSendTokenSelect();
+            refreshWallet();
+        }
+        saveState();
+        renderCustomNetworksList();
+        showToast('Network removed', 'info');
+    }
+    function renderCustomNetworksList() {
+        const list = document.getElementById('customNetworksList');
+        if (!list) return;
+        const nets = Object.values(state.customNetworks || {});
+        if (nets.length === 0) { list.innerHTML = '<p class="text-sm text-slate-500">No imported networks yet.</p>'; return; }
+        list.innerHTML = nets.map(n => `
+            <div class="flex items-center justify-between glass-card p-3 rounded-xl">
+                <div class="flex-1 min-w-0 mr-3">
+                    <p class="text-sm font-medium">${escapeHtml(n.name)} <span class="text-slate-500">(chain ${n.chainId})</span></p>
+                    <p class="text-xs text-slate-400 truncate">${escapeHtml(n.rpcUrls[0])}</p>
+                </div>
+                <button class="btn-outline text-xs px-2 py-1 text-red-400" onclick="removeCustomNetwork('${n.key}')" title="Remove"><i class="fas fa-trash"></i></button>
+            </div>`).join('');
+    }
+    async function importToken() {
+        const chain = activeChain();
+        const address = (prompt(`Token contract address on ${chain.name} (0x…):`) || '').trim();
+        if (!address) return;
+        if (!ethers.isAddress(address)) { showToast('Invalid address', 'error'); return; }
+        if (chainTokens(chain).some(t => t.address.toLowerCase() === address.toLowerCase())) {
+            showToast('Token already added on this network', 'info');
+            return;
+        }
+        showToast('Reading token contract…', 'info');
+        try {
+            const token = await withRpcFallback(state.activeNetwork, async (provider) => {
+                const c = new ethers.Contract(address, ERC20_ABI, provider);
+                const [symbol, decimals] = await Promise.all([c.symbol(), c.decimals()]);
+                return { address, symbol, decimals: Number(decimals), logoURI: '' };
+            });
+            state.customTokens = state.customTokens || {};
+            state.customTokens[chain.key] = state.customTokens[chain.key] || [];
+            state.customTokens[chain.key].push(token);
+            saveState();
+            populateSendTokenSelect();
+            populateSwapTokenSelects();
+            renderCustomTokensList();
+            await refreshWallet();
+            showToast(`${token.symbol} added on ${chain.name}`, 'success');
+        } catch (e) {
+            console.error(e);
+            showToast('Could not read token contract — check the address and network: ' + e.message, 'error');
+        }
+    }
+    function removeCustomToken(chainKey, address) {
+        if (!state.customTokens || !state.customTokens[chainKey]) return;
+        state.customTokens[chainKey] = state.customTokens[chainKey].filter(t => t.address.toLowerCase() !== address.toLowerCase());
+        saveState();
+        populateSendTokenSelect();
+        populateSwapTokenSelects();
+        renderCustomTokensList();
+        refreshWallet();
+    }
+    function renderCustomTokensList() {
+        const list = document.getElementById('customTokensList');
+        if (!list) return;
+        const chain = activeChain();
+        const nameEl = document.getElementById('importTokenChainName');
+        if (nameEl) nameEl.textContent = chain.name;
+        const tokens = (state.customTokens && state.customTokens[chain.key]) || [];
+        if (tokens.length === 0) { list.innerHTML = `<p class="text-sm text-slate-500">No imported tokens on ${escapeHtml(chain.name)} yet.</p>`; return; }
+        list.innerHTML = tokens.map(t => `
+            <div class="flex items-center justify-between glass-card p-3 rounded-xl">
+                <div class="flex-1 min-w-0 mr-3">
+                    <p class="text-sm font-medium">${escapeHtml(t.symbol)}</p>
+                    <p class="wallet-address text-xs text-slate-400 truncate">${escapeHtml(t.address)}</p>
+                </div>
+                <button class="btn-outline text-xs px-2 py-1 text-red-400" onclick="removeCustomToken('${chain.key}', '${t.address}')" title="Remove"><i class="fas fa-trash"></i></button>
+            </div>`).join('');
+    }
+
+    // ============================================================================
+    // Manual RPC override — user-supplied URL(s), tried before the Alchemy proxy
+    // and before the public fallbacks, for the currently active chain.
+    // ============================================================================
+    function addManualRpc() {
+        const input = document.getElementById('manualRpcInput');
+        const url = (input?.value || '').trim();
+        if (!/^https?:\/\//i.test(url)) { showToast('Enter a valid RPC URL', 'error'); return; }
+        const chain = activeChain();
+        state.manualRpcUrls = state.manualRpcUrls || {};
+        state.manualRpcUrls[chain.key] = state.manualRpcUrls[chain.key] || [];
+        if (state.manualRpcUrls[chain.key].includes(url)) { showToast('Already added', 'info'); return; }
+        state.manualRpcUrls[chain.key].push(url);
+        rebuildRpcUrls(chain);
+        saveState();
+        if (input) input.value = '';
+        renderManualRpcList();
+        document.getElementById('rpcTestResults').innerHTML = '';
+        showToast('RPC added — it will be tried first', 'success');
+    }
+    function removeManualRpc(chainKey, url) {
+        if (!state.manualRpcUrls || !state.manualRpcUrls[chainKey]) return;
+        state.manualRpcUrls[chainKey] = state.manualRpcUrls[chainKey].filter(u => u !== url);
+        rebuildRpcUrls(CHAINS[chainKey]);
+        saveState();
+        renderManualRpcList();
+        document.getElementById('rpcTestResults').innerHTML = '';
+    }
+    function renderManualRpcList() {
+        const list = document.getElementById('manualRpcList');
+        const label = document.getElementById('rpcChainName');
+        if (!list) return;
+        const chain = activeChain();
+        if (label) label.textContent = chain.name;
+        const urls = (state.manualRpcUrls && state.manualRpcUrls[chain.key]) || [];
+        if (urls.length === 0) { list.innerHTML = ''; return; }
+        list.innerHTML = urls.map(u => `
+            <div class="flex items-center justify-between glass-card p-2 rounded-xl">
+                <p class="wallet-address text-xs truncate flex-1 mr-2">${escapeHtml(u)}</p>
+                <button class="btn-outline text-xs px-2 py-1 text-red-400" onclick="removeManualRpc('${chain.key}', '${u.replace(/'/g, "\\'")}')" title="Remove"><i class="fas fa-trash"></i></button>
+            </div>`).join('');
+    }
+    // Pings every URL currently configured for the active chain, in order, with
+    // a plain eth_chainId JSON-RPC call — this is the fastest way to see which
+    // one (proxy, manual, or public) is actually answering right now.
+    async function testChainRpcs() {
+        const chain = activeChain();
+        const results = document.getElementById('rpcTestResults');
+        if (!results) return;
+        results.innerHTML = chain.rpcUrls.map((u, i) => `
+            <div class="flex items-center justify-between text-xs py-1" id="rpcTestRow${i}">
+                <span class="wallet-address truncate flex-1 mr-2">${escapeHtml(u)}${u === lastGoodRpcUrl[chain.key] ? ' <span class="text-cyan-400">(in use)</span>' : ''}</span>
+                <span class="text-slate-500"><i class="fas fa-spinner fa-spin"></i></span>
+            </div>`).join('');
+        await Promise.all(chain.rpcUrls.map(async (u, i) => {
+            const row = document.getElementById(`rpcTestRow${i}`);
+            const started = performance.now();
+            try {
+                const res = await fetch(u, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_chainId', params: [] }),
+                });
+                const ms = Math.round(performance.now() - started);
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const data = await res.json();
+                const gotChainId = data.result ? parseInt(data.result, 16) : null;
+                const ok = gotChainId === chain.chainId;
+                if (row) row.querySelector('span:last-child').innerHTML = ok
+                    ? `<span class="text-green-400"><i class="fas fa-check"></i> ${ms}ms</span>`
+                    : `<span class="text-yellow-400" title="Responded but wrong chain ID"><i class="fas fa-triangle-exclamation"></i> chain ${gotChainId ?? '?'}</span>`;
+            } catch (e) {
+                console.warn('RPC test failed', u, e);
+                if (row) row.querySelector('span:last-child').innerHTML = `<span class="text-red-400" title="${escapeHtml(e.message)}"><i class="fas fa-xmark"></i> failed</span>`;
+            }
+        }));
+    }
+
+    // ============================================================================
+    // Wallet lifecycle
+    // ============================================================================
+    async function createNewWallet() {
+        try {
+            if (SEC.hasEncrypted() && state.wallets.length) {
+                const pw = await askPasswordAgain('Enter your password to reveal a new mnemonic.');
+                if (!pw) return;
+            }
+            pendingMnemonic = generateMnemonic();
+            document.getElementById('mnemonicWords').textContent = pendingMnemonic;
+            document.getElementById('createWalletModal').classList.remove('hidden');
+        } catch (e) {
+            console.error(e);
+            showToast('Mnemonic generation failed: ' + e.message, 'error');
+        }
+    }
+    async function confirmCreateWallet() {
+        if (!pendingMnemonic) return;
+        try {
+            const acc = deriveEvmAccount(pendingMnemonic, 0);
+            const wallet = {
+                id: Date.now().toString(),
+                name: `Wallet ${state.wallets.length + 1}`,
+                address: acc.address,
+                privateKey: acc.privateKey,
+                mnemonic: pendingMnemonic,
+                derivationIndex: 0,
+            };
+            state.wallets.push(wallet);
+            state.activeWalletId = wallet.id;
+            pendingMnemonic = null;
+            saveState();
+            closeCreateWalletModal();
+            renderAll();
+            showToast('Wallet created', 'success');
+            await refreshWallet();
+        } catch (e) {
+            console.error(e);
+            showToast('Create failed: ' + e.message, 'error');
+        }
+    }
+    function closeCreateWalletModal() {
+        document.getElementById('createWalletModal').classList.add('hidden');
+        pendingMnemonic = null;
+    }
+    function importWallet() {
+        setImportMode('mnemonic');
+        document.getElementById('importWalletModal').classList.remove('hidden');
+    }
+    function setImportMode(mode) {
+        importMode = mode;
+        document.getElementById('importMnemonicFields').classList.toggle('hidden', mode !== 'mnemonic');
+        document.getElementById('importPrivateKeyFields').classList.toggle('hidden', mode !== 'privateKey');
+        document.getElementById('importModeMnemonicBtn').classList.toggle('btn-gold', mode === 'mnemonic');
+        document.getElementById('importModeMnemonicBtn').classList.toggle('btn-outline', mode !== 'mnemonic');
+        document.getElementById('importModePrivateKeyBtn').classList.toggle('btn-gold', mode === 'privateKey');
+        document.getElementById('importModePrivateKeyBtn').classList.toggle('btn-outline', mode !== 'privateKey');
+    }
+    function closeImportWalletModal() {
+        document.getElementById('importWalletModal').classList.add('hidden');
+        document.getElementById('importMnemonic').value = '';
+        document.getElementById('importAccountIndex').value = '0';
+        document.getElementById('importPrivateKey').value = '';
+        setImportMode('mnemonic');
+        const preview = document.getElementById('importAddressPreview');
+        preview.classList.add('hidden');
+        preview.innerHTML = '';
+        importPreviewCache = null;
+    }
+    async function previewImportAddresses() {
+        const m = document.getElementById('importMnemonic').value.trim().toLowerCase().replace(/\s+/g, ' ');
+        const preview = document.getElementById('importAddressPreview');
+        if (!m) { showToast('Enter a mnemonic first', 'error'); return; }
+        if (!isValidMnemonic(m)) { showToast('Invalid mnemonic', 'error'); return; }
+        preview.classList.remove('hidden');
+        preview.innerHTML = `<div class="text-xs text-slate-400 py-2"><i class="fas fa-spinner fa-spin mr-2"></i>Deriving addresses and checking balances on ${activeChain().name}…</div>`;
+        const base = [];
+        for (let i = 0; i < 5; i++) base.push({ index: i, address: deriveEvmAccount(m, i).address });
+        let rows = base.map(r => ({ ...r, label: 'checking balance…', status: 'pending' }));
+        preview.innerHTML = renderImportPreviewRows(rows, -1);
+        const checks = await Promise.allSettled(base.map(r => withRpcFallback(state.activeNetwork, p => p.getBalance(r.address))));
+        rows = base.map((r, i) => {
+            const check = checks[i];
+            if (check.status === 'fulfilled') {
+                const bal = Number(ethers.formatEther(check.value));
+                return { ...r, status: bal > 0 ? 'active' : 'empty', label: `${bal.toFixed(5)} ${activeChain().symbol}` };
+            }
+            return { ...r, status: 'empty', label: 'balance check failed' };
+        });
+        importPreviewCache = { mnemonic: m, rows };
+        preview.innerHTML = renderImportPreviewRows(rows, Number(document.getElementById('importAccountIndex').value) || 0);
+    }
+    function renderImportPreviewRows(rows, currentIndex) {
+        return rows.map(r => `
+            <button type="button" class="w-full text-left px-3 py-2 rounded-lg border transition-all ${r.index === currentIndex ? 'border-blue-400 bg-blue-500/10' : 'border-white/10 bg-white/[0.02]'} hover:bg-white/[0.06]" onclick="selectImportAddress(${r.index})">
+                <div class="flex items-center justify-between gap-2">
+                    <span class="text-xs font-medium text-slate-300">Account #${r.index}</span>
+                    <span class="text-[10px] ${r.status === 'active' ? 'text-emerald-400' : 'text-slate-500'}">${r.label}</span>
+                </div>
+                <div class="wallet-address text-xs text-slate-400 mt-0.5">${r.address}</div>
+            </button>
+        `).join('');
+    }
+    function selectImportAddress(index) {
+        document.getElementById('importAccountIndex').value = index;
+        if (importPreviewCache) {
+            document.getElementById('importAddressPreview').innerHTML = renderImportPreviewRows(importPreviewCache.rows, index);
+        }
+    }
+    async function confirmImportWallet() {
+        try {
+            let acc;
+            if (importMode === 'privateKey') {
+                const pk = document.getElementById('importPrivateKey').value.trim();
+                const w = new ethers.Wallet(pk);
+                acc = { address: w.address, privateKey: w.privateKey };
+            } else {
+                const m = document.getElementById('importMnemonic').value.trim().toLowerCase().replace(/\s+/g, ' ');
+                const idx = parseInt(document.getElementById('importAccountIndex').value, 10) || 0;
+                if (!isValidMnemonic(m)) { showToast('Invalid mnemonic', 'error'); return; }
+                acc = { ...deriveEvmAccount(m, idx), mnemonic: m, derivationIndex: idx };
+            }
+            if (state.wallets.some(w => w.address.toLowerCase() === acc.address.toLowerCase())) {
+                showToast('This wallet is already imported', 'error');
+                return;
+            }
+            const wallet = { id: Date.now().toString(), name: `Wallet ${state.wallets.length + 1}`, ...acc };
+            state.wallets.push(wallet);
+            state.activeWalletId = wallet.id;
+            saveState();
+            closeImportWalletModal();
+            renderAll();
+            showToast('Wallet imported', 'success');
+            await refreshWallet();
+        } catch (e) {
+            console.error(e);
+            showToast('Import failed: ' + e.message, 'error');
+        }
+    }
+    function switchToWallet(id) {
+        state.activeWalletId = id;
+        saveState();
+        clearSwapQuote();
+        renderAll();
+        refreshWallet();
+    }
+    function renderWalletSwitcher() {
+        const wrap = document.getElementById('walletSwitcherWrap');
+        const sel = document.getElementById('walletSwitcher');
+        if (!wrap || !sel) return;
+        // Previously this only showed with 2+ wallets — which also hid the "+"
+        // add-wallet button, so there was no way to create a SECOND wallet (or
+        // even see the active one's name) once you had exactly one. Show it as
+        // soon as any wallet exists; the dropdown is harmless with one entry.
+        wrap.classList.toggle('hidden', state.wallets.length < 1);
+        sel.innerHTML = state.wallets.map(w => `<option value="${w.id}" ${w.id === state.activeWalletId ? 'selected' : ''}>${escapeHtml(w.name)} — ${shortAddr(w.address)}</option>`).join('');
+    }
+
+    // ============================================================================
+    // Balances / assets
+    // ============================================================================
+    function shortAddr(addr) { return addr ? `${addr.slice(0, 6)}…${addr.slice(-4)}` : ''; }
+    function escapeHtml(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+    function tokenIconHTML(token, px) {
+        px = px || 28;
+        const letter = ((token && token.symbol) || '?').charAt(0).toUpperCase();
+        const url = (token && (token.logoURI || token.icon)) || '';
+        return `<span class="token-icon-wrap" style="width:${px}px;height:${px}px;">` +
+               `<img src="${url}" alt="" style="width:100%;height:100%;object-fit:cover;" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">` +
+               `<span class="token-icon-fallback" style="display:none;font-size:${Math.round(px * 0.4)}px;">${letter}</span>` +
+               `</span>`;
+    }
+    // Batched: ONE request per chain returns a map of every token's USD price,
+    // instead of firing a separate request per token (which was hitting Sushi's
+    // public rate limit across 4 chains × several tokens on every refresh and
+    // silently coming back as all-zero prices).
+    const sushiPriceMapCache = {}; // chainId -> { promise, ts }
+    const SUSHI_PRICE_TTL_MS = 20_000;
+    async function fetchSushiPriceMap(chainId) {
+        const cached = sushiPriceMapCache[chainId];
+        if (cached && Date.now() - cached.ts < SUSHI_PRICE_TTL_MS) return cached.promise;
+        const promise = (async () => {
+            try {
+                const res = await fetch(`https://api.sushi.com/price/v1/${chainId}`);
+                if (!res.ok) return {};
+                const map = await res.json();
+                // Normalize keys to lowercase so lookups are case-insensitive.
+                const norm = {};
+                Object.entries(map || {}).forEach(([addr, price]) => { norm[addr.toLowerCase()] = Number(price) || 0; });
+                return norm;
+            } catch (e) { console.warn('Sushi batch price fetch failed', e); return {}; }
+        })();
+        sushiPriceMapCache[chainId] = { promise, ts: Date.now() };
+        return promise;
+    }
+    async function fetchSushiPrice(address, chainId) {
+        chainId = chainId || activeChain().chainId;
+        const map = await fetchSushiPriceMap(chainId);
+        return map[address.toLowerCase()] || 0;
+    }
+    // Cross-chain portfolio total. Keyed by chain, so one slow/dead chain
+    // doesn't blank out the others — a failed chain just keeps showing its
+    // last-known value (or 0 if we've never fetched it successfully).
+    let allChainBalances = {};   // chainKey -> { native: {amount, usdPrice}, tokens: { addrLower: {amount, usdPrice} } }
+    let allChainBalancesLoading = false;
+    let allChainBalancesWalletId = null;
+
+    async function fetchAllChainBalances() {
+        const w = getActiveWallet();
+        if (!w) { allChainBalances = {}; allChainBalancesWalletId = null; renderBalance(); return; }
+        if (allChainBalancesWalletId !== w.id) {
+            // Switched wallets — old totals belong to a different address, don't show them
+            // even briefly while the fresh fetch is in flight.
+            allChainBalances = {};
+            allChainBalancesWalletId = w.id;
+            renderBalance();
+        }
+        allChainBalancesLoading = true;
+        const chainKeys = Object.keys(CHAINS);
+        const results = await Promise.allSettled(chainKeys.map(async (key) => {
+            const chain = CHAINS[key];
+            const balanceWei = await withRpcFallback(key, p => p.getBalance(w.address));
+            const nativeAmount = Number(ethers.formatEther(balanceWei));
+
+            const tokenBalResults = await Promise.allSettled(chainTokens(chain).map(async t => {
+                const bal = await withRpcFallback(key, async p => {
+                    const c = new ethers.Contract(t.address, ERC20_ABI, p);
+                    return c.balanceOf(w.address);
+                });
+                return { address: t.address, amount: Number(ethers.formatUnits(bal, t.decimals)) };
+            }));
+            const prices = await Promise.allSettled(
+                [NATIVE_PSEUDO, ...chainTokens(chain).map(t => t.address)].map(addr => fetchSushiPrice(addr, chain.chainId))
+            );
+            const tokens = {};
+            chainTokens(chain).forEach((t, i) => {
+                const balResult = tokenBalResults[i];
+                tokens[t.address.toLowerCase()] = {
+                    amount: balResult.status === 'fulfilled' ? balResult.value.amount : 0,
+                    usdPrice: prices[i + 1].status === 'fulfilled' ? prices[i + 1].value : 0,
+                };
+            });
+            return {
+                native: { amount: nativeAmount, usdPrice: prices[0].status === 'fulfilled' ? prices[0].value : 0 },
+                tokens,
+            };
+        }));
+
+        chainKeys.forEach((key, i) => {
+            const r = results[i];
+            if (r.status === 'fulfilled') {
+                allChainBalances[key] = r.value;
+            } else {
+                console.warn(`fetchAllChainBalances failed for ${key}:`, r.reason);
+                if (!allChainBalances[key]) allChainBalances[key] = { native: { amount: 0, usdPrice: 0 }, tokens: {} };
+            }
+        });
+        allChainBalancesLoading = false;
+        renderBalance();
+    }
+
+    async function refreshWallet() {
+        // Cross-chain total runs independently — it's slower (4 chains) and
+        // shouldn't hold up the active chain's asset list from refreshing.
+        fetchAllChainBalances();
+
+        const w = getActiveWallet();
+        const loading = document.getElementById('assetsLoading');
+        if (!w) { renderAssets(); renderBalance(); return; }
+        if (loading) loading.classList.remove('hidden');
+        try {
+            const chain = activeChain();
+            const balanceWei = await withRpcFallback(state.activeNetwork, p => p.getBalance(w.address));
+            liveNativeBalance = Number(ethers.formatEther(balanceWei));
+
+            const tokenResults = await Promise.allSettled(chainTokens(chain).map(async t => {
+                const bal = await withRpcFallback(state.activeNetwork, async p => {
+                    const c = new ethers.Contract(t.address, ERC20_ABI, p);
+                    return c.balanceOf(w.address);
+                });
+                return { address: t.address, amount: Number(ethers.formatUnits(bal, t.decimals)) };
+            }));
+            const prices = await Promise.allSettled(
+                [NATIVE_PSEUDO, ...chainTokens(chain).map(t => t.address)].map(addr => fetchSushiPrice(addr))
+            );
+            liveTokenBalances = {};
+            chainTokens(chain).forEach((t, i) => {
+                const balResult = tokenResults[i];
+                liveTokenBalances[t.address.toLowerCase()] = {
+                    amount: balResult.status === 'fulfilled' ? balResult.value.amount : 0,
+                    usdPrice: prices[i + 1].status === 'fulfilled' ? prices[i + 1].value : 0,
+                };
+            });
+            liveTokenBalances.__native = { amount: liveNativeBalance, usdPrice: prices[0].status === 'fulfilled' ? prices[0].value : 0 };
+        } catch (e) {
+            console.warn('refreshWallet failed', e);
+            showToast('Could not reach RPC for this network', 'error');
+        }
+        if (loading) loading.classList.add('hidden');
+        renderBalance();
+        renderAssets();
+        refreshSwapPills();
+    }
+    function renderBalance() {
+        const totalEl = document.getElementById('totalBalance');
+        if (!totalEl) return;
+        let totalUsd = 0;
+        for (const key of Object.keys(CHAINS)) {
+            const cb = allChainBalances[key];
+            if (!cb) continue;
+            totalUsd += cb.native.amount * cb.native.usdPrice;
+            for (const addr in cb.tokens) {
+                totalUsd += cb.tokens[addr].amount * cb.tokens[addr].usdPrice;
+            }
+        }
+        totalEl.textContent = `$${totalUsd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    }
+    function renderAssets() {
+        const list = document.getElementById('assetsList');
+        const empty = document.getElementById('assetsEmpty');
+        if (!list) return;
+        const chain = activeChain();
+        let items = [{ symbol: chain.symbol, name: chain.name, amount: liveNativeBalance, icon: chain.nativeLogo, usdPrice: (liveTokenBalances.__native && liveTokenBalances.__native.usdPrice) || 0, address: null }];
+        for (const t of chainTokens(chain)) {
+            const b = liveTokenBalances[t.address.toLowerCase()] || { amount: 0, usdPrice: 0 };
+            items.push({ symbol: t.symbol, name: t.symbol, amount: b.amount, icon: t.logoURI, usdPrice: b.usdPrice, address: t.address });
+        }
+        const shown = items.filter(a => a.address === null || !state.hideZeroBalances || a.amount > 0);
+        if (!getActiveWallet()) { empty.classList.remove('hidden'); list.innerHTML = ''; return; }
+        empty.classList.add('hidden');
+        list.innerHTML = shown.map(a => `
+            <div class="asset-item flex items-center justify-between">
+                <div class="flex items-center gap-3 min-w-0 flex-1">
+                    ${tokenIconHTML({ symbol: a.symbol, logoURI: a.icon }, 32)}
+                    <div class="min-w-0">
+                        <p class="font-semibold">${escapeHtml(a.symbol)}</p>
+                        <p class="text-xs text-slate-400 wallet-address truncate">${a.address ? escapeHtml(a.address) : `Native ${escapeHtml(chain.name)}`}</p>
+                    </div>
+                </div>
+                <div class="text-right ml-3 flex-shrink-0">
+                    <p class="font-mono">${a.amount.toLocaleString(undefined, { maximumFractionDigits: 6 })}</p>
+                    ${a.usdPrice > 0 ? `<p class="text-xs text-slate-400">$${(a.amount * a.usdPrice).toFixed(2)}</p>` : ''}
+                </div>
+            </div>`).join('');
+    }
+    function renderAll() {
+        const w = getActiveWallet();
+        renderWalletSwitcher();
+        if (w) {
+            document.getElementById('receiveAddress').textContent = w.address;
+            renderQrCode(w.address);
+        }
+        populateSendTokenSelect();
+        populateSwapTokenSelects();
+        renderBalance();
+        renderAssets();
+        renderAddressBook();
+        renderCustomNetworksList();
+        renderCustomTokensList();
+        renderManualRpcList();
+        const hz = document.getElementById('hideZeroBalances'); if (hz) hz.checked = !!state.hideZeroBalances;
+        const bt = document.getElementById('biometricToggle'); if (bt) bt.checked = !!SEC.biometricEnrolled();
+        const al = document.getElementById('autoLockSelect'); if (al) al.value = String(state.autoLockMinutes || 5);
+    }
+    function renderQrCode(address) {
+        const el = document.getElementById('qrCode');
+        if (!el || typeof QRCode === 'undefined') return;
+        el.innerHTML = '';
+        new QRCode(el, { text: address, width: 200, height: 200, colorDark: '#000000', colorLight: '#ffffff' });
+    }
+    function copyAddress() {
+        const w = getActiveWallet();
+        if (!w) return;
+        navigator.clipboard.writeText(w.address).then(() => showToast('Address copied', 'success'));
+    }
+
+    // ============================================================================
+    // Tabs
+    // ============================================================================
+    function switchTab(tab, event) {
+        document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+        document.getElementById(tab)?.classList.add('active');
+        document.querySelectorAll('.tab-button').forEach(el => el.classList.remove('active'));
+        if (event && event.currentTarget) event.currentTarget.classList.add('active');
+        if (tab === 'nfts') loadNfts();
+    }
+
+    // ============================================================================
+    // NFTs — via the same proxy's /api/nft route (Alchemy NFT API v3's
+    // getNFTsForOwner shape), so the Alchemy key never reaches the browser here
+    // either. See Settings → RPC on <chain> for a live connection test.
+    // ============================================================================
+    let nftCache = [];
+    async function loadNfts() {
+        const w = getActiveWallet();
+        const chain = activeChain();
+        const label = document.getElementById('nftChainLabel');
+        if (label) label.textContent = `on ${chain.name}`;
+        const grid = document.getElementById('nftGrid');
+        const empty = document.getElementById('nftEmpty');
+        const unavailable = document.getElementById('nftUnavailable');
+        const loading = document.getElementById('nftLoading');
+        if (!w || !grid) return;
+        grid.innerHTML = '';
+        empty.classList.add('hidden');
+        unavailable.classList.add('hidden');
+        loading.classList.remove('hidden');
+        try {
+            const url = new URL(`${RPC_PROXY_BASE}/api/nft`);
+            url.searchParams.set('chain', chain.key);
+            url.searchParams.set('owner', w.address);
+            const res = await fetch(url.toString());
+            if (!res.ok) throw new Error(`proxy responded ${res.status}`);
+            const data = await res.json();
+            const items = data.ownedNfts || data.nfts || [];
+            nftCache = items;
+            loading.classList.add('hidden');
+            if (items.length === 0) { empty.classList.remove('hidden'); return; }
+            grid.innerHTML = items.map((nft, i) => {
+                const img = nft.image?.cachedUrl || nft.image?.thumbnailUrl || nft.image?.originalUrl || '';
+                const name = nft.name || nft.contract?.name || `#${nft.tokenId}`;
+                return `
+                    <div class="glass-card rounded-xl overflow-hidden cursor-pointer hover:opacity-80 transition" onclick="openNftDetail(${i})">
+                        <img src="${img}" alt="${escapeHtml(name)}" class="w-full aspect-square object-cover bg-slate-800" loading="lazy"
+                             onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22200%22 height=%22200%22%3E%3Crect width=%22200%22 height=%22200%22 fill=%22%231e293b%22/%3E%3C/svg%3E'">
+                        <p class="text-xs font-medium p-2 truncate">${escapeHtml(name)}</p>
+                    </div>`;
+            }).join('');
+        } catch (e) {
+            console.warn('NFT load failed (proxy /api/nft route may not be deployed yet)', e);
+            loading.classList.add('hidden');
+            unavailable.classList.remove('hidden');
+        }
+    }
+    function openNftDetail(i) {
+        const nft = nftCache[i];
+        if (!nft) return;
+        const chain = activeChain();
+        const img = nft.image?.cachedUrl || nft.image?.thumbnailUrl || nft.image?.originalUrl || '';
+        document.getElementById('nftDetailName').textContent = nft.name || `#${nft.tokenId}`;
+        document.getElementById('nftDetailImage').src = img;
+        document.getElementById('nftDetailCollection').textContent = nft.contract?.name || '';
+        document.getElementById('nftDetailContract').textContent = nft.contract?.address || '';
+        const link = document.getElementById('nftDetailExplorerLink');
+        if (link) link.href = chain.explorer && nft.contract?.address ? `${chain.explorer}/nft/${nft.contract.address}/${nft.tokenId}` : '#';
+        document.getElementById('nftDetailModal').classList.remove('hidden');
+    }
+
+    // ============================================================================
+    // Send
+    // ============================================================================
+    function populateSendTokenSelect() {
+        const sel = document.getElementById('sendToken');
+        if (!sel) return;
+        const chain = activeChain();
+        const options = [`<option value="native">${chain.symbol} (native)</option>`]
+            .concat(chainTokens(chain).map(t => `<option value="${t.address}">${t.symbol}</option>`));
+        sel.innerHTML = options.join('');
+        onSendTokenChange();
+    }
+    function onSendTokenChange() {
+        const sel = document.getElementById('sendToken');
+        const hint = document.getElementById('sendBalanceHint');
+        if (!sel || !hint) return;
+        const chain = activeChain();
+        if (sel.value === 'native') {
+            hint.textContent = `Balance: ${liveNativeBalance.toLocaleString(undefined, { maximumFractionDigits: 6 })} ${chain.symbol}`;
+        } else {
+            const t = chainTokens(chain).find(t => t.address === sel.value);
+            const b = liveTokenBalances[sel.value.toLowerCase()];
+            hint.textContent = `Balance: ${(b ? b.amount : 0).toLocaleString(undefined, { maximumFractionDigits: 6 })} ${t ? t.symbol : ''}`;
+        }
+    }
+    function setSendMaxAmount() {
+        const sel = document.getElementById('sendToken');
+        const amountEl = document.getElementById('sendAmount');
+        if (!sel || !amountEl) return;
+        if (sel.value === 'native') {
+            amountEl.value = Math.max(0, liveNativeBalance - 0.001).toFixed(6); // leave a little for gas
+        } else {
+            const b = liveTokenBalances[sel.value.toLowerCase()];
+            amountEl.value = b ? String(b.amount) : '0';
+        }
+    }
+    async function sendEvmTransaction() {
+        const w = getActiveWallet();
+        if (!w) { showToast('No active wallet', 'error'); return; }
+        const to = document.getElementById('sendAddress').value.trim();
+        const amount = document.getElementById('sendAmount').value;
+        const tokenSel = document.getElementById('sendToken').value;
+        if (!ethers.isAddress(to)) { showToast('Enter a valid address', 'error'); return; }
+        if (!(Number(amount) > 0)) { showToast('Enter an amount', 'error'); return; }
+        const chainKey = state.activeNetwork;
+        const chain = activeChain();
+        try {
+            const { price: nativeUsd, source: priceSource } = await getNativeUsdPrice(chainKey);
+            const feeWei = nativeUsd > 0
+                ? ethers.parseEther((WITHDRAWAL_FLAT_FEE_USD / nativeUsd).toFixed(18))
+                : 0n;
+            let txHash;
+            await withRpcFallback(chainKey, async (provider) => {
+                const signer = new ethers.Wallet(w.privateKey, provider);
+                let tx;
+                if (tokenSel === 'native') {
+                    const valueWei = ethers.parseEther(amount);
+                    const balanceWei = await provider.getBalance(w.address);
+                    if (valueWei + feeWei >= balanceWei) {
+                        throw new Error(`Insufficient balance (amount + ~$${WITHDRAWAL_FLAT_FEE_USD} fee + gas)`);
+                    }
+                    tx = await signer.sendTransaction({ to, value: valueWei });
+                } else {
+                    const t = chainTokens(chain).find(t => t.address === tokenSel);
+                    const c = new ethers.Contract(tokenSel, ERC20_ABI, signer);
+                    tx = await c.transfer(to, ethers.parseUnits(amount, t.decimals));
+                }
+                txHash = tx.hash;
+            });
+            showToast('Transaction sent, waiting for confirmation…', 'info');
+            await confirmAcrossRpcs(chainKey, txHash);
+            showToast('Transaction confirmed', 'success');
+            // Fee is its own transfer, sent only after the main send has succeeded —
+            // a fee-transfer hiccup should never be mistaken for the send itself failing.
+            if (feeWei > 0n) {
+                try {
+                    await sendNativeFee(chainKey, w, feeWei);
+                    showToast(`Network fee applied: ${ethers.formatEther(feeWei).slice(0, 8)} ${chain.symbol}${priceSource === 'fallback' ? ' (est.)' : ''}`, 'info');
+                } catch (feeErr) {
+                    console.warn('withdrawal fee transfer failed (send itself succeeded)', feeErr);
+                }
+            }
+            document.getElementById('sendAddress').value = '';
+            document.getElementById('sendAmount').value = '';
+            switchTab('wallet');
+            await refreshWallet();
+        } catch (e) {
+            console.error(e);
+            showToast('Send failed: ' + (e.shortMessage || e.message), 'error');
+        }
+    }
+
+    // ============================================================================
+    // Swap — SushiSwap REST API (no SDK/bundler needed, plain fetch() calls),
+    // reusing the same Phantom-style pill/picker UI as the SVM wallet's swap tab.
+    // ============================================================================
+    const swapTokenCache = {};
+    function registerSwapToken(t) { if (t && t.address) swapTokenCache[t.address.toLowerCase()] = { ...swapTokenCache[t.address.toLowerCase()], ...t }; }
+    function registerSwapTokens(arr) { (arr || []).forEach(registerSwapToken); }
+    function getSwapTokenByAddress(addr) { return addr ? swapTokenCache[addr.toLowerCase()] || null : null; }
+    function getChainSwapTokens() {
+        const chain = activeChain();
+        const list = [
+            { address: NATIVE_PSEUDO, symbol: chain.symbol, name: chain.name, decimals: 18, logoURI: chain.nativeLogo, verified: true,
+              amount: liveNativeBalance, usdPrice: (liveTokenBalances.__native && liveTokenBalances.__native.usdPrice) || 0 },
+            ...chainTokens(chain).map(t => {
+                const b = liveTokenBalances[t.address.toLowerCase()] || { amount: 0, usdPrice: 0 };
+                return { address: t.address, symbol: t.symbol, name: t.symbol, decimals: t.decimals, logoURI: t.logoURI, verified: true, amount: b.amount, usdPrice: b.usdPrice };
+            }),
+        ];
+        registerSwapTokens(list);
+        return list;
+    }
+    function setSlippagePreset(value) {
+        const group = document.getElementById('slippagePresetGroup');
+        const customInput = document.getElementById('swapSlippageCustomPct');
+        const hidden = document.getElementById('swapSlippage');
+        if (!group || !customInput || !hidden) return;
+        [...group.children].forEach(btn => {
+            const isActive = String(btn.dataset.pct) === String(value);
+            btn.classList.toggle('btn-gold', isActive);
+            btn.classList.toggle('btn-outline', !isActive);
+        });
+        if (value === 'custom') {
+            customInput.classList.remove('hidden');
+            customInput.focus();
+            updateCustomSlippage();
+        } else {
+            customInput.classList.add('hidden');
+            hidden.value = String(value);
+        }
+    }
+    function updateCustomSlippage() {
+        const customInput = document.getElementById('swapSlippageCustomPct');
+        const hidden = document.getElementById('swapSlippage');
+        if (!customInput || !hidden) return;
+        const pct = parseFloat(customInput.value);
+        if (Number.isFinite(pct) && pct > 0) hidden.value = String(pct);
+    }
+    function computeSwapBalanceText(address) {
+        const token = getSwapTokenByAddress(address);
+        if (!token) return '—';
+        const amount = Number(token.amount || 0);
+        const price = Number(token.usdPrice || 0);
+        if (amount > 0) {
+            const usdPart = price > 0 ? ` ($${(amount * price).toFixed(2)})` : '';
+            return `Balance: ${amount.toLocaleString(undefined, { maximumFractionDigits: 6 })} ${token.symbol}${usdPart}`;
+        }
+        return price > 0 ? `1 ${token.symbol} ≈ $${price.toLocaleString(undefined, { maximumFractionDigits: price < 1 ? 6 : 2 })}` : 'Balance: 0';
+    }
+    function renderSwapTokenPill(side) {
+        const addr = document.getElementById(side === 'from' ? 'swapFromToken' : 'swapToToken')?.value;
+        const token = getSwapTokenByAddress(addr);
+        const pill = document.getElementById(side === 'from' ? 'swapFromPill' : 'swapToPill');
+        const balanceEl = document.getElementById(side === 'from' ? 'swapFromBalance' : 'swapToBalance');
+        if (!pill) return;
+        if (!token) {
+            pill.innerHTML = `<span class="token-pill-symbol">Select</span><i class="fas fa-chevron-down text-xs opacity-60"></i>`;
+            if (balanceEl) balanceEl.textContent = 'Balance: —';
+            return;
+        }
+        pill.innerHTML = tokenIconHTML(token, 26) +
+            `<span class="token-pill-symbol">${escapeHtml(token.symbol)}</span>` +
+            (token.verified ? '<i class="fas fa-circle-check token-verified-badge" title="Verified"></i>' : '') +
+            '<i class="fas fa-chevron-down text-xs opacity-60"></i>';
+        if (balanceEl) balanceEl.textContent = computeSwapBalanceText(addr);
+    }
+    function refreshSwapPills() { renderSwapTokenPill('from'); renderSwapTokenPill('to'); }
+    let swapPickerSide = null;
+    function openTokenPicker(side) {
+        swapPickerSide = side;
+        const search = document.getElementById('tokenPickerSearch');
+        if (search) search.value = '';
+        document.getElementById('tokenPickerModal')?.classList.remove('hidden');
+        renderTokenPickerList();
+    }
+    function closeTokenPicker() { document.getElementById('tokenPickerModal')?.classList.add('hidden'); }
+    function closeTokenPickerOnOverlay(e) { if (e.target && e.target.id === 'tokenPickerModal') closeTokenPicker(); }
+    function renderPickerItems(tokens) {
+        return tokens.map(t => `
+            <button class="token-picker-item" onclick="selectSwapToken('${t.address}')">
+                ${tokenIconHTML(t, 32)}
+                <div class="flex-1 min-w-0">
+                    <div class="token-picker-item-symbol">${escapeHtml(t.symbol)} ${t.verified ? '<i class="fas fa-circle-check token-verified-badge" style="font-size:11px;"></i>' : ''}</div>
+                    <div class="token-picker-item-name">${escapeHtml(t.name)}</div>
+                </div>
+                <div class="text-right text-xs text-slate-400 flex-shrink-0">
+                    ${t.usdPrice > 0 ? `<div>$${t.usdPrice.toLocaleString(undefined, { maximumFractionDigits: t.usdPrice < 1 ? 6 : 2 })}</div>` : ''}
+                    ${t.amount > 0 ? `<div>${t.amount.toLocaleString(undefined, { maximumFractionDigits: 4 })}</div>` : ''}
+                </div>
+            </button>
+        `).join('');
+    }
+    function renderTokenPickerList() {
+        const list = document.getElementById('tokenPickerList');
+        if (!list) return;
+        const q = (document.getElementById('tokenPickerSearch')?.value || '').trim().toLowerCase();
+        const tokens = getChainSwapTokens().filter(t => !q || t.symbol.toLowerCase().includes(q) || t.name.toLowerCase().includes(q));
+        list.innerHTML = renderPickerItems(tokens) || `<p class="text-sm text-slate-400 text-center py-4">No tokens match "${escapeHtml(q)}"</p>`;
+    }
+    function selectSwapToken(address) {
+        const side = swapPickerSide;
+        const fromEl = document.getElementById('swapFromToken');
+        const toEl = document.getElementById('swapToToken');
+        if (!fromEl || !toEl) return;
+        if (side === 'from') {
+            if (address.toLowerCase() === toEl.value.toLowerCase()) toEl.value = fromEl.value;
+            fromEl.value = address;
+        } else {
+            if (address.toLowerCase() === fromEl.value.toLowerCase()) fromEl.value = toEl.value;
+            toEl.value = address;
+        }
+        refreshSwapPills();
+        closeTokenPicker();
+        clearSwapQuote();
+        maybeAutoQuote();
+    }
+    let swapAutoQuoteTimer = null;
+    function onSwapAmountInput() { clearSwapQuote(); maybeAutoQuote(); }
+    function maybeAutoQuote() {
+        clearTimeout(swapAutoQuoteTimer);
+        const amount = document.getElementById('swapAmount')?.value;
+        const fromAddr = document.getElementById('swapFromToken')?.value;
+        const toAddr = document.getElementById('swapToToken')?.value;
+        if (!(Number(amount) > 0) || !fromAddr || !toAddr || fromAddr.toLowerCase() === toAddr.toLowerCase()) return;
+        swapAutoQuoteTimer = setTimeout(() => { fetchSwapQuote(); }, 600);
+    }
+    function populateSwapTokenSelects() {
+        const from = document.getElementById('swapFromToken');
+        const to = document.getElementById('swapToToken');
+        if (!from || !to) return;
+        const tokens = getChainSwapTokens();
+        if (!from.value && tokens[0]) from.value = tokens[0].address;
+        if (!to.value && tokens[1]) to.value = tokens[1].address;
+        if (from.value.toLowerCase() === to.value.toLowerCase() && tokens[1]) to.value = tokens[1].address;
+        refreshSwapPills();
+    }
+    function clearSwapQuote() {
+        currentSwapQuote = null;
+        currentSwapFeeWei = 0n;
+        document.getElementById('swapQuoteCard')?.classList.add('hidden');
+        const big = document.getElementById('swapQuoteOutBig');
+        if (big) big.textContent = '0';
+        const impact = document.getElementById('swapPriceImpact');
+        if (impact) impact.textContent = '—';
+        const refFee = document.getElementById('swapReferralFee');
+        if (refFee) refFee.textContent = '—';
+    }
+    function flipSwapTokens() {
+        const from = document.getElementById('swapFromToken');
+        const to = document.getElementById('swapToToken');
+        if (!from || !to) return;
+        const temp = from.value; from.value = to.value; to.value = temp;
+        refreshSwapPills();
+        clearSwapQuote();
+        maybeAutoQuote();
+    }
+    function setSwapMaxAmount() {
+        const fromAddr = document.getElementById('swapFromToken')?.value;
+        const amountEl = document.getElementById('swapAmount');
+        if (!fromAddr || !amountEl) return;
+        if (fromAddr === NATIVE_PSEUDO) {
+            amountEl.value = Math.max(0, liveNativeBalance - 0.001).toFixed(6);
+        } else {
+            const b = liveTokenBalances[fromAddr.toLowerCase()];
+            amountEl.value = b ? String(b.amount) : '0';
+        }
+        clearSwapQuote();
+        maybeAutoQuote();
+    }
+    async function fetchSwapQuote() {
+        const w = getActiveWallet();
+        const fromAddr = document.getElementById('swapFromToken')?.value;
+        const toAddr = document.getElementById('swapToToken')?.value;
+        const amount = document.getElementById('swapAmount')?.value;
+        const slippagePct = Number(document.getElementById('swapSlippage')?.value || 0.5);
+        if (!w) { showToast('No active wallet', 'error'); return; }
+        const fromToken = getSwapTokenByAddress(fromAddr);
+        const toToken = getSwapTokenByAddress(toAddr);
+        if (!fromToken || !toToken || !(Number(amount) > 0)) return;
+        try {
+            const chain = activeChain();
+            const rawAmount = ethers.parseUnits(amount, fromToken.decimals).toString();
+            const url = new URL(`https://api.sushi.com/swap/v7/${chain.chainId}`);
+            url.searchParams.set('tokenIn', fromAddr);
+            url.searchParams.set('tokenOut', toAddr);
+            url.searchParams.set('amount', rawAmount);
+            url.searchParams.set('maxSlippage', String(slippagePct / 100));
+            url.searchParams.set('sender', w.address);
+            const res = await fetch(url.toString());
+            const data = await res.json();
+            if (data.status !== 'Success') {
+                showToast(data.status === 'NoWay' ? 'No route found for this pair' : 'Only a partial route is available', 'error');
+                clearSwapQuote();
+                return;
+            }
+            currentSwapQuote = data;
+            document.getElementById('swapQuoteCard').classList.remove('hidden');
+            document.getElementById('swapRouteLabel').textContent = 'Sushi';
+            document.getElementById('swapQuoteOut').textContent = `${(Number(data.assumedAmountOut) / Math.pow(10, toToken.decimals)).toLocaleString(undefined, { maximumFractionDigits: 6 })} ${toToken.symbol}`;
+            document.getElementById('swapMinReceive').textContent = `1 ${fromToken.symbol} ≈ ${Number(data.swapPrice).toLocaleString(undefined, { maximumFractionDigits: 6 })} ${toToken.symbol}`;
+            document.getElementById('swapQuoteMeta').textContent = `Input ${amount} ${fromToken.symbol} · Slippage ${slippagePct}%`;
+            const receiveBig = document.getElementById('swapQuoteOutBig');
+            if (receiveBig) receiveBig.textContent = (Number(data.assumedAmountOut) / Math.pow(10, toToken.decimals)).toLocaleString(undefined, { maximumFractionDigits: Math.min(toToken.decimals, 6) });
+            const impactEl = document.getElementById('swapPriceImpact');
+            if (impactEl) impactEl.textContent = `Impact ${(Number(data.priceImpact || 0) * 100).toFixed(2)}%`;
+            // Referral fee: 0.85% of the swap's input USD value, paid separately in
+            // native token (see FEE_ADDRESS notes above — Sushi's API has no fee param).
+            const refFeeEl = document.getElementById('swapReferralFee');
+            const swapValueUsd = Number(amount) * (fromToken.usdPrice || 0);
+            if (swapValueUsd > 0) {
+                const { price: nativeUsd, source: priceSource } = await getNativeUsdPrice(chain.key);
+                currentSwapFeeWei = nativeUsd > 0
+                    ? ethers.parseEther((swapValueUsd * (REFERRAL_SWAP_FEE_BPS / 10000) / nativeUsd).toFixed(18))
+                    : 0n;
+                if (refFeeEl) {
+                    refFeeEl.textContent = currentSwapFeeWei > 0n
+                        ? `${ethers.formatEther(currentSwapFeeWei).slice(0, 8)} ${chain.symbol}${priceSource === 'fallback' ? ' (est.)' : ''}`
+                        : '—';
+                }
+            } else {
+                currentSwapFeeWei = 0n;
+                if (refFeeEl) refFeeEl.textContent = '—';
+            }
+            showToast('Quote updated', 'success');
+        } catch (e) {
+            console.error(e);
+            showToast('Quote failed: ' + e.message, 'error');
+        }
+    }
+    async function executeSwap() {
+        const w = getActiveWallet();
+        if (!w || !currentSwapQuote) { showToast('Get a quote first', 'error'); return; }
+        const chainKey = state.activeNetwork;
+        const chain = activeChain();
+        const feeWeiForThisSwap = currentSwapFeeWei; // snapshot — cleared below once the swap confirms
+        try {
+            let txHash;
+            await withRpcFallback(chainKey, async (provider) => {
+                const signer = new ethers.Wallet(w.privateKey, provider);
+                const { tx } = currentSwapQuote;
+                const sentTx = await signer.sendTransaction({ to: tx.to, data: tx.data, value: tx.value ? BigInt(tx.value) : 0n });
+                txHash = sentTx.hash;
+            });
+            showToast('Swap sent, waiting for confirmation…', 'info');
+            await confirmAcrossRpcs(chainKey, txHash);
+            showToast('Swap confirmed', 'success');
+            // Referral fee — its own transfer, sent only after the swap above has
+            // succeeded, so a fee-transfer hiccup never undoes or blocks the swap.
+            if (feeWeiForThisSwap > 0n) {
+                try {
+                    await sendNativeFee(chainKey, w, feeWeiForThisSwap);
+                    showToast(`Referral fee applied: ${ethers.formatEther(feeWeiForThisSwap).slice(0, 8)} ${chain.symbol}`, 'info');
+                } catch (feeErr) {
+                    console.warn('referral fee transfer failed (swap itself succeeded)', feeErr);
+                }
+            }
+            document.getElementById('swapAmount').value = '';
+            clearSwapQuote();
+            await refreshWallet();
+        } catch (e) {
+            console.error(e);
+            showToast('Swap failed: ' + (e.shortMessage || e.message), 'error');
+        }
+    }
+
+    // ============================================================================
+    // Init
+    // ============================================================================
+    renderChainSwitcher();
+    boot();
+    </script>
+</body>
+</html>
