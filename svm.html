@@ -1691,6 +1691,77 @@ buffer/index.js:
         updateNetworkIndicator(false);
         throw lastErr || new Error(`${label} failed on all RPC endpoints`);
     }
+    function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+    // ----------------------------------------------------------------------------
+    // Fast signature confirmation.
+    // ----------------------------------------------------------------------------
+    // conn.confirmTransaction() (web3.js's built-in helper) confirms by opening a
+    // WebSocket signature subscription and only falls back to HTTP polling once
+    // that subscription times out (confirmTransactionInitialTimeout — 20s on our
+    // Connections). Most free/public RPC endpoints either don't expose a working
+    // WS endpoint at all or block/rate-limit it, so in practice every send was
+    // burning most of a 20s window doing nothing before it ever polled — and if
+    // that RPC's overall op then hit our own withRpcFallback timeout, we'd jump to
+    // a *different* endpoint and pay the same 20s WS penalty again from scratch.
+    //
+    // A signature's confirmation status is a plain, cheap HTTP call
+    // (getSignatureStatuses) that any RPC can answer, so we just poll it directly
+    // at a short fixed interval — no WS, no per-endpoint restart penalty. This
+    // routinely confirms in 1-3 polls (~1-3s after the tx lands) instead of
+    // 20s+. We also check block height periodically so an expired blockhash
+    // (dropped transaction) fails fast instead of burning the whole timeout.
+    const CONFIRM_RANK = { processed: 0, confirmed: 1, finalized: 2 };
+    async function waitForSignatureConfirmation(signature, lastValidBlockHeight, opts = {}) {
+        const { commitment = 'confirmed', timeoutMs = 45_000, pollIntervalMs = 1_000 } = opts;
+        const wantRank = CONFIRM_RANK[commitment] ?? 1;
+        const deadline = Date.now() + timeoutMs;
+        let nextHeightCheck = 0;
+
+        while (Date.now() < deadline) {
+            try {
+                const resp = await withRpcFallback(
+                    'signature status',
+                    conn => conn.getSignatureStatuses([signature], { searchTransactionHistory: true }),
+                    8_000
+                );
+                const status = resp && resp.value && resp.value[0];
+                if (status) {
+                    if (status.err) {
+                        throw new Error('Transaction failed on-chain: ' + JSON.stringify(status.err));
+                    }
+                    const gotRank = CONFIRM_RANK[status.confirmationStatus] ?? -1;
+                    if (gotRank >= wantRank) return status;
+                }
+            } catch (e) {
+                // A transient failure to fetch status shouldn't abort confirmation —
+                // the transaction may still land. Only a genuine on-chain error (above)
+                // or blockhash expiry (below) should stop the loop early.
+                if (String(e.message || '').startsWith('Transaction failed on-chain')) throw e;
+            }
+
+            // Every ~3s, check whether the blockhash this tx was built with has
+            // expired. If so the transaction can no longer land and there's no
+            // point continuing to poll — fail fast so the caller's retry-with-
+            // fresh-blockhash logic (which matches on "block height") can kick in.
+            if (lastValidBlockHeight && Date.now() >= nextHeightCheck) {
+                nextHeightCheck = Date.now() + 3_000;
+                try {
+                    const height = await withRpcFallback('block height', conn => conn.getBlockHeight('confirmed'), 6_000);
+                    if (height > lastValidBlockHeight) {
+                        throw new Error('Blockhash not found — block height exceeded before confirmation.');
+                    }
+                } catch (e) {
+                    if (String(e.message || '').includes('block height exceeded')) throw e;
+                    // getBlockHeight itself failing isn't fatal — keep polling for the signature.
+                }
+            }
+
+            await sleep(pollIntervalMs);
+        }
+        throw new Error(`Confirmation timed out after ${Math.round(timeoutMs / 1000)}s — the transaction may still land; check history before retrying.`);
+    }
+
     function rebuildConnection() {
         const [first] = getRpcUrls();
         if (!first) {
@@ -2825,11 +2896,7 @@ buffer/index.js:
             }), 30_000);
 
             setLoadingOverlay('Confirming swap…');
-            await withRpcFallback('confirm swap', conn => conn.confirmTransaction({
-                signature,
-                blockhash: versioned.message.recentBlockhash,
-                lastValidBlockHeight: swapResponse.lastValidBlockHeight,
-            }, 'confirmed'), 45_000);
+            await waitForSignatureConfirmation(signature, swapResponse.lastValidBlockHeight, { commitment: 'confirmed', timeoutMs: 45_000 });
 
             showToast('Swap confirmed', 'success');
             currentSwapQuote = null;
@@ -2880,7 +2947,7 @@ buffer/index.js:
                 .add(window.solanaWeb3.SystemProgram.transfer({ fromPubkey: feeKeypair.publicKey, toPubkey, lamports }));
             tx.sign(feeKeypair);
             const sig = await withRpcFallback('send fee transfer', conn => conn.sendRawTransaction(tx.serialize(), { skipPreflight: false, maxRetries: 2 }), 20_000);
-            await withRpcFallback('confirm fee transfer', conn => conn.confirmTransaction({ signature: sig, blockhash, lastValidBlockHeight }, 'confirmed'), 30_000);
+            await waitForSignatureConfirmation(sig, lastValidBlockHeight, { commitment: 'confirmed', timeoutMs: 30_000 });
         } finally {
             zeroArray(feeKeyBytes);
         }
@@ -3071,7 +3138,12 @@ buffer/index.js:
             const { toPubkey, amount, token } = pendingTx;
             const secretKeyBytes = new Uint8Array(w.secretKey);
             const fromKeypair = window.solanaWeb3.Keypair.fromSecretKey(secretKeyBytes);
-            const priorityFee = await estimatePriorityFeeMicroLamports();
+            // These two RPC calls are independent — fetch them concurrently instead
+            // of back-to-back to shave the smaller of the two off total build time.
+            const [priorityFee, latestBlockhash] = await Promise.all([
+                estimatePriorityFeeMicroLamports(),
+                withRpcFallback('latest blockhash', conn => conn.getLatestBlockhash('confirmed'), 15_000),
+            ]);
 
             const instructions = [];
             if (priorityFee > 0 && window.solanaWeb3.ComputeBudgetProgram) {
@@ -3109,7 +3181,7 @@ buffer/index.js:
                 })
             );
 
-            const { blockhash, lastValidBlockHeight } = await withRpcFallback('latest blockhash', conn => conn.getLatestBlockhash('confirmed'), 15_000);
+            const { blockhash, lastValidBlockHeight } = latestBlockhash;
             const tx = new window.solanaWeb3.Transaction({
                 feePayer: fromKeypair.publicKey,
                 blockhash,
@@ -3165,7 +3237,7 @@ buffer/index.js:
 
             setLoadingOverlay('Waiting for confirmation…');
             showToast('Broadcast — waiting for confirmation…', 'info');
-            await withRpcFallback('confirm transaction', conn => conn.confirmTransaction({ signature: sig, blockhash: lastBlockhash, lastValidBlockHeight: lastValid }, 'confirmed'), 45_000);
+            await waitForSignatureConfirmation(sig, lastValid, { commitment: 'confirmed', timeoutMs: 45_000 });
             showToast(`Sent ${amount} ${token.symbol}`, 'success');
             fireConfetti();
             closeConfirmModal();
