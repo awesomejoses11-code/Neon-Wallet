@@ -2525,49 +2525,73 @@
     // ============================================================================
     let nftCache = [];
     async function loadNfts() {
-        const w = getActiveWallet();
-        const chain = activeChain();
-        const label = document.getElementById('nftChainLabel');
-        if (label) label.textContent = `on ${chain.name}`;
-        const grid = document.getElementById('nftGrid');
-        const empty = document.getElementById('nftEmpty');
-        const unavailable = document.getElementById('nftUnavailable');
-        const loading = document.getElementById('nftLoading');
-        if (!w || !grid) return;
-        grid.innerHTML = '';
-        empty.classList.add('hidden');
-        unavailable.classList.add('hidden');
-        loading.classList.remove('hidden');
-        try {
-            const url = new URL(`${RPC_PROXY_BASE}/api/nft`, window.location.href);
-            url.searchParams.set('chain', chain.key);
-            url.searchParams.set('owner', w.address);
-            // Cache-bust proxy fetches: some CDNs cache GETs aggressively and
-            // return stale NFT lists (or an empty body during cold-start).
-            url.searchParams.set('_ts', Date.now().toString());
-            const res = await fetch(url.toString(), { cache: 'no-store' });
-            if (!res.ok) throw new Error(`proxy responded ${res.status}`);
-            const data = await res.json();
-            const items = data.ownedNfts || data.nfts || [];
-            nftCache = items;
-            loading.classList.add('hidden');
-            if (items.length === 0) { empty.classList.remove('hidden'); return; }
-            grid.innerHTML = items.map((nft, i) => {
-                const img = nft.image?.cachedUrl || nft.image?.thumbnailUrl || nft.image?.originalUrl || '';
-                const name = nft.name || nft.contract?.name || `#${nft.tokenId}`;
-                return `
-                    <div class="glass-card rounded-xl overflow-hidden cursor-pointer hover:opacity-80 transition" onclick="openNftDetail(${i})">
-                        <img src="${img}" alt="${escapeHtml(name)}" class="w-full aspect-square object-cover bg-slate-800" loading="lazy"
-                             onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22200%22 height=%22200%22%3E%3Crect width=%22200%22 height=%22200%22 fill=%22%231e293b%22/%3E%3C/svg%3E'">
-                        <p class="text-xs font-medium p-2 truncate">${escapeHtml(name)}</p>
-                    </div>`;
-            }).join('');
-        } catch (e) {
-            console.warn('NFT load failed (proxy /api/nft route may not be deployed yet)', e);
-            loading.classList.add('hidden');
-            unavailable.classList.remove('hidden');
-        }
+    const w = getActiveWallet();
+    const chain = activeChain();
+    const label = document.getElementById('nftChainLabel');
+    if (label) label.textContent = `on ${chain.name}`;
+    const grid = document.getElementById('nftGrid');
+    const empty = document.getElementById('nftEmpty');
+    const unavailable = document.getElementById('nftUnavailable');
+    const loading = document.getElementById('nftLoading');
+    if (!w || !grid) return;
+
+    // Reset UI
+    grid.innerHTML = '';
+    empty.classList.add('hidden');
+    unavailable.classList.add('hidden');
+    loading.classList.remove('hidden');
+
+    // Get Alchemy subdomain for this chain
+    const subdomain = chain.alchemyHistorySubdomain;
+    if (!subdomain) {
+        loading.classList.add('hidden');
+        unavailable.classList.remove('hidden');
+        // Update the text inside unavailable to explain the issue
+        const titleEl = unavailable.querySelector('p.mb-1');
+        if (titleEl) titleEl.textContent = `Alchemy doesn't support NFTs on ${chain.name}.`;
+        const detailEl = unavailable.querySelector('p.text-xs');
+        if (detailEl) detailEl.textContent = `This chain has no Alchemy subdomain configured.`;
+        return;
     }
+
+    // Build Alchemy NFT API URL (v3 getNFTsForOwner)
+    const url = `https://${subdomain}.g.alchemy.com/nft/v3/${ALCHEMY_API_KEY}/getNFTsForOwner`
+        + `?owner=${w.address}&withMetadata=true&pageSize=100`;
+
+    try {
+        const res = await fetch(url, { cache: 'no-store' });
+        if (!res.ok) throw new Error(`Alchemy responded ${res.status}`);
+        const data = await res.json();
+        const items = data.ownedNfts || data.nfts || [];
+        nftCache = items;
+
+        loading.classList.add('hidden');
+        if (items.length === 0) {
+            empty.classList.remove('hidden');
+            return;
+        }
+
+        grid.innerHTML = items.map((nft, i) => {
+            const img = nft.image?.cachedUrl || nft.image?.thumbnailUrl || nft.image?.originalUrl || '';
+            const name = nft.name || nft.contract?.name || `#${nft.tokenId}`;
+            return `
+                <div class="glass-card rounded-xl overflow-hidden cursor-pointer hover:opacity-80 transition" onclick="openNftDetail(${i})">
+                    <img src="${img}" alt="${escapeHtml(name)}" class="w-full aspect-square object-cover bg-slate-800" loading="lazy"
+                         onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22200%22 height=%22200%22%3E%3Crect width=%22200%22 height=%22200%22 fill=%22%231e293b%22/%3E%3C/svg%3E'">
+                    <p class="text-xs font-medium p-2 truncate">${escapeHtml(name)}</p>
+                </div>`;
+        }).join('');
+    } catch (e) {
+        console.warn('NFT load failed (Alchemy direct call)', e);
+        loading.classList.add('hidden');
+        unavailable.classList.remove('hidden');
+        // Update the text inside unavailable to show the error
+        const titleEl = unavailable.querySelector('p.mb-1');
+        if (titleEl) titleEl.textContent = "Couldn't load NFTs.";
+        const detailEl = unavailable.querySelector('p.text-xs');
+        if (detailEl) detailEl.textContent = (e && e.message) ? e.message : 'Alchemy request failed – see console for details.';
+    }
+}
     function openNftDetail(i) {
         const nft = nftCache[i];
         if (!nft) return;
