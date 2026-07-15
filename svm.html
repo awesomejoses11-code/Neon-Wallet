@@ -2367,11 +2367,35 @@ buffer/index.js:
 
             if (sigsResult.status === 'fulfilled') {
                 const sigs = sigsResult.value;
-                w.transactions = sigs.map(s => ({
-                    signature: s.signature, slot: s.slot, blockTime: s.blockTime, err: s.err, memo: s.memo,
-                }));
                 w.activityScore = sigs.length;
                 w.lastActivityAt = sigs.find(s => s.blockTime)?.blockTime || w.lastActivityAt || 0;
+                // Basic rows first so the History tab has something to show even if
+                // the detail enrichment below fails or hits a slow/rate-limited RPC.
+                w.transactions = sigs.map(s => ({
+                    signature: s.signature, slot: s.slot, blockTime: s.blockTime, err: s.err, memo: s.memo,
+                    type: s.err ? 'failed' : 'unknown',
+                }));
+                try {
+                    const parsedTxs = await withRpcFallback(
+                        'get parsed transactions',
+                        conn => conn.getParsedTransactions(sigs.map(s => s.signature), { maxSupportedTransactionVersion: 0 }),
+                        15_000
+                    );
+                    w.transactions = sigs.map((s, i) => {
+                        const base = { signature: s.signature, slot: s.slot, blockTime: s.blockTime, err: s.err, memo: s.memo };
+                        const ptx = parsedTxs[i];
+                        if (!ptx) return { ...base, type: s.err ? 'failed' : 'unknown' };
+                        const info = classifyParsedTx(ptx, w.address, w);
+                        const counterparty = (info.type === 'sent' || info.type === 'received')
+                            ? findCounterparty(ptx, w.address, info.primary.mint)
+                            : null;
+                        return { ...base, ...info, counterparty };
+                    });
+                } catch (e) {
+                    // Detail enrichment is best-effort — the basic rows assigned above
+                    // still give a usable (if less detailed) history.
+                    console.warn('transaction detail enrichment failed', e);
+                }
             } else {
                 failures.push('transaction history');
                 console.warn('signature fetch failed', sigsResult.reason);
@@ -3377,13 +3401,26 @@ buffer/index.js:
         if (!w) { showToast('No active wallet', 'error'); return; }
         const txs = w.transactions || [];
         if (txs.length === 0) { showToast('No transactions to export', 'info'); return; }
-        const rows = [['signature','slot','block_time_iso','status','memo']];
+        const rows = [['signature','slot','block_time_iso','status','type','amount','asset','counterparty','fee_sol','memo']];
         for (const t of txs) {
+            let amount = '', asset = '', counterparty = t.counterparty || '';
+            if ((t.type === 'sent' || t.type === 'received') && t.primary) {
+                amount = String(Math.abs(t.primary.delta));
+                asset = t.primary.symbol;
+            } else if (t.type === 'swap' && t.from && t.to) {
+                amount = `-${Math.abs(t.from.delta)} / +${Math.abs(t.to.delta)}`;
+                asset = `${t.from.symbol} -> ${t.to.symbol}`;
+            }
             rows.push([
                 t.signature || '',
                 t.slot != null ? String(t.slot) : '',
                 t.blockTime ? new Date(t.blockTime * 1000).toISOString() : '',
                 t.err ? 'failed' : 'confirmed',
+                t.err ? 'failed' : (t.type || 'unknown'),
+                amount,
+                asset,
+                counterparty,
+                t.feeSol != null ? t.feeSol.toFixed(6) : '',
                 (t.memo || '').replace(/[\r\n,]/g, ' '),
             ]);
         }
@@ -3399,6 +3436,107 @@ buffer/index.js:
         showToast('History exported', 'success');
     }
 
+    // Resolves a mint address to a display symbol using the known Jupiter list
+    // first, then the wallet's currently-held tokens (already carry metadata
+    // fetched in refreshWallet), falling back to a shortened mint address.
+    function resolveSymbolForMint(w, mint) {
+        if (mint === 'SOL' || mint === SOL_MINT) return 'SOL';
+        const known = JUPITER_MAINNET_TOKENS.find(t => t.mint === mint);
+        if (known) return known.symbol;
+        const held = (w.tokens || []).find(t => t.mint === mint);
+        if (held && held.symbol) return held.symbol;
+        return shortAddr(mint);
+    }
+
+    // Shows an address book label instead of a raw address when one exists.
+    function labelForAddress(address) {
+        const entry = (state.addressBook || []).find(e => e.address === address);
+        return entry ? entry.label : shortAddr(address);
+    }
+
+    // Classifies a getParsedTransaction(s) result relative to `owner` by looking
+    // at net balance changes (pre/post, both native SOL and SPL token accounts)
+    // rather than walking instructions — this correctly nets out multi-hop swaps
+    // and CPI transfers that a shallow instruction scan would miss.
+    function classifyParsedTx(ptx, owner, w) {
+        const meta = ptx && ptx.meta;
+        if (!meta) return { type: 'unknown' };
+        const keys = ptx.transaction.message.accountKeys.map(k => (k && k.pubkey ? k.pubkey.toString() : String(k)));
+        const ownerIdx = keys.indexOf(owner);
+        const feeSol = (meta.fee || 0) / LAMPORTS_PER_SOL;
+        const isFeePayer = ownerIdx === 0;
+
+        const solDelta = (ownerIdx >= 0 && meta.preBalances && meta.postBalances)
+            ? (meta.postBalances[ownerIdx] - meta.preBalances[ownerIdx]) / LAMPORTS_PER_SOL
+            : 0;
+
+        // Net delta per mint across any token accounts owned by `owner`.
+        const pre = meta.preTokenBalances || [];
+        const post = meta.postTokenBalances || [];
+        const tokenDeltas = new Map();
+        for (const p of post) {
+            if (p.owner !== owner) continue;
+            const match = pre.find(q => q.accountIndex === p.accountIndex);
+            const preAmt = match ? Number(match.uiTokenAmount.uiAmount || 0) : 0;
+            const postAmt = Number(p.uiTokenAmount.uiAmount || 0);
+            tokenDeltas.set(p.mint, (tokenDeltas.get(p.mint) || 0) + (postAmt - preAmt));
+        }
+        for (const p of pre) {
+            if (p.owner !== owner) continue;
+            if (post.some(q => q.accountIndex === p.accountIndex)) continue; // handled above
+            tokenDeltas.set(p.mint, (tokenDeltas.get(p.mint) || 0) - Number(p.uiTokenAmount.uiAmount || 0));
+        }
+
+        const assets = [];
+        // Ignore SOL "movement" that's really just the fee being deducted from
+        // the payer's own account — only surface it as a real asset change when
+        // it's meaningfully larger than the network fee, or it's the only thing
+        // that moved at all (a plain SOL transfer).
+        const solThreshold = isFeePayer ? feeSol + 0.00001 : 0.000001;
+        if (Math.abs(solDelta) > solThreshold || (Math.abs(solDelta) > 0.000001 && tokenDeltas.size === 0)) {
+            assets.push({ mint: 'SOL', symbol: 'SOL', delta: solDelta });
+        }
+        for (const [mint, delta] of tokenDeltas.entries()) {
+            if (Math.abs(delta) > 1e-9) assets.push({ mint, symbol: resolveSymbolForMint(w, mint), delta });
+        }
+
+        if (meta.err) return { type: 'failed', feeSol, assets };
+        if (assets.length === 0) return { type: 'interaction', feeSol, assets };
+        if (assets.length === 1) {
+            const a = assets[0];
+            return { type: a.delta < 0 ? 'sent' : 'received', feeSol, assets, primary: a };
+        }
+        // Two or more assets moved in opposite directions — treat as a swap,
+        // picking the largest decrease and largest increase to headline.
+        const sorted = [...assets].sort((a, b) => a.delta - b.delta);
+        return { type: 'swap', feeSol, assets, from: sorted[0], to: sorted[sorted.length - 1] };
+    }
+
+    // Best-effort counterparty lookup for simple, single-hop transfers by
+    // scanning top-level (not nested/CPI) parsed instructions. Swaps and other
+    // multi-hop transactions intentionally don't get a counterparty — there
+    // isn't a single meaningful "other side" for those.
+    function findCounterparty(ptx, owner, assetMint) {
+        try {
+            const ixs = ptx.transaction.message.instructions || [];
+            for (const ix of ixs) {
+                const parsed = ix.parsed;
+                if (!parsed || !parsed.info) continue;
+                if (assetMint === 'SOL' && ix.program === 'system' && parsed.type === 'transfer') {
+                    const { source, destination } = parsed.info;
+                    if (source === owner) return destination;
+                    if (destination === owner) return source;
+                } else if (assetMint !== 'SOL' && ix.program === 'spl-token' && (parsed.type === 'transfer' || parsed.type === 'transferChecked')) {
+                    const info = parsed.info;
+                    if (info.mint && info.mint !== assetMint) continue;
+                    const authority = info.authority;
+                    if (authority && authority !== owner) return authority;
+                }
+            }
+        } catch (e) { /* best-effort only */ }
+        return null;
+    }
+
     function renderHistory() {
         const w = getActiveWallet();
         const list = document.getElementById('historyList');
@@ -3411,19 +3549,49 @@ buffer/index.js:
             return;
         }
         empty.classList.add('hidden');
+        const fmtAmt = n => Math.abs(n) >= 1000
+            ? n.toLocaleString(undefined, { maximumFractionDigits: 2 })
+            : n.toLocaleString(undefined, { maximumFractionDigits: 6 });
         list.innerHTML = txs.map(t => {
             const dt = t.blockTime ? new Date(t.blockTime * 1000).toLocaleString() : 'Pending';
-            const ok = !t.err;
+            const failed = !!t.err;
             const explorer = `https://explorer.solana.com/tx/${t.signature}${state.network !== 'mainnet' ? '?cluster=' + state.network : ''}`;
+
+            let icon = 'fa-circle-question text-slate-400';
+            let title = 'Unknown transaction';
+            let detail = '';
+            if (failed) {
+                icon = 'fa-xmark-circle text-red-400';
+                title = 'Failed';
+            } else if (t.type === 'sent' && t.primary) {
+                icon = 'fa-arrow-up text-red-400';
+                title = `Sent ${fmtAmt(Math.abs(t.primary.delta))} ${t.primary.symbol}`;
+                detail = t.counterparty ? `To ${labelForAddress(t.counterparty)}` : '';
+            } else if (t.type === 'received' && t.primary) {
+                icon = 'fa-arrow-down text-green-400';
+                title = `Received ${fmtAmt(Math.abs(t.primary.delta))} ${t.primary.symbol}`;
+                detail = t.counterparty ? `From ${labelForAddress(t.counterparty)}` : '';
+            } else if (t.type === 'swap' && t.from && t.to) {
+                icon = 'fa-right-left text-purple-400';
+                title = `Swapped ${fmtAmt(Math.abs(t.from.delta))} ${t.from.symbol} → ${fmtAmt(Math.abs(t.to.delta))} ${t.to.symbol}`;
+            } else if (t.type === 'interaction') {
+                icon = 'fa-gears text-slate-400';
+                title = 'Program interaction';
+            }
+            const feeText = (t.feeSol != null && !failed) ? ` · fee ${t.feeSol.toFixed(6)} SOL` : '';
+            const memoText = t.memo ? `<p class="text-xs text-slate-500 truncate">Memo: ${t.memo}</p>` : '';
+
             return `
             <div class="transaction-row flex items-center justify-between">
                 <div class="flex-1 min-w-0">
                     <div class="flex items-center gap-2 mb-1">
-                        <i class="fas ${ok ? 'fa-check-circle text-green-400' : 'fa-xmark-circle text-red-400'}"></i>
-                        <span class="text-sm">${ok ? 'Confirmed' : 'Failed'}</span>
+                        <i class="fas ${icon}"></i>
+                        <span class="text-sm font-medium">${title}</span>
                     </div>
-                    <p class="wallet-address text-xs text-slate-400 truncate">${t.signature}</p>
-                    <p class="text-xs text-slate-500">${dt}</p>
+                    ${detail ? `<p class="text-xs text-slate-400 truncate">${detail}</p>` : ''}
+                    <p class="wallet-address text-xs text-slate-500 truncate">${t.signature}</p>
+                    ${memoText}
+                    <p class="text-xs text-slate-500">${dt}${feeText}</p>
                 </div>
                 <a href="${explorer}" target="_blank" rel="noreferrer" class="btn-outline text-xs px-3 py-1 ml-3">
                     <i class="fas fa-external-link-alt"></i>
