@@ -45,6 +45,7 @@ const EVM_CHAINS = {
   base: { alchemySubdomain: 'base-mainnet', publicFallback: 'https://mainnet.base.org' },
   arbitrum: { alchemySubdomain: 'arb-mainnet', publicFallback: 'https://arb1.arbitrum.io/rpc' },
   polygon: { alchemySubdomain: 'polygon-mainnet', publicFallback: 'https://polygon-rpc.com' },
+  bsc: { alchemySubdomain: 'bnb-mainnet', publicFallback: 'https://bsc-dataseed.bnbchain.org' },
 };
 
 function evmProviders(chainKey) {
@@ -118,3 +119,4 @@ export default async (req, res) => {
     id,
   });
 };
+  
