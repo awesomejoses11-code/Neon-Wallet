@@ -1005,6 +1005,17 @@
                 { symbol: 'WMATIC', address: '0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270', decimals: 18, logoURI: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/polygon/assets/0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270/logo.png' },
             ],
         },
+        bsc: {
+            key: 'bsc', chainId: 56, name: 'BNB Chain', symbol: 'BNB', decimals: 18, useProxy: true,
+            basePublicRpcUrls: ['https://bsc-dataseed.bnbchain.org', 'https://bsc-rpc.publicnode.com', 'https://bsc-dataseed1.defibit.io'],
+            explorer: 'https://bscscan.com',
+            nativeLogo: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/smartchain/info/logo.png',
+            tokens: [
+                { symbol: 'USDT', address: '0x55d398326f99059fF775485246999027B3197955', decimals: 18, logoURI: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/smartchain/assets/0x55d398326f99059fF775485246999027B3197955/logo.png' },
+                { symbol: 'USDC', address: '0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d', decimals: 18, logoURI: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/smartchain/assets/0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d/logo.png' },
+                { symbol: 'WBNB', address: '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c', decimals: 18, logoURI: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/smartchain/assets/0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c/logo.png' },
+            ],
+        },
     };
     // Route each chain's RPC through the SAME Vercel proxy project already used
     // by this wallet's SVM counterpart ("solana-rpc-proxy") — no second project,
@@ -1085,15 +1096,17 @@
     const REFERRAL_SWAP_FEE_BPS = 85;      // 0.85% of the swap's input value, in native token
     const WITHDRAWAL_FLAT_FEE_USD = 0.005; // flat fee per send, in native token
 
-    // Fallback native-token USD prices, used only if the live Sushi price API
-    // (fetchSushiPrice, already used elsewhere in this file) is unreachable or
-    // returns 0. These are rough, occasionally-updated ballpark figures — good
-    // enough to size a fraction-of-a-cent fee, not a pricing source for trading.
+    // Fallback native-token USD prices, used only if the live CoinGecko price API
+    // (fetchSushiPrice, already used elsewhere in this file — name kept for a
+    // smaller diff, it's CoinGecko-backed now) is unreachable or returns 0.
+    // These are rough, occasionally-updated ballpark figures — good enough to
+    // size a fraction-of-a-cent fee, not a pricing source for trading.
     const FALLBACK_NATIVE_USD_PRICE = {
         ethereum: 3500,  // ETH
         base: 3500,      // ETH
         arbitrum: 3500,  // ETH
         polygon: 0.5,    // MATIC
+        bsc: 600,        // BNB
     };
     async function getNativeUsdPrice(chainKey) {
         const chain = CHAINS[chainKey];
@@ -2196,27 +2209,82 @@
                `<span class="token-icon-fallback" style="display:none;font-size:${Math.round(px * 0.4)}px;">${letter}</span>` +
                `</span>`;
     }
-    // Batched: ONE request per chain returns a map of every token's USD price,
-    // instead of firing a separate request per token (which was hitting Sushi's
-    // public rate limit across 4 chains × several tokens on every refresh and
-    // silently coming back as all-zero prices).
-    const sushiPriceMapCache = {}; // chainId -> { promise, ts }
-    const SUSHI_PRICE_TTL_MS = 20_000;
+    // Price fetching via CoinGecko instead of Sushi — Sushi's price coverage on
+    // BSC (and most non-Ethereum chains) is thin since it only prices tokens in
+    // pools it indexes itself. CoinGecko prices by chain + contract address
+    // directly, with much broader per-chain coverage.
+    //
+    // Optional free "Demo" API key (coingecko.com → sign up, no card → API
+    // Dashboard → create key). Without it, requests are capped around 5-15
+    // calls/min and share a rate limit with every other visitor hitting
+    // CoinGecko's public endpoint from any IP worldwide — enough to flake
+    // under load (e.g. all 5 default chains refreshing near-simultaneously on
+    // load, ~10 requests in one burst). With a key: a stable 30 calls/min.
+    const COINGECKO_DEMO_API_KEY = 'CG-vBxP9mmJwbyYfEH5Fcqxx4Yj'; //
+    function cgUrl(url) {
+        if (!COINGECKO_DEMO_API_KEY) return url;
+        return url + (url.includes('?') ? '&' : '?') + `x_cg_demo_api_key=${COINGECKO_DEMO_API_KEY}`;
+    }
+    //
+    // CoinGecko's /asset_platforms endpoint maps an EVM chainId to (a) the
+    // platform slug used by its token-price endpoint and (b) that chain's
+    // native coin id — fetched once and cached, so a custom network added via
+    // "Import Network" gets price support automatically the moment CoinGecko
+    // lists that chainId, with nothing to hardcode here.
+    let assetPlatformsPromise = null;
+    async function getAssetPlatforms() {
+        if (!assetPlatformsPromise) {
+            assetPlatformsPromise = fetch(cgUrl('https://api.coingecko.com/api/v3/asset_platforms'))
+                .then(r => r.ok ? r.json() : [])
+                .then(list => {
+                    const byChainId = {};
+                    (list || []).forEach(p => {
+                        if (p && p.chain_identifier != null) {
+                            byChainId[p.chain_identifier] = { platform: p.id, nativeCoinId: p.native_coin_id || null };
+                        }
+                    });
+                    return byChainId;
+                })
+                .catch(e => { console.warn('CoinGecko asset_platforms fetch failed', e); return {}; });
+        }
+        return assetPlatformsPromise;
+    }
+
+    const priceMapCache = {}; // chainId -> { promise, ts }
+    const PRICE_TTL_MS = 30_000;
     async function fetchSushiPriceMap(chainId) {
-        const cached = sushiPriceMapCache[chainId];
-        if (cached && Date.now() - cached.ts < SUSHI_PRICE_TTL_MS) return cached.promise;
+        const cached = priceMapCache[chainId];
+        if (cached && Date.now() - cached.ts < PRICE_TTL_MS) return cached.promise;
         const promise = (async () => {
+            const result = {};
             try {
-                const res = await fetch(`https://api.sushi.com/price/v1/${chainId}`);
-                if (!res.ok) return {};
-                const map = await res.json();
-                // Normalize keys to lowercase so lookups are case-insensitive.
-                const norm = {};
-                Object.entries(map || {}).forEach(([addr, price]) => { norm[addr.toLowerCase()] = Number(price) || 0; });
-                return norm;
-            } catch (e) { console.warn('Sushi batch price fetch failed', e); return {}; }
+                const platforms = await getAssetPlatforms();
+                const info = platforms[chainId];
+                if (!info) return result; // CoinGecko doesn't know this chain — same as no price before
+                const chain = Object.values(CHAINS).find(c => c.chainId === chainId);
+                const addrs = chain ? chainTokens(chain).map(t => t.address.toLowerCase()) : [];
+
+                const [tokenPrices, nativePrice] = await Promise.all([
+                    addrs.length
+                        ? fetch(cgUrl(`https://api.coingecko.com/api/v3/simple/token_price/${info.platform}?contract_addresses=${addrs.join(',')}&vs_currencies=usd`))
+                            .then(r => r.ok ? r.json() : {}).catch(() => ({}))
+                        : Promise.resolve({}),
+                    info.nativeCoinId
+                        ? fetch(cgUrl(`https://api.coingecko.com/api/v3/simple/price?ids=${info.nativeCoinId}&vs_currencies=usd`))
+                            .then(r => r.ok ? r.json() : {}).catch(() => ({}))
+                        : Promise.resolve({}),
+                ]);
+
+                Object.entries(tokenPrices || {}).forEach(([addr, v]) => {
+                    result[addr.toLowerCase()] = Number(v && v.usd) || 0;
+                });
+                if (info.nativeCoinId && nativePrice && nativePrice[info.nativeCoinId]) {
+                    result[NATIVE_PSEUDO.toLowerCase()] = Number(nativePrice[info.nativeCoinId].usd) || 0;
+                }
+            } catch (e) { console.warn('CoinGecko price fetch failed', e); }
+            return result;
         })();
-        sushiPriceMapCache[chainId] = { promise, ts: Date.now() };
+        priceMapCache[chainId] = { promise, ts: Date.now() };
         return promise;
     }
     async function fetchSushiPrice(address, chainId) {
