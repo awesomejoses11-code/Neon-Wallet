@@ -11,6 +11,7 @@ const NFT_ALCHEMY_SUBDOMAIN = {
   base: 'base-mainnet',
   arbitrum: 'arb-mainnet',
   polygon: 'polygon-mainnet',
+  bsc: 'bnb-mainnet',
 };
 
 export default async (req, res) => {
