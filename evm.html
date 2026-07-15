@@ -778,8 +778,8 @@
                 </div>
                 <div id="historyUnavailable" class="text-center py-10 text-slate-500 hidden">
                     <i class="fas fa-plug-circle-xmark text-3xl mb-3"></i>
-                    <p class="mb-1">Couldn't reach the history proxy endpoint.</p>
-                    <p class="text-xs">This tab needs the <code class="wallet-address">/api/rpc</code> route (Alchemy's <code class="wallet-address">alchemy_getAssetTransfers</code>) on your solana-rpc-proxy Vercel project to support this chain — see Settings → RPC on this chain.</p>
+                    <p class="mb-1" id="historyUnavailableTitle">Couldn't load history.</p>
+                    <p class="text-xs" id="historyUnavailableDetail">Alchemy's Transfers API request failed — see console for details.</p>
                 </div>
                 <div id="historyLoading" class="text-center py-10 text-slate-500 hidden">
                     <i class="fas fa-spinner fa-spin text-2xl mb-3"></i>
@@ -991,6 +991,7 @@
     const CHAINS = {
         ethereum: {
             key: 'ethereum', chainId: 1, name: 'Ethereum', symbol: 'ETH', decimals: 18, useProxy: true,
+            alchemyHistorySubdomain: 'eth-mainnet',
             basePublicRpcUrls: ['https://ethereum-rpc.publicnode.com', 'https://eth.llamarpc.com', 'https://rpc.ankr.com/eth'],
             explorer: 'https://etherscan.io',
             nativeLogo: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/info/logo.png',
@@ -1003,6 +1004,7 @@
         },
         base: {
             key: 'base', chainId: 8453, name: 'Base', symbol: 'ETH', decimals: 18, useProxy: true,
+            alchemyHistorySubdomain: 'base-mainnet',
             basePublicRpcUrls: ['https://mainnet.base.org', 'https://base-rpc.publicnode.com', 'https://base.llamarpc.com'],
             explorer: 'https://basescan.org',
             nativeLogo: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/info/logo.png',
@@ -1014,6 +1016,7 @@
         },
         arbitrum: {
             key: 'arbitrum', chainId: 42161, name: 'Arbitrum', symbol: 'ETH', decimals: 18, useProxy: true,
+            alchemyHistorySubdomain: 'arb-mainnet',
             basePublicRpcUrls: ['https://arb1.arbitrum.io/rpc', 'https://arbitrum-one-rpc.publicnode.com', 'https://arbitrum.llamarpc.com'],
             explorer: 'https://arbiscan.io',
             nativeLogo: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/info/logo.png',
@@ -1026,6 +1029,7 @@
         },
         polygon: {
             key: 'polygon', chainId: 137, name: 'Polygon', symbol: 'MATIC', decimals: 18, useProxy: true,
+            alchemyHistorySubdomain: 'polygon-mainnet',
             basePublicRpcUrls: ['https://polygon-rpc.com', 'https://polygon-bor-rpc.publicnode.com', 'https://polygon.llamarpc.com'],
             explorer: 'https://polygonscan.com',
             nativeLogo: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/polygon/info/logo.png',
@@ -1038,6 +1042,7 @@
         },
         bsc: {
             key: 'bsc', chainId: 56, name: 'BNB Chain', symbol: 'BNB', decimals: 18, useProxy: true,
+            alchemyHistorySubdomain: 'bnb-mainnet',
             basePublicRpcUrls: ['https://bsc-dataseed.bnbchain.org', 'https://bsc-rpc.publicnode.com', 'https://bsc-dataseed1.defibit.io'],
             explorer: 'https://bscscan.com',
             nativeLogo: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/smartchain/info/logo.png',
@@ -2578,33 +2583,45 @@
     }
 
     // ============================================================================
-    // Transaction history — via the same proxy's /api/rpc route, calling
-    // Alchemy's enhanced `alchemy_getAssetTransfers` JSON-RPC method directly.
-    // Standard eth_ JSON-RPC has no "list every transfer for this address"
-    // method — that's not part of the base spec, only Alchemy's enhanced API
-    // exposes it — so unlike every other call in this file, this one does NOT
-    // go through withRpcFallback: trying it against the public URLs in a
-    // chain's fallback list would just fail every time (wasting the request
-    // and, worse, tripping withRpcFallback's shared bad-URL cooldown for
-    // those URLs on totally unrelated calls like getBalance). We call the
-    // proxy's Alchemy route directly instead, the same way loadNfts() already
-    // does for /api/nft — no backend changes needed, since /api/rpc already
-    // forwards any JSON-RPC method+params to Alchemy verbatim.
+    // Transaction history — calls Alchemy's enhanced `alchemy_getAssetTransfers`
+    // JSON-RPC method DIRECTLY from the browser, using your own Alchemy API key
+    // below. Standard eth_ JSON-RPC has no "list every transfer for this
+    // address" method — only Alchemy's enhanced API exposes it — so unlike
+    // every other call in this file, this one does NOT go through
+    // withRpcFallback or the solana-rpc-proxy Vercel project at all: no
+    // backend route to build or deploy, no query-param plumbing to add to
+    // /api/rpc. Same tradeoff as the COINGECKO_DEMO_API_KEY below — the key
+    // is visible in this file's source, same as any client-side key in a
+    // single-file app. Fine for a personal wallet; if this is ever shared
+    // publicly, move it back behind a proxy.
+    //
+    // Get a free key at alchemy.com → dashboard → API key, paste it below.
+    // Every chain in CHAINS has an alchemyHistorySubdomain — the API call
+    // itself is the source of truth on whether a given chain is covered, not
+    // a hardcoded list here (Alchemy adds chain support over time and docs
+    // lag). If a chain genuinely isn't supported, Alchemy's error response
+    // surfaces in the history tab same as any other failed request.
     //
     // alchemy_getAssetTransfers only matches ONE direction per call —
     // combining fromAddress + toAddress in one request is AND, not OR — so a
     // full history needs two calls (sent + received) merged and de-duped
     // (a self-transfer shows up in both).
     // ============================================================================
+    const ALCHEMY_API_KEY = 'uaqjgM1E29Sc83b3KeP05';
     const HISTORY_REQUEST_TIMEOUT_MS = 15_000;
     async function fetchTransactionHistory(chainKey, address) {
         const chain = CHAINS[chainKey];
-        if (!chain || !chain.useProxy) {
-            const err = new Error('No RPC proxy configured for this chain — history needs Alchemy\'s enhanced API, which public RPCs cannot provide.');
-            err.code = 'NO_PROXY';
+        if (!chain || !chain.alchemyHistorySubdomain) {
+            const err = new Error(`Alchemy's Transfers API doesn't support ${chain ? chain.name : chainKey} — history isn't available for this chain.`);
+            err.code = 'UNSUPPORTED_CHAIN';
             throw err;
         }
-        const url = `${RPC_PROXY_BASE}/api/rpc?chain=${chain.key}`;
+        if (!ALCHEMY_API_KEY || ALCHEMY_API_KEY === '2kFVA2SoTGzKgCidDr9ph') {
+            const err = new Error('No Alchemy API key set — paste one into ALCHEMY_API_KEY near fetchTransactionHistory().');
+            err.code = 'NO_KEY';
+            throw err;
+        }
+        const url = `https://${chain.alchemyHistorySubdomain}.g.alchemy.com/v2/${ALCHEMY_API_KEY}`;
         const baseParams = {
             fromBlock: '0x0',
             toBlock: 'latest',
@@ -2612,7 +2629,7 @@
             withMetadata: true,
             excludeZeroValue: false,
             order: 'desc',
-            maxCount: '0x19', // 25 per direction — plenty for a recent-activity view, keeps the proxy call fast
+            maxCount: '0x19', // 25 per direction — plenty for a recent-activity view, keeps the request fast
         };
         const callDirection = async (directionKey) => {
             const ctrl = new AbortController();
@@ -2630,7 +2647,7 @@
                     }),
                     signal: ctrl.signal,
                 });
-                if (!res.ok) throw new Error(`proxy responded ${res.status}`);
+                if (!res.ok) throw new Error(`Alchemy responded ${res.status}`);
                 const text = await res.text();
                 let data;
                 try { data = JSON.parse(text); }
@@ -2700,9 +2717,21 @@
             if (historyCache.length === 0) { empty.classList.remove('hidden'); return; }
             renderHistory();
         } catch (e) {
-            console.warn('History load failed (proxy /api/rpc route may not support alchemy_getAssetTransfers on this chain yet)', e);
+            console.warn('History load failed', e);
             historyCache = [];
             loading.classList.add('hidden');
+            const title = document.getElementById('historyUnavailableTitle');
+            const detail = document.getElementById('historyUnavailableDetail');
+            if (e && e.code === 'UNSUPPORTED_CHAIN') {
+                if (title) title.textContent = `History isn't available on ${chain.name}.`;
+                if (detail) detail.textContent = `Alchemy's Transfers API doesn't cover this chain — Ethereum, Base, Arbitrum, and Polygon are supported.`;
+            } else if (e && e.code === 'NO_KEY') {
+                if (title) title.textContent = 'No Alchemy API key set.';
+                if (detail) detail.textContent = `Paste your key into ALCHEMY_API_KEY near fetchTransactionHistory() in the file, then refresh.`;
+            } else {
+                if (title) title.textContent = "Couldn't load history.";
+                if (detail) detail.textContent = (e && e.message) ? e.message : 'Alchemy request failed — see console for details.';
+            }
             unavailable.classList.remove('hidden');
         } finally {
             historyLoadInFlight = false;
