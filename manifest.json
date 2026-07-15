@@ -31,8 +31,8 @@
       "icons": [{ "src": "/neon.png", "sizes": "192x192" }]
     },
     {
-      "name": "Ethereum Wallet",
-      "short_name": "Ethereum",
+      "name": "EVM Wallet",
+      "short_name": "EVM",
       "description": "Preview the Ethereum (EVM) wallet",
       "url": "/evm",
       "icons": [{ "src": "/neon.png", "sizes": "192x192" }]
