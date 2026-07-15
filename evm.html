@@ -545,6 +545,7 @@
                 <button class="tab-button active" onclick="switchTab('wallet', event)">Wallet</button>
                 <button class="tab-button" onclick="switchTab('swap', event)">Swap</button>
                 <button class="tab-button" onclick="switchTab('nfts', event)">NFTs</button>
+                <button class="tab-button" onclick="switchTab('history', event)">History</button>
             </div>
         </div>
 
@@ -754,6 +755,36 @@
                 <a id="nftDetailExplorerLink" href="#" target="_blank" rel="noopener" class="btn-outline w-full py-2 text-center block text-sm">
                     <i class="fas fa-arrow-up-right-from-square mr-2"></i>View on Explorer
                 </a>
+            </div>
+        </div>
+
+        <div id="history" class="tab-content">
+            <div class="glass-card p-6 rounded-xl">
+                <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
+                    <h2 class="text-xl font-bold">Transaction History <span class="text-sm font-normal text-slate-400" id="historyChainLabel"></span></h2>
+                    <div class="flex gap-2">
+                        <button class="btn-outline text-sm px-3 py-2" onclick="exportHistoryCsv()" title="Export as CSV">
+                            <i class="fas fa-file-csv mr-2"></i>Export CSV
+                        </button>
+                        <button class="btn-outline text-sm px-3 py-2" onclick="loadHistory()" title="Refresh">
+                            <i class="fas fa-rotate mr-2"></i>Refresh
+                        </button>
+                    </div>
+                </div>
+                <div id="historyList" class="space-y-2"></div>
+                <div id="historyEmpty" class="text-center py-10 text-slate-500 hidden">
+                    <i class="fas fa-clock-rotate-left text-3xl mb-3"></i>
+                    <p>No transactions found on this network for this wallet.</p>
+                </div>
+                <div id="historyUnavailable" class="text-center py-10 text-slate-500 hidden">
+                    <i class="fas fa-plug-circle-xmark text-3xl mb-3"></i>
+                    <p class="mb-1">Couldn't reach the history proxy endpoint.</p>
+                    <p class="text-xs">This tab needs the <code class="wallet-address">/api/rpc</code> route (Alchemy's <code class="wallet-address">alchemy_getAssetTransfers</code>) on your solana-rpc-proxy Vercel project to support this chain — see Settings → RPC on this chain.</p>
+                </div>
+                <div id="historyLoading" class="text-center py-10 text-slate-500 hidden">
+                    <i class="fas fa-spinner fa-spin text-2xl mb-3"></i>
+                    <p>Loading history…</p>
+                </div>
             </div>
         </div>
 
@@ -1767,6 +1798,7 @@
         renderManualRpcList();
         const results = document.getElementById('rpcTestResults'); if (results) results.innerHTML = '';
         await refreshWallet();
+        if (document.getElementById('history')?.classList.contains('active')) loadHistory();
     }
 
     // ============================================================================
@@ -2182,6 +2214,7 @@
         clearSwapQuote();
         renderAll();
         refreshWallet();
+        if (document.getElementById('history')?.classList.contains('active')) loadHistory();
     }
     function renderWalletSwitcher() {
         const wrap = document.getElementById('walletSwitcherWrap');
@@ -2477,6 +2510,7 @@
         document.querySelectorAll('.tab-button').forEach(el => el.classList.remove('active'));
         if (event && event.currentTarget) event.currentTarget.classList.add('active');
         if (tab === 'nfts') loadNfts();
+        if (tab === 'history') loadHistory();
     }
 
     // ============================================================================
@@ -2541,6 +2575,200 @@
         const link = document.getElementById('nftDetailExplorerLink');
         if (link) link.href = chain.explorer && nft.contract?.address ? `${chain.explorer}/nft/${nft.contract.address}/${nft.tokenId}` : '#';
         document.getElementById('nftDetailModal').classList.remove('hidden');
+    }
+
+    // ============================================================================
+    // Transaction history — via the same proxy's /api/rpc route, calling
+    // Alchemy's enhanced `alchemy_getAssetTransfers` JSON-RPC method directly.
+    // Standard eth_ JSON-RPC has no "list every transfer for this address"
+    // method — that's not part of the base spec, only Alchemy's enhanced API
+    // exposes it — so unlike every other call in this file, this one does NOT
+    // go through withRpcFallback: trying it against the public URLs in a
+    // chain's fallback list would just fail every time (wasting the request
+    // and, worse, tripping withRpcFallback's shared bad-URL cooldown for
+    // those URLs on totally unrelated calls like getBalance). We call the
+    // proxy's Alchemy route directly instead, the same way loadNfts() already
+    // does for /api/nft — no backend changes needed, since /api/rpc already
+    // forwards any JSON-RPC method+params to Alchemy verbatim.
+    //
+    // alchemy_getAssetTransfers only matches ONE direction per call —
+    // combining fromAddress + toAddress in one request is AND, not OR — so a
+    // full history needs two calls (sent + received) merged and de-duped
+    // (a self-transfer shows up in both).
+    // ============================================================================
+    const HISTORY_REQUEST_TIMEOUT_MS = 15_000;
+    async function fetchTransactionHistory(chainKey, address) {
+        const chain = CHAINS[chainKey];
+        if (!chain || !chain.useProxy) {
+            const err = new Error('No RPC proxy configured for this chain — history needs Alchemy\'s enhanced API, which public RPCs cannot provide.');
+            err.code = 'NO_PROXY';
+            throw err;
+        }
+        const url = `${RPC_PROXY_BASE}/api/rpc?chain=${chain.key}`;
+        const baseParams = {
+            fromBlock: '0x0',
+            toBlock: 'latest',
+            category: ['external', 'internal', 'erc20', 'erc721', 'erc1155'],
+            withMetadata: true,
+            excludeZeroValue: false,
+            order: 'desc',
+            maxCount: '0x19', // 25 per direction — plenty for a recent-activity view, keeps the proxy call fast
+        };
+        const callDirection = async (directionKey) => {
+            const ctrl = new AbortController();
+            const timer = setTimeout(() => ctrl.abort(), HISTORY_REQUEST_TIMEOUT_MS);
+            try {
+                const res = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    cache: 'no-store',
+                    body: JSON.stringify({
+                        jsonrpc: '2.0',
+                        id: `${directionKey}-${Date.now()}`,
+                        method: 'alchemy_getAssetTransfers',
+                        params: [{ ...baseParams, [directionKey]: address }],
+                    }),
+                    signal: ctrl.signal,
+                });
+                if (!res.ok) throw new Error(`proxy responded ${res.status}`);
+                const text = await res.text();
+                let data;
+                try { data = JSON.parse(text); }
+                catch (_) {
+                    const preview = text.trim().slice(0, 80).replace(/\s+/g, ' ');
+                    throw new Error(preview ? `non-JSON response: ${preview}` : 'empty response');
+                }
+                if (data && data.error) {
+                    throw new Error(data.error.message || (typeof data.error === 'string' ? data.error : 'alchemy_getAssetTransfers failed'));
+                }
+                return (data && data.result && data.result.transfers) || [];
+            } finally {
+                clearTimeout(timer);
+            }
+        };
+
+        const [sent, received] = await Promise.all([
+            callDirection('fromAddress'),
+            callDirection('toAddress'),
+        ]);
+
+        const merged = new Map();
+        for (const t of [...sent, ...received]) {
+            const key = `${t.hash}:${t.category}:${t.uniqueId || ''}:${t.tokenId || ''}:${(t.rawContract && t.rawContract.address) || ''}`;
+            merged.set(key, t);
+        }
+
+        const addrLower = address.toLowerCase();
+        return Array.from(merged.values())
+            .map(t => ({
+                hash: t.hash,
+                blockNum: parseInt(t.blockNum, 16) || 0,
+                timestamp: (t.metadata && t.metadata.blockTimestamp) ? Date.parse(t.metadata.blockTimestamp) / 1000 : null,
+                direction: (t.from || '').toLowerCase() === addrLower ? 'out' : 'in',
+                from: t.from,
+                to: t.to,
+                asset: t.asset || chain.symbol,
+                value: typeof t.value === 'number' ? t.value : null,
+                category: t.category,
+                tokenId: t.tokenId != null ? String(parseInt(t.tokenId, 16)) : null,
+            }))
+            .sort((a, b) => b.blockNum - a.blockNum)
+            .slice(0, 40);
+    }
+
+    let historyCache = [];
+    let historyLoadInFlight = false;
+    async function loadHistory() {
+        const w = getActiveWallet();
+        const chain = activeChain();
+        const label = document.getElementById('historyChainLabel');
+        if (label) label.textContent = `on ${chain.name}`;
+        const list = document.getElementById('historyList');
+        const empty = document.getElementById('historyEmpty');
+        const unavailable = document.getElementById('historyUnavailable');
+        const loading = document.getElementById('historyLoading');
+        if (!w || !list) return;
+        if (historyLoadInFlight) return;
+        historyLoadInFlight = true;
+        list.innerHTML = '';
+        empty.classList.add('hidden');
+        unavailable.classList.add('hidden');
+        loading.classList.remove('hidden');
+        try {
+            historyCache = await fetchTransactionHistory(state.activeNetwork, w.address);
+            loading.classList.add('hidden');
+            if (historyCache.length === 0) { empty.classList.remove('hidden'); return; }
+            renderHistory();
+        } catch (e) {
+            console.warn('History load failed (proxy /api/rpc route may not support alchemy_getAssetTransfers on this chain yet)', e);
+            historyCache = [];
+            loading.classList.add('hidden');
+            unavailable.classList.remove('hidden');
+        } finally {
+            historyLoadInFlight = false;
+        }
+    }
+
+    function renderHistory() {
+        const list = document.getElementById('historyList');
+        if (!list) return;
+        const chain = activeChain();
+        list.innerHTML = historyCache.map(t => {
+            const dt = t.timestamp ? new Date(t.timestamp * 1000).toLocaleString() : 'Pending';
+            const isNft = t.category === 'erc721' || t.category === 'erc1155';
+            const amountLabel = isNft
+                ? `${t.asset || 'NFT'}${t.tokenId != null ? ' #' + t.tokenId : ''}`
+                : (t.value != null ? `${t.value.toLocaleString(undefined, { maximumFractionDigits: 6 })} ${t.asset}` : t.asset);
+            const dirIcon = t.direction === 'out' ? 'fa-arrow-up text-red-400' : 'fa-arrow-down text-green-400';
+            const dirLabel = t.direction === 'out' ? 'Sent' : 'Received';
+            const counterparty = t.direction === 'out' ? t.to : t.from;
+            const explorer = `${chain.explorer}/tx/${t.hash}`;
+            return `
+            <div class="transaction-row flex items-center justify-between">
+                <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-2 mb-1">
+                        <i class="fas ${dirIcon}"></i>
+                        <span class="text-sm">${dirLabel}</span>
+                        <span class="text-sm font-mono">${escapeHtml(amountLabel)}</span>
+                    </div>
+                    <p class="wallet-address text-xs text-slate-400 truncate">${t.direction === 'out' ? 'To' : 'From'} ${escapeHtml(counterparty || '')}</p>
+                    <p class="text-xs text-slate-500">${dt}</p>
+                </div>
+                <a href="${explorer}" target="_blank" rel="noreferrer" class="btn-outline text-xs px-3 py-1 ml-3">
+                    <i class="fas fa-external-link-alt"></i>
+                </a>
+            </div>`;
+        }).join('');
+    }
+
+    // Export the currently-loaded history view (active wallet + active chain) to CSV.
+    function exportHistoryCsv() {
+        const w = getActiveWallet();
+        if (!w) { showToast('No active wallet', 'error'); return; }
+        if (historyCache.length === 0) { showToast('No transactions to export', 'info'); return; }
+        const rows = [['hash', 'block', 'timestamp_iso', 'direction', 'asset', 'amount', 'token_id', 'counterparty']];
+        for (const t of historyCache) {
+            rows.push([
+                t.hash || '',
+                t.blockNum != null ? String(t.blockNum) : '',
+                t.timestamp ? new Date(t.timestamp * 1000).toISOString() : '',
+                t.direction,
+                t.asset || '',
+                t.value != null ? String(t.value) : '',
+                t.tokenId || '',
+                (t.direction === 'out' ? t.to : t.from) || '',
+            ]);
+        }
+        const csv = rows.map(r => r.map(f => `"${String(f).replace(/"/g, '""')}"`).join(',')).join('\n');
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `evm-tx-history-${activeChain().key}-${w.address.slice(0, 8)}-${Date.now()}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 100);
+        showToast('History exported', 'success');
     }
 
     // ============================================================================
