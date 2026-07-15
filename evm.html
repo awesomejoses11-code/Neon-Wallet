@@ -1023,7 +1023,35 @@
     // This is only ever the FIRST url tried per chain (rebuildRpcUrls below) —
     // manual URLs added in Settings go before it, and public RPCs go after it,
     // so nothing here can brick Wallet/Send/Swap even if the route isn't live.
-    const RPC_PROXY_BASE = 'https://solana-rpc-proxy.vercel.app';
+    // RPC_PROXY_BASE is resolvable, in priority order, from:
+    //   1) window.NEON_PROXY_BASE  (build-time / runtime injection)
+    //   2) <meta name="neon-proxy-base" content="...">
+    //   3) the hard-coded fallback below.
+    // When this file is served from the SAME Vercel project as rpc.js/nft.js,
+    // point 1 or 2 at '' (empty string) so requests become same-origin — that
+    // removes CORS + one DNS/TLS round-trip AND makes the browser skip the
+    // preflight OPTIONS on POST /api/rpc naturally (same-origin JSON POST is
+    // still a preflighted request only when Content-Type isn't a CORS-safe
+    // value; ethers uses application/json, which IS preflighted cross-origin
+    // but not same-origin). Never override Content-Type to text/plain — that
+    // breaks Vercel's automatic body parsing on the proxy route.
+    const RPC_PROXY_BASE = (() => {
+        try {
+            if (typeof window !== 'undefined' && typeof window.NEON_PROXY_BASE === 'string') return window.NEON_PROXY_BASE;
+            const meta = document.querySelector('meta[name="neon-proxy-base"]');
+            if (meta && typeof meta.content === 'string') return meta.content;
+        } catch (_) {}
+        return 'https://solana-rpc-proxy.vercel.app';
+    })();
+    // True when the resolved proxy origin equals the page origin — used to
+    // skip cross-origin-only workarounds (cache-busting hacks) and to hint
+    // that no preflight is needed.
+    const PROXY_IS_SAME_ORIGIN = (() => {
+        try {
+            if (!RPC_PROXY_BASE) return true; // '' means same-origin relative path
+            return new URL(RPC_PROXY_BASE, window.location.href).origin === window.location.origin;
+        } catch (_) { return false; }
+    })();
     // Seed rpcUrls before `state` exists yet (proxy + public only). Once state
     // is loaded — see rebuildRpcUrls further down — this gets rebuilt to also
     // include any manual URLs the user saved in Settings.
@@ -1290,31 +1318,91 @@
     // ============================================================================
     const providerCache = {};
     let lastGoodRpcUrl = {}; // chainKey -> url
+    // Per-URL failure cooldowns: once a URL fails, we mark it "bad" for
+    // BAD_URL_COOLDOWN_MS so subsequent calls in the same session skip it
+    // outright instead of paying the timeout on every attempt. A successful
+    // response on a URL immediately clears its cooldown (see withRpcFallback).
+    // Keyed by the URL string, not (chain,url) — URLs are unique across chains.
+    const BAD_URL_COOLDOWN_MS = 30_000;
+    const RATE_LIMITED_COOLDOWN_MS = 60_000; // longer cooldown for 429s
+    const badUrlUntil = new Map(); // url -> epoch-ms when it becomes eligible again
+    function markUrlBad(url, ms = BAD_URL_COOLDOWN_MS) { badUrlUntil.set(url, Date.now() + ms); }
+    function markUrlGood(url) { badUrlUntil.delete(url); }
+    function isUrlBad(url) {
+        const until = badUrlUntil.get(url);
+        if (!until) return false;
+        if (Date.now() >= until) { badUrlUntil.delete(url); return false; }
+        return true;
+    }
+    // Hard per-request read timeout for JSON-RPC. ethers.JsonRpcProvider has
+    // NO default read timeout, so a slow / stalled proxy will hang the UI
+    // forever and withRpcFallback can never fall through. We wrap every
+    // provider in a FetchRequest with .timeout = RPC_REQUEST_TIMEOUT_MS, which
+    // causes the underlying fetch to reject after the deadline and lets the
+    // fallback loop move to the next URL.
+    const RPC_REQUEST_TIMEOUT_MS = 8_000;
+    function buildProvider(url, chainId) {
+        // ethers v6 exposes FetchRequest (ethers.FetchRequest). We only wrap
+        // http(s) URLs — if for any reason FetchRequest is unavailable, fall
+        // back to the plain string constructor so the wallet still functions.
+        try {
+            if (ethers.FetchRequest && /^https?:/i.test(url)) {
+                const req = new ethers.FetchRequest(url);
+                req.timeout = RPC_REQUEST_TIMEOUT_MS;
+                return new ethers.JsonRpcProvider(req, chainId, { staticNetwork: true });
+            }
+        } catch (_) { /* fall through */ }
+        return new ethers.JsonRpcProvider(url, chainId, { staticNetwork: true });
+    }
     function getProvider(chainKey) {
         const chain = CHAINS[chainKey];
         if (!providerCache[chainKey]) {
-            providerCache[chainKey] = chain.rpcUrls.map(url => new ethers.JsonRpcProvider(url, chain.chainId, { staticNetwork: true }));
+            providerCache[chainKey] = chain.rpcUrls.map(url => buildProvider(url, chain.chainId));
         }
         return providerCache[chainKey];
+    }
+    // Classify errors surfaced by ethers/fetch so we can pick the right
+    // cooldown (rate-limited endpoints deserve a longer rest than a transient
+    // network blip). Kept intentionally forgiving: unknowns fall back to the
+    // standard cooldown.
+    function cooldownForError(err) {
+        const msg = String(err && (err.message || err)) || '';
+        const status = err && (err.status || (err.info && err.info.status));
+        if (status === 429 || /429|rate.?limit|too many requests/i.test(msg)) {
+            // Add jitter so multiple simultaneous callers don't all retry in lockstep.
+            return RATE_LIMITED_COOLDOWN_MS + Math.floor(Math.random() * 15_000);
+        }
+        return BAD_URL_COOLDOWN_MS;
     }
     async function withRpcFallback(chainKey, fn) {
         const chain = CHAINS[chainKey];
         const providers = getProvider(chainKey);
         const stickyUrl = lastGoodRpcUrl[chainKey];
         const stickyIdx = stickyUrl ? chain.rpcUrls.indexOf(stickyUrl) : -1;
-        const order = stickyIdx >= 0
+        const rawOrder = stickyIdx >= 0
             ? [stickyIdx, ...providers.map((_, i) => i).filter(i => i !== stickyIdx)]
             : providers.map((_, i) => i);
+        // Skip URLs currently in cooldown — but if EVERY URL is in cooldown,
+        // ignore the cooldowns for this call (better a possibly-slow attempt
+        // than a guaranteed failure).
+        const eligible = rawOrder.filter(i => !isUrlBad(chain.rpcUrls[i]));
+        const order = eligible.length > 0 ? eligible : rawOrder;
         let lastErr = null;
         for (const idx of order) {
+            const url = chain.rpcUrls[idx];
             try {
                 const result = await fn(providers[idx]);
-                lastGoodRpcUrl[chainKey] = chain.rpcUrls[idx];
+                lastGoodRpcUrl[chainKey] = url;
+                markUrlGood(url);
                 setNetworkStatus(true);
                 return result;
             } catch (err) {
                 lastErr = err;
-                console.warn(`RPC failed on ${chainKey} (${chain.rpcUrls[idx]}):`, err);
+                markUrlBad(url, cooldownForError(err));
+                // If the sticky URL just failed, clear it so the next call
+                // doesn't try to lead with it again.
+                if (lastGoodRpcUrl[chainKey] === url) delete lastGoodRpcUrl[chainKey];
+                console.warn(`RPC failed on ${chainKey} (${url}):`, err);
             }
         }
         setNetworkStatus(false);
@@ -1834,11 +1922,28 @@
         if (label) label.textContent = chain.name;
         const urls = (state.manualRpcUrls && state.manualRpcUrls[chain.key]) || [];
         if (urls.length === 0) { list.innerHTML = ''; return; }
+        // Use data-* attributes + a delegated listener instead of inline
+        // onclick="..." — URLs can contain any HTML-special character (", &,
+        // <, >) and inline escaping with just .replace(/'/g, ...) fails for
+        // all of those. escapeHtml() already handles attribute-safe encoding,
+        // and the click handler reads the raw URL back out of the dataset.
         list.innerHTML = urls.map(u => `
             <div class="flex items-center justify-between glass-card p-2 rounded-xl">
                 <p class="wallet-address text-xs truncate flex-1 mr-2">${escapeHtml(u)}</p>
-                <button class="btn-outline text-xs px-2 py-1 text-red-400" onclick="removeManualRpc('${chain.key}', '${u.replace(/'/g, "\\'")}')" title="Remove"><i class="fas fa-trash"></i></button>
+                <button class="btn-outline text-xs px-2 py-1 text-red-400" data-remove-rpc data-chain="${escapeHtml(chain.key)}" data-url="${escapeHtml(u)}" title="Remove"><i class="fas fa-trash"></i></button>
             </div>`).join('');
+    }
+    // One-time delegated click handler for [data-remove-rpc] buttons. Attached
+    // at document level so it survives every re-render of #manualRpcList.
+    if (!window.__neonManualRpcDelegated) {
+        window.__neonManualRpcDelegated = true;
+        document.addEventListener('click', (ev) => {
+            const btn = ev.target.closest('[data-remove-rpc]');
+            if (!btn) return;
+            const chainKey = btn.getAttribute('data-chain');
+            const url = btn.getAttribute('data-url');
+            if (chainKey && url) removeManualRpc(chainKey, url);
+        });
     }
     // Pings every URL currently configured for the active chain, in order, with
     // a plain eth_chainId JSON-RPC call — this is the fastest way to see which
@@ -1847,31 +1952,73 @@
         const chain = activeChain();
         const results = document.getElementById('rpcTestResults');
         if (!results) return;
+        if (!chain.rpcUrls || chain.rpcUrls.length === 0) {
+            results.innerHTML = `<div class="text-xs text-yellow-400">No RPC URLs configured for ${escapeHtml(chain.name)}. Add one above, or re-enable the proxy.</div>`;
+            return;
+        }
         results.innerHTML = chain.rpcUrls.map((u, i) => `
             <div class="flex items-center justify-between text-xs py-1" id="rpcTestRow${i}">
-                <span class="wallet-address truncate flex-1 mr-2">${escapeHtml(u)}${u === lastGoodRpcUrl[chain.key] ? ' <span class="text-cyan-400">(in use)</span>' : ''}</span>
+                <span class="wallet-address truncate flex-1 mr-2">${escapeHtml(u)}${u === lastGoodRpcUrl[chain.key] ? ' <span class="text-cyan-400">(in use)</span>' : ''}${isUrlBad(u) ? ' <span class="text-orange-400">(cooldown)</span>' : ''}</span>
                 <span class="text-slate-500"><i class="fas fa-spinner fa-spin"></i></span>
             </div>`).join('');
+        // Per-request timeout for the test panel too — matches the JSON-RPC
+        // provider timeout so "failed" here means the same thing the fallback
+        // loop would see.
         await Promise.all(chain.rpcUrls.map(async (u, i) => {
             const row = document.getElementById(`rpcTestRow${i}`);
             const started = performance.now();
+            const ctrl = new AbortController();
+            const timer = setTimeout(() => ctrl.abort(), RPC_REQUEST_TIMEOUT_MS);
             try {
-                const res = await fetch(u, {
+                // Cache-busting query param + Cache-Control: no-store — some
+                // CDNs cache POST-with-body inconsistently, especially when
+                // the same JSON-RPC id is sent repeatedly. Same-origin
+                // deployments still benefit (edge caches). Content-Type stays
+                // application/json so Vercel's body parser works correctly.
+                const bustedUrl = u + (u.includes('?') ? '&' : '?') + '_ts=' + Date.now();
+                const res = await fetch(bustedUrl, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
+                    cache: 'no-store',
                     body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_chainId', params: [] }),
+                    signal: ctrl.signal,
                 });
+                clearTimeout(timer);
                 const ms = Math.round(performance.now() - started);
                 if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                const data = await res.json();
-                const gotChainId = data.result ? parseInt(data.result, 16) : null;
-                const ok = gotChainId === chain.chainId;
+                const text = await res.text();
+                // Handle non-JSON responses explicitly instead of letting
+                // res.json() throw a cryptic SyntaxError. Some proxies return
+                // an HTML error page on rate-limit or an empty body on cold
+                // start — surface a clearer reason for both.
+                let data;
+                try { data = JSON.parse(text); }
+                catch (_) {
+                    const preview = text.trim().slice(0, 80).replace(/\s+/g, ' ');
+                    throw new Error(preview ? `non-JSON response: ${preview}` : 'empty response');
+                }
+                // The proxy's response envelope wraps standard JSON-RPC:
+                // success = { jsonrpc, id, result }, failure = { error } (or
+                // { jsonrpc, id, error }). Both shapes need to surface here.
+                if (data && data.error) {
+                    const em = data.error.message || (typeof data.error === 'string' ? data.error : JSON.stringify(data.error));
+                    throw new Error(`RPC error: ${em}`);
+                }
+                if (!data || typeof data.result === 'undefined') {
+                    throw new Error('missing result field in JSON-RPC response');
+                }
+                const gotChainId = parseInt(data.result, 16);
+                const ok = Number.isFinite(gotChainId) && gotChainId === chain.chainId;
                 if (row) row.querySelector('span:last-child').innerHTML = ok
                     ? `<span class="text-green-400"><i class="fas fa-check"></i> ${ms}ms</span>`
-                    : `<span class="text-yellow-400" title="Responded but wrong chain ID"><i class="fas fa-triangle-exclamation"></i> chain ${gotChainId ?? '?'}</span>`;
+                    : `<span class="text-yellow-400" title="Responded but wrong chain ID"><i class="fas fa-triangle-exclamation"></i> chain ${gotChainId || '?'}</span>`;
             } catch (e) {
+                clearTimeout(timer);
+                const reason = e && e.name === 'AbortError'
+                    ? `timeout after ${RPC_REQUEST_TIMEOUT_MS}ms`
+                    : (e && e.message) || 'failed';
                 console.warn('RPC test failed', u, e);
-                if (row) row.querySelector('span:last-child').innerHTML = `<span class="text-red-400" title="${escapeHtml(e.message)}"><i class="fas fa-xmark"></i> failed</span>`;
+                if (row) row.querySelector('span:last-child').innerHTML = `<span class="text-red-400" title="${escapeHtml(reason)}"><i class="fas fa-xmark"></i> ${escapeHtml(reason.length > 40 ? reason.slice(0, 40) + '…' : reason)}</span>`;
             }
         }));
     }
@@ -2285,10 +2432,13 @@
         unavailable.classList.add('hidden');
         loading.classList.remove('hidden');
         try {
-            const url = new URL(`${RPC_PROXY_BASE}/api/nft`);
+            const url = new URL(`${RPC_PROXY_BASE}/api/nft`, window.location.href);
             url.searchParams.set('chain', chain.key);
             url.searchParams.set('owner', w.address);
-            const res = await fetch(url.toString());
+            // Cache-bust proxy fetches: some CDNs cache GETs aggressively and
+            // return stale NFT lists (or an empty body during cold-start).
+            url.searchParams.set('_ts', Date.now().toString());
+            const res = await fetch(url.toString(), { cache: 'no-store' });
             if (!res.ok) throw new Error(`proxy responded ${res.status}`);
             const data = await res.json();
             const items = data.ownedNfts || data.nfts || [];
