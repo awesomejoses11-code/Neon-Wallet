@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
+    <meta name="description" content="Premium multi-chain crypto wallet. TON, Solana, Ethereum + more live. Import custom EVM chains & tokens.">
+    <meta name="theme-color" content="#FFD700">
+    <meta name="color-scheme" content="dark">
+
+    <title>Neon Wallet · Multi-Chain Crypto Wallet</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
+
+    <style>
+        :root {
+            --gold: #FFD700;
+            --cyan: #00D2FF;
+        }
+        body {
+            font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+            background: #050816;
+            color: #F8FAFC;
+        }
+        .nebula-bg {
+            position: fixed;
+            inset: 0;
+            z-index: -1;
+            overflow: hidden;
+            background: #050816;
+        }
+        .glass {
+            background: rgba(11, 18, 48, 0.6);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 215, 0, 0.1);
+        }
+        .hero-highlight {
+            position: relative;
+        }
+        .hero-highlight::after {
+            content: '';
+            position: absolute;
+            left: 0;
+            bottom: -4px;
+            width: 100%;
+            height: 4px;
+            background: linear-gradient(90deg, #FFD700, #00D2FF, #FFD700);
+            animation: shimmer 3s linear infinite;
+        }
+        @keyframes shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+        .btn-gold {
+            background: linear-gradient(135deg, #FFD700, #FDB931);
+            color: #050816;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+    <div class="nebula-bg" aria-hidden="true"></div>
+
+    <nav class="fixed top-0 left-0 right-0 z-50 bg-black/70 backdrop-blur-md border-b border-white/10">
+        <div class="max-w-7xl mx-auto px-6 py-5 flex justify-between items-center">
+            <a href="/" class="flex items-center gap-3 text-2xl font-bold text-[#FFD700]">
+                <i class="fas fa-wallet"></i>
+                <span>Neon</span>
+            </a>
+            <div class="hidden md:flex gap-8 text-sm font-medium">
+                <a href="#networks" class="hover:text-[#FFD700] transition-colors">Networks</a>
+                <a href="#features" class="hover:text-[#FFD700] transition-colors">Features</a>
+                <a href="#faq" class="hover:text-[#FFD700] transition-colors">FAQ</a>
+            </div>
+            <a href="#networks" class="bg-[#FFD700] text-black px-6 py-2.5 rounded-xl font-semibold hover:scale-105 transition">Launch App</a>
+        </div>
+    </nav>
+
+    <main class="flex-1 pt-24">
+        <!-- Hero -->
+        <section class="py-16 md:py-24 text-center px-6">
+            <div class="max-w-4xl mx-auto">
+                <h1 class="text-5xl md:text-7xl font-bold leading-tight mb-6">
+                    One Wallet.<br><span class="hero-highlight">Every Chain.</span>
+                </h1>
+                <p class="text-xl text-slate-300 max-w-xl mx-auto">
+                    TON, Solana, Ethereum + more — live now.<br>
+                    Import any EVM chain and token.
+                </p>
+                <div class="mt-10 flex flex-col sm:flex-row gap-4 justify-center">
+                    <a href="#networks" class="btn-gold px-10 py-4 rounded-2xl text-lg inline-flex items-center justify-center gap-3">Get Started</a>
+                </div>
+            </div>
+        </section>
+
+        <!-- Networks -->
+        <section id="networks" class="py-16 px-6 bg-black/40">
+            <div class="max-w-6xl mx-auto">
+                <h2 class="text-4xl font-bold text-center mb-4">Supported Networks</h2>
+                <p class="text-center text-slate-400 mb-12">5 chains included by default</p>
+                
+                <div class="grid md:grid-cols-3 gap-8">
+                    <!-- TON -->
+                    <div class="glass p-8 rounded-3xl">
+                        <div class="w-14 h-14 bg-yellow-500 rounded-2xl flex items-center justify-center mb-6">
+                            <i class="fas fa-diamond text-3xl text-black"></i>
+                        </div>
+                        <h3 class="text-2xl font-bold mb-1">TON</h3>
+                        <span class="text-emerald-400 text-sm">● Live</span>
+                        <p class="mt-6 text-slate-300">Send, receive, swap via STON.fi</p>
+                        <a href="/" class="block mt-8 text-center py-3 border border-white/30 rounded-2xl hover:bg-white/5">Launch TON Wallet →</a>
+                    </div>
+
+                    <!-- Solana -->
+                    <div class="glass p-8 rounded-3xl">
+                        <div class="w-14 h-14 bg-cyan-500 rounded-2xl flex items-center justify-center mb-6">
+                            <i class="fas fa-bolt text-3xl text-black"></i>
+                        </div>
+                        <h3 class="text-2xl font-bold mb-1">Solana</h3>
+                        <span class="text-emerald-400 text-sm">● Live</span>
+                        <p class="mt-6 text-slate-300">Jupiter swaps & portfolio tracking</p>
+                        <a href="/svm" class="block mt-8 text-center py-3 border border-white/30 rounded-2xl hover:bg-white/5">Launch Solana Wallet →</a>
+                    </div>
+
+                    <!-- EVM -->
+                    <div class="glass p-8 rounded-3xl">
+                        <div class="w-14 h-14 bg-indigo-500 rounded-2xl flex items-center justify-center mb-6">
+                            <i class="fas fa-circle-nodes text-3xl text-white"></i>
+                        </div>
+                        <h3 class="text-2xl font-bold mb-1">Ethereum + EVM</h3>
+                        <span class="text-emerald-400 text-sm">● Live</span>
+                        <p class="mt-6 text-slate-300">Import any chain & custom tokens</p>
+                        <a href="/evm" class="block mt-8 text-center py-3 border border-white/30 rounded-2xl hover:bg-white/5 bg-white/10">Launch EVM Wallet →</a>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Features -->
+        <section id="features" class="py-16 px-6">
+            <div class="max-w-5xl mx-auto grid md:grid-cols-3 gap-8">
+                <div class="glass p-8 rounded-3xl text-center">
+                    <i class="fas fa-lock text-5xl text-yellow-400 mb-6"></i>
+                    <h3 class="font-semibold text-xl mb-3">Client-Side Security</h3>
+                    <p class="text-slate-400">Your keys never leave your device.</p>
+                </div>
+                <div class="glass p-8 rounded-3xl text-center">
+                    <i class="fas fa-qrcode text-5xl text-cyan-400 mb-6"></i>
+                    <h3 class="font-semibold text-xl mb-3">Built-in QR Scanner</h3>
+                    <p class="text-slate-400">Scan addresses instantly.</p>
+                </div>
+                <div class="glass p-8 rounded-3xl text-center">
+                    <i class="fas fa-exchange-alt text-5xl text-purple-400 mb-6"></i>
+                    <h3 class="font-semibold text-xl mb-3">Seamless Swaps</h3>
+                    <p class="text-slate-400">Powered by STON.fi & Jupiter.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- FAQ -->
+        <section id="faq" class="py-16 px-6 bg-black/40">
+            <div class="max-w-2xl mx-auto">
+                <h2 class="text-4xl font-bold text-center mb-12">FAQ</h2>
+                <div class="space-y-6">
+                    <details class="glass p-6 rounded-3xl">
+                        <summary class="font-medium cursor-pointer">Is this wallet non-custodial?</summary>
+                        <p class="text-slate-400 mt-4">Yes. All keys are stored locally.</p>
+                    </details>
+                    <details class="glass p-6 rounded-3xl">
+                        <summary class="font-medium cursor-pointer">How do I get support?</summary>
+                        <p class="text-slate-400 mt-4">
+                            Email us at <a href="mailto:neonwallet@yahoo.com" class="text-[#FFD700] hover:underline">neonwallet@yahoo.com</a>
+                        </p>
+                    </details>
+                </div>
+            </div>
+        </section>
+
+        <!-- CTA -->
+        <section class="py-20 px-6 text-center">
+            <div class="max-w-xl mx-auto glass p-12 rounded-3xl">
+                <h2 class="text-4xl font-bold mb-6">Ready to dive in?</h2>
+                <div class="flex flex-wrap gap-4 justify-center">
+                    <a href="/" class="btn-gold px-8 py-4 rounded-2xl">TON Wallet</a>
+                    <a href="/svm" class="border border-white/30 px-8 py-4 rounded-2xl hover:bg-white/5">Solana Wallet</a>
+                    <a href="/evm" class="border border-white/30 px-8 py-4 rounded-2xl hover:bg-white/5">EVM Wallet</a>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="py-10 text-center text-sm text-slate-500 border-t border-white/10">
+        <p>© 2026 Neon Wallet • <a href="mailto:neonwallet@yahoo.com" class="hover:text-white">Support</a></p>
+    </footer>
+
+    <script>
+        // Simple toast for install
+        console.log("%cNeon Wallet loaded", "color:#FFD700");
+    </script>
+</body>
+</html>
