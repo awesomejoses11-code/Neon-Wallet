@@ -726,7 +726,7 @@ buffer/index.js:
 
                     <p class="text-xs text-slate-400 flex items-start gap-2">
                         <i class="fas fa-circle-info mt-0.5"></i>
-                        <span>Network fee is set automatically. A flat 0.0005 SOL platform fee (charged in SOL regardless of asset sent) applies to every send — shown before you confirm.</span>
+                        <span>Network fee is set automatically. A flat 0.00025 SOL platform fee (charged in SOL regardless of asset sent) applies to every send — shown before you confirm.</span>
                     </p>
 
                     <button class="btn-gold w-full py-4" onclick="sendAsset()">
@@ -1112,7 +1112,7 @@ buffer/index.js:
     const PLATFORM_FEE_ADDRESS = 'Fk1qqdLqQxNfZsJ7jArVZ1PnbZXLZNwtpGapNAQwM6ct';
     const PLATFORM_SWAP_FEE_BPS = 75;      // 0.75%
     const PLATFORM_FLAT_FEE_USD = 0.005;   // + flat fee, per swap
-    const PLATFORM_SEND_FEE_SOL = 0.0005;  // flat fee, per regular SOL send
+    const PLATFORM_SEND_FEE_SOL = 0.00025;  // flat fee, per regular SOL send
     const PLATFORM_SEND_FEE_LAMPORTS = Math.round(PLATFORM_SEND_FEE_SOL * LAMPORTS_PER_SOL);
 
     // -- Sensitive-memory hygiene ----------------------------------------------
@@ -2291,7 +2291,7 @@ buffer/index.js:
             // balance and history would have succeeded fine. With Promise.allSettled,
             // one struggling data source degrades gracefully instead of blocking
             // everything else.
-            const [balanceResult, tokenResult, sigsResult, jupBalancesResult] = await Promise.allSettled([
+            const [balanceResult, tokenResult, sigsResult, jupBalancesResult, dasResult] = await Promise.allSettled([
                 withRpcFallback('get balance', conn => conn.getBalance(pubkey), 10_000),
                 withRpcFallback('get token accounts', conn => conn.getParsedTokenAccountsByOwner(pubkey, {
                     programId: new window.solanaWeb3.PublicKey(SPL_TOKEN_PROGRAM_ID),
@@ -2300,6 +2300,7 @@ buffer/index.js:
                 state.network === 'mainnet'
                     ? fetchJupiterBalances(w.address)
                     : Promise.reject(new Error('Jupiter balances only available on mainnet')),
+                fetchDasAssets(w.address),
             ]);
 
             const failures = [];
@@ -2315,12 +2316,30 @@ buffer/index.js:
             // tokens using raw on-chain account data, so they still come from
             // the RPC parse regardless of which source wins for fungible tokens.
             const nfts = [];
-            if (tokenResult.status === 'fulfilled') {
+            // 1. Try DAS API (Helius/Alchemy) for both cNFTs and standard NFTs
+            if (dasResult.status === 'fulfilled' && dasResult.value && dasResult.value.items) {
+                for (const item of dasResult.value.items) {
+                    // Only include actual NFTs/cNFTs (not fungible tokens if showFungible was true)
+                    if (item.interface === 'V1_NFT' || item.interface === 'ProgrammableNFT' || item.compression?.compressed) {
+                        nfts.push({
+                            mint: item.id,
+                            name: item.content?.metadata?.name || 'Unknown NFT',
+                            image: item.content?.links?.image || item.content?.files?.[0]?.uri,
+                            compressed: !!item.compression?.compressed
+                        });
+                    }
+                }
+            } 
+            
+            // 2. Fallback to standard RPC scan if DAS failed or returned nothing (legacy NFTs only)
+            if (nfts.length === 0 && tokenResult.status === 'fulfilled') {
                 for (const { account } of tokenResult.value.value) {
                     const info = account.data.parsed.info;
                     const amount = info.tokenAmount.uiAmount || 0;
                     if (amount === 0) continue;
-                    if (info.tokenAmount.decimals === 0 && amount === 1) nfts.push({ mint: info.mint, amount });
+                    if (info.tokenAmount.decimals === 0 && amount === 1) {
+                        nfts.push({ mint: info.mint, amount, name: 'Legacy NFT' });
+                    }
                 }
             }
             w.nfts = nfts;
@@ -2792,6 +2811,36 @@ buffer/index.js:
         }
         return map;
     }
+
+    /**
+     * Fetch all assets (including cNFTs) via the Digital Asset Standard (DAS) API.
+     * Requires an RPC that supports Metaplex DAS methods (Helius, Alchemy, etc).
+     */
+    async function fetchDasAssets(owner) {
+        // Try the current connection first if it's set, otherwise fallback through RPCs.
+        // We use withRpcFallback's worker pattern to ensure we try all endpoints.
+        return withRpcFallback('DAS getAssetsByOwner', async (conn, url) => {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    jsonrpc: '2.0',
+                    id: 'das-fetch',
+                    method: 'getAssetsByOwner',
+                    params: {
+                        ownerAddress: owner,
+                        page: 1,
+                        limit: 100,
+                        displayOptions: { showCollectionMetadata: true }
+                    }
+                })
+            });
+            if (!response.ok) throw new Error(`DAS API HTTP ${response.status}`);
+            const json = await response.json();
+            if (json.error) throw new Error(json.error.message || 'DAS API Error');
+            return json.result;
+        }, 10000);
+    }
     // Values the swap in USD (preferring the input side, falling back to the
     // output side) and converts 0.75% of that + the flat $0.005 into lamports
     // at the current SOL price. Returns 0 (fee skipped, never guessed) if we
@@ -3097,7 +3146,7 @@ buffer/index.js:
         catch { showToast('Invalid recipient address', 'error'); return; }
 
         if (token.mint === SOL_MINT) {
-            if (amount + PLATFORM_SEND_FEE_SOL > w.balance) { showToast('Insufficient balance (amount + 0.0005 SOL platform fee)', 'error'); return; }
+            if (amount + PLATFORM_SEND_FEE_SOL > w.balance) { showToast('Insufficient balance (amount + 0.00025 SOL platform fee)', 'error'); return; }
         } else {
             if (amount > token.amount) { showToast(`Insufficient ${token.symbol} balance`, 'error'); return; }
             // The platform fee is always paid in SOL, plus a little headroom in case the
@@ -3615,12 +3664,18 @@ buffer/index.js:
         }
         list.innerHTML = nfts.map(n => {
             const explorer = `https://explorer.solana.com/address/${n.mint}${state.network !== 'mainnet' ? '?cluster=' + state.network : ''}`;
-            return `
-            <a href="${explorer}" target="_blank" rel="noreferrer" class="asset-item block text-center">
-                <div class="w-full aspect-square rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center mb-2">
+            const imgHtml = n.image 
+                ? `<img src="${n.image}" class="w-full aspect-square object-cover rounded-lg mb-2" onerror="this.parentElement.innerHTML='<i class=\'fas fa-image text-3xl\'></i>'">`
+                : `<div class="w-full aspect-square rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center mb-2">
                     <i class="fas fa-image text-3xl"></i>
-                </div>
-                <p class="text-xs wallet-address truncate">${n.mint}</p>
+                   </div>`;
+            
+            return `
+            <a href="${explorer}" target="_blank" rel="noreferrer" class="asset-item block text-center relative">
+                ${n.compressed ? '<span class="absolute top-2 right-2 bg-blue-600 text-[10px] px-1.5 py-0.5 rounded-full font-bold">cNFT</span>' : ''}
+                ${imgHtml}
+                <p class="text-xs font-medium truncate px-1">${n.name || shortAddr(n.mint)}</p>
+                <p class="text-[10px] opacity-40 wallet-address truncate px-1">${shortAddr(n.mint)}</p>
             </a>`;
         }).join('');
     }
