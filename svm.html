@@ -577,7 +577,12 @@ buffer/index.js:
             </div>
 
             <div class="glass-card p-5 rounded-xl mb-6">
-                <p class="text-xs text-slate-400 uppercase mb-3">Total Balance</p>
+                <div class="flex items-center justify-between mb-3">
+                    <p class="text-xs text-slate-400 uppercase">Total Balance</p>
+                    <button type="button" id="refreshWalletBtn" class="text-slate-400 hover:text-purple-300 transition-colors" onclick="manualRefreshWallet()" title="Refresh balance & assets">
+                        <i class="fas fa-rotate" id="refreshWalletIcon"></i>
+                    </button>
+                </div>
                 <div id="totalBalance" class="balance-display">$0.00</div>
             </div>
 
@@ -718,7 +723,7 @@ buffer/index.js:
                     <div>
                         <div class="flex items-center justify-between mb-2">
                             <label class="block text-sm text-slate-400">Amount</label>
-                            <button type="button" class="text-xs text-purple-300 hover:text-purple-200 underline" onclick="setSendMaxAmount()">Max</button>
+                            <button type="button" id="sendMaxBtn" class="text-xs text-purple-300 hover:text-purple-200 underline" onclick="setSendMaxAmount()">Max</button>
                         </div>
                         <input type="number" id="sendAmount" class="input-field" placeholder="0.00" step="0.000001">
                         <p id="sendBalanceHint" class="text-xs text-slate-500 mt-1"></p>
@@ -1113,6 +1118,9 @@ buffer/index.js:
     const PLATFORM_SWAP_FEE_BPS = 75;      // 0.75%
     const PLATFORM_FLAT_FEE_USD = 0.005;   // + flat fee, per swap
     const PLATFORM_SEND_FEE_SOL = 0.00025;  // flat fee, per regular SOL send
+    const BASE_TX_FEE_LAMPORTS = 5000;      // one signature, standard network base fee
+    const SOL_SEND_CU_LIMIT = 1000;         // two System::transfer ixs (send + platform fee), real usage ~300 CU
+    const SPL_SEND_CU_LIMIT = 60000;        // idempotent ATA create + transferChecked + platform fee transfer
     const PLATFORM_SEND_FEE_LAMPORTS = Math.round(PLATFORM_SEND_FEE_SOL * LAMPORTS_PER_SOL);
 
     // -- Sensitive-memory hygiene ----------------------------------------------
@@ -2271,6 +2279,26 @@ buffer/index.js:
         refreshDebounceTimer = setTimeout(() => refreshWallet(), delay);
     }
 
+    async function manualRefreshWallet() {
+        if (!getActiveWallet()) return;
+        const btn = document.getElementById('refreshWalletBtn');
+        const icon = document.getElementById('refreshWalletIcon');
+        if (btn) btn.disabled = true;
+        if (icon) icon.classList.add('fa-spin');
+        lastRefreshAt = 0; // manual click always bypasses the 800ms coalescing guard
+        try {
+            await refreshAllWalletActivity();
+            await refreshWallet();
+            showToast('Wallet refreshed', 'success');
+        } catch (e) {
+            console.error('manualRefreshWallet', e);
+            showToast('Refresh failed: ' + friendlyError(e), 'error');
+        } finally {
+            if (btn) btn.disabled = false;
+            if (icon) icon.classList.remove('fa-spin');
+        }
+    }
+
     async function refreshWallet() {
         const w = getActiveWallet();
         if (!w || refreshInFlight) return;
@@ -3116,14 +3144,32 @@ buffer/index.js:
         const token = getSwapTokenByMint(sel.value);
         hint.textContent = token ? `Balance: ${Number(token.amount || 0).toLocaleString(undefined, { maximumFractionDigits: 6 })} ${token.symbol}` : '';
     }
-    function setSendMaxAmount() {
+    async function setSendMaxAmount() {
         const sel = document.getElementById('sendToken');
         const amountEl = document.getElementById('sendAmount');
         const token = sel ? getSwapTokenByMint(sel.value) : null;
         if (!token || !amountEl) return;
         if (token.mint === SOL_MINT) {
-            amountEl.value = Math.max(0, Number(token.amount || 0) - PLATFORM_SEND_FEE_SOL - 0.000005).toFixed(6);
+            const btn = document.getElementById('sendMaxBtn');
+            if (btn) { btn.disabled = true; btn.textContent = '…'; }
+            try {
+                // Reserve the *actual* network cost (base fee + priority fee), not just
+                // a flat guess — otherwise Max can leave the send just short on a busy
+                // network. cuLimit must match what buildSignedTx() sets for a SOL send.
+                const priorityFee = await estimatePriorityFeeMicroLamports();
+                const priorityFeeLamports = Math.ceil((priorityFee * SOL_SEND_CU_LIMIT) / 1_000_000);
+                const networkFeeSol = (BASE_TX_FEE_LAMPORTS + priorityFeeLamports) / LAMPORTS_PER_SOL;
+                amountEl.value = Math.max(0, Number(token.amount || 0) - PLATFORM_SEND_FEE_SOL - networkFeeSol).toFixed(6);
+            } catch (e) {
+                console.warn('setSendMaxAmount priority fee lookup failed, using flat fallback', e);
+                amountEl.value = Math.max(0, Number(token.amount || 0) - PLATFORM_SEND_FEE_SOL - 0.00001).toFixed(6);
+            } finally {
+                if (btn) { btn.disabled = false; btn.textContent = 'Max'; }
+            }
         } else {
+            // SPL sends: the platform + network fee are always paid from the SOL
+            // balance (see sendAsset), never from the token itself, so the full
+            // token balance is genuinely spendable.
             amountEl.value = String(token.amount || 0);
         }
     }
@@ -3219,10 +3265,18 @@ buffer/index.js:
             ]);
 
             const instructions = [];
-            if (priorityFee > 0 && window.solanaWeb3.ComputeBudgetProgram) {
-                instructions.push(
-                    window.solanaWeb3.ComputeBudgetProgram.setComputeUnitPrice({ microLamports: priorityFee })
-                );
+            if (window.solanaWeb3.ComputeBudgetProgram) {
+                // Without an explicit limit the runtime budgets a default 200k CU per
+                // instruction, which inflates the priority fee actually charged well
+                // beyond what these simple transfers need — and beyond what the "Max"
+                // button reserves. Pinning it keeps the two in agreement.
+                const cuLimit = token.mint === SOL_MINT ? SOL_SEND_CU_LIMIT : SPL_SEND_CU_LIMIT;
+                instructions.push(window.solanaWeb3.ComputeBudgetProgram.setComputeUnitLimit({ units: cuLimit }));
+                if (priorityFee > 0) {
+                    instructions.push(
+                        window.solanaWeb3.ComputeBudgetProgram.setComputeUnitPrice({ microLamports: priorityFee })
+                    );
+                }
             }
 
             if (token.mint === SOL_MINT) {
@@ -4098,7 +4152,7 @@ buffer/index.js:
         importWallet, closeImportWalletModal, confirmImportWallet,
         previewImportAddresses, selectImportAddress, onImportChainChange,
         deleteWallet, exportWallet, switchToWallet,
-        sendAsset, onSendTokenChange, setSendMaxAmount, closeConfirmModal, confirmTransaction,
+        sendAsset, onSendTokenChange, setSendMaxAmount, closeConfirmModal, confirmTransaction, manualRefreshWallet,
         switchTab, copyAddress, changeNetwork,
         lockWalletNow, changePassword, quickSetupHelius,
         exportHistoryCsv, addToAddressBook, removeFromAddressBook, pickFromAddressBook,
