@@ -1112,7 +1112,137 @@
         'function symbol() view returns (string)',
         'function name() view returns (string)',
         'function decimals() view returns (uint8)',
+        'function allowance(address owner, address spender) view returns (uint256)',
+        'function approve(address spender, uint256 amount) returns (bool)',
     ];
+
+    // ============================================================================
+    // Auto-discovery of ERC-20 holdings via Alchemy JSON-RPC
+    // ----------------------------------------------------------------------------
+    // The old code only checked balances for a curated 3-4 token list per chain.
+    // That meant any other real holding (a memecoin, a wrapped asset like wCC,
+    // an airdropped token, an LP receipt, etc.) was completely invisible in the
+    // wallet UI. The fix is to ASK the chain "what does this address actually
+    // hold" instead of guessing. Alchemy exposes exactly this via the
+    // alchemy_getTokenBalances JSON-RPC method (available through the same
+    // /api/rpc proxy already used for eth_call / eth_getBalance). We then
+    // fetch symbol/decimals/logo via alchemy_getTokenMetadata for anything new,
+    // and merge those into liveTokenBalances so the assets list + swap picker
+    // + portfolio total all pick them up automatically.
+    //
+    // The curated list is still kept as a hint (so we always show USDC/USDT
+    // even at zero balance if the user hasn't toggled hide-zero-balances), but
+    // it is no longer THE list — it's a UX seed.
+    //
+    // If Alchemy is unreachable (proxy down, chain unsupported), we silently
+    // fall back to the previous curated-only behavior — nothing breaks.
+    const discoveredTokensCache = {}; // chainKey -> { addressLower -> { symbol, decimals, logoURI, name } }
+    const tokenMetadataCache = {};    // addressLower(+chainKey) -> metadata promise
+
+    async function alchemyRpc(chainKey, method, params) {
+        const url = `${RPC_PROXY_BASE}/api/rpc?chain=${chainKey}`;
+        const res = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params }),
+        });
+        if (!res.ok) throw new Error(`alchemyRpc HTTP ${res.status}`);
+        const json = await res.json();
+        if (json.error) throw new Error(json.error.message || 'alchemy rpc error');
+        return json.result;
+    }
+
+    // Fetches every non-zero ERC-20 balance for `address` on `chainKey` in ONE
+    // call. Returns [{ contractAddress, rawBalance: bigint }].
+    async function discoverTokenBalances(chainKey, address) {
+        try {
+            // 'erc20' pageKey handling: for wallets with >100 tokens, alchemy paginates.
+            let out = [];
+            let pageKey = null;
+            do {
+                const params = pageKey
+                    ? [address, 'erc20', { pageKey }]
+                    : [address, 'erc20'];
+                const result = await alchemyRpc(chainKey, 'alchemy_getTokenBalances', params);
+                if (!result || !Array.isArray(result.tokenBalances)) break;
+                for (const b of result.tokenBalances) {
+                    if (!b || !b.contractAddress || !b.tokenBalance) continue;
+                    let raw = 0n;
+                    try { raw = BigInt(b.tokenBalance); } catch (_) { continue; }
+                    if (raw > 0n) out.push({ contractAddress: b.contractAddress.toLowerCase(), rawBalance: raw });
+                }
+                pageKey = result.pageKey || null;
+            } while (pageKey);
+            return out;
+        } catch (e) {
+            console.warn(`alchemy_getTokenBalances failed for ${chainKey}:`, e);
+            return null; // signal: fall back to curated list
+        }
+    }
+
+    async function fetchTokenMetadata(chainKey, addressLower) {
+        const key = `${chainKey}:${addressLower}`;
+        if (tokenMetadataCache[key]) return tokenMetadataCache[key];
+        const promise = (async () => {
+            try {
+                const meta = await alchemyRpc(chainKey, 'alchemy_getTokenMetadata', [addressLower]);
+                if (!meta) return null;
+                return {
+                    address: addressLower,
+                    symbol: meta.symbol || 'TOKEN',
+                    name: meta.name || meta.symbol || 'Unknown Token',
+                    decimals: Number.isFinite(meta.decimals) ? meta.decimals : 18,
+                    logoURI: meta.logo || '',
+                };
+            } catch (e) {
+                console.warn('alchemy_getTokenMetadata failed', addressLower, e);
+                return null;
+            }
+        })();
+        tokenMetadataCache[key] = promise;
+        return promise;
+    }
+
+    // Enrich the discovered raw balances with symbol/decimals/logo, cache them
+    // on the chain, and return a normalized array ready for merging into the
+    // wallet's live balance map.
+    async function discoverChainHoldings(chainKey, address) {
+        const raw = await discoverTokenBalances(chainKey, address);
+        if (!raw || raw.length === 0) return [];
+        // Metadata lookups can be many — cap concurrency implicitly via Promise.all,
+        // Alchemy handles the batch fine at reasonable holding counts (<50).
+        const enriched = await Promise.all(raw.map(async ({ contractAddress, rawBalance }) => {
+            const meta = await fetchTokenMetadata(chainKey, contractAddress);
+            if (!meta) return null;
+            let amount = 0;
+            try { amount = Number(ethers.formatUnits(rawBalance, meta.decimals)); } catch (_) { amount = 0; }
+            return { ...meta, amount };
+        }));
+        const cleaned = enriched.filter(Boolean);
+        // Cache metadata by chain so subsequent renders can rebuild the picker.
+        discoveredTokensCache[chainKey] = discoveredTokensCache[chainKey] || {};
+        for (const t of cleaned) {
+            discoveredTokensCache[chainKey][t.address] = {
+                symbol: t.symbol, name: t.name, decimals: t.decimals, logoURI: t.logoURI, address: t.address,
+            };
+        }
+        return cleaned;
+    }
+
+    // Union of curated tokens for this chain + everything Alchemy has found
+    // that the wallet actually holds. Used by the swap picker and the assets
+    // list so both surfaces stay in sync.
+    function chainTokensWithDiscovered(chain) {
+        const curated = chainTokens(chain);
+        const seen = new Set(curated.map(t => t.address.toLowerCase()));
+        const discovered = discoveredTokensCache[chain.key] || {};
+        const extras = [];
+        for (const addr in discovered) {
+            if (seen.has(addr)) continue;
+            extras.push({ ...discovered[addr], logoURI: discovered[addr].logoURI || '' });
+        }
+        return [...curated, ...extras];
+    }
 
     // ============================================================================
     // Referral / platform fees
@@ -1298,7 +1428,7 @@
         addressBook: [],
         autoLockMinutes: 5,
         biometricEnabled: false,
-        hideZeroBalances: false,
+        hideZeroBalances: true,
         customNetworks: {},   // key -> { key, chainId, name, symbol, decimals, rpcUrls, explorer }
         customTokens: {},     // chainKey -> [{ address, symbol, decimals, logoURI }]
         manualRpcUrls: {},    // chainKey -> [url, ...] — user-supplied, tried before the proxy
@@ -2354,7 +2484,23 @@
             const balanceWei = await withRpcFallback(key, p => p.getBalance(w.address));
             const nativeAmount = Number(ethers.formatEther(balanceWei));
 
-            const tokenBalResults = await Promise.allSettled(chainTokens(chain).map(async t => {
+            // Auto-discover every ERC-20 the address actually holds (see notes
+            // above). Falls through to curated-only if the proxy or Alchemy is
+            // unreachable — we still get a working portfolio total.
+            const discovered = await discoverChainHoldings(key, w.address);
+            const discoveredMap = {};
+            for (const t of discovered) discoveredMap[t.address.toLowerCase()] = t;
+
+            const unionTokens = chainTokensWithDiscovered(chain);
+
+            // For anything not already in the discovered map (curated tokens the
+            // user holds 0 of), fetch its balance directly — keeps the picker
+            // useful for tokens the user is about to acquire.
+            const tokenBalResults = await Promise.allSettled(unionTokens.map(async t => {
+                const addrL = t.address.toLowerCase();
+                if (discoveredMap[addrL]) {
+                    return { address: t.address, amount: discoveredMap[addrL].amount };
+                }
                 const bal = await withRpcFallback(key, async p => {
                     const c = new ethers.Contract(t.address, ERC20_ABI, p);
                     return c.balanceOf(w.address);
@@ -2362,10 +2508,10 @@
                 return { address: t.address, amount: Number(ethers.formatUnits(bal, t.decimals)) };
             }));
             const prices = await Promise.allSettled(
-                [NATIVE_PSEUDO, ...chainTokens(chain).map(t => t.address)].map(addr => fetchSushiPrice(addr, chain.chainId))
+                [NATIVE_PSEUDO, ...unionTokens.map(t => t.address)].map(addr => fetchSushiPrice(addr, chain.chainId))
             );
             const tokens = {};
-            chainTokens(chain).forEach((t, i) => {
+            unionTokens.forEach((t, i) => {
                 const balResult = tokenBalResults[i];
                 tokens[t.address.toLowerCase()] = {
                     amount: balResult.status === 'fulfilled' ? balResult.value.amount : 0,
@@ -2405,7 +2551,23 @@
             const balanceWei = await withRpcFallback(state.activeNetwork, p => p.getBalance(w.address));
             liveNativeBalance = Number(ethers.formatEther(balanceWei));
 
-            const tokenResults = await Promise.allSettled(chainTokens(chain).map(async t => {
+            // Ask the chain (via Alchemy) what this address ACTUALLY holds instead
+            // of guessing from a curated list of 3-4 tokens. This is the whole
+            // point of the auto-discovery layer — real assets that aren't on the
+            // curated list stop being invisible.
+            const discovered = await discoverChainHoldings(state.activeNetwork, w.address);
+            const discoveredMap = {};
+            for (const t of discovered) discoveredMap[t.address.toLowerCase()] = t;
+
+            // Union: curated tokens (so USDC/USDT still show even at zero unless
+            // hide-zero is on) + everything discovered on-chain.
+            const unionTokens = chainTokensWithDiscovered(chain);
+
+            const tokenResults = await Promise.allSettled(unionTokens.map(async t => {
+                const addrL = t.address.toLowerCase();
+                if (discoveredMap[addrL]) {
+                    return { address: t.address, amount: discoveredMap[addrL].amount };
+                }
                 const bal = await withRpcFallback(state.activeNetwork, async p => {
                     const c = new ethers.Contract(t.address, ERC20_ABI, p);
                     return c.balanceOf(w.address);
@@ -2413,10 +2575,10 @@
                 return { address: t.address, amount: Number(ethers.formatUnits(bal, t.decimals)) };
             }));
             const prices = await Promise.allSettled(
-                [NATIVE_PSEUDO, ...chainTokens(chain).map(t => t.address)].map(addr => fetchSushiPrice(addr))
+                [NATIVE_PSEUDO, ...unionTokens.map(t => t.address)].map(addr => fetchSushiPrice(addr))
             );
             liveTokenBalances = {};
-            chainTokens(chain).forEach((t, i) => {
+            unionTokens.forEach((t, i) => {
                 const balResult = tokenResults[i];
                 liveTokenBalances[t.address.toLowerCase()] = {
                     amount: balResult.status === 'fulfilled' ? balResult.value.amount : 0,
@@ -2453,9 +2615,11 @@
         if (!list) return;
         const chain = activeChain();
         let items = [{ symbol: chain.symbol, name: chain.name, amount: liveNativeBalance, icon: chain.nativeLogo, usdPrice: (liveTokenBalances.__native && liveTokenBalances.__native.usdPrice) || 0, address: null }];
-        for (const t of chainTokens(chain)) {
+        // Iterate the UNION of curated + discovered so a real held asset that
+        // isn't on the hardcoded 4-token list actually appears in the UI.
+        for (const t of chainTokensWithDiscovered(chain)) {
             const b = liveTokenBalances[t.address.toLowerCase()] || { amount: 0, usdPrice: 0 };
-            items.push({ symbol: t.symbol, name: t.symbol, amount: b.amount, icon: t.logoURI, usdPrice: b.usdPrice, address: t.address });
+            items.push({ symbol: t.symbol, name: t.name || t.symbol, amount: b.amount, icon: t.logoURI, usdPrice: b.usdPrice, address: t.address });
         }
         const shown = items.filter(a => a.address === null || !state.hideZeroBalances || a.amount > 0);
         if (!getActiveWallet()) { empty.classList.remove('hidden'); list.innerHTML = ''; return; }
@@ -2940,12 +3104,17 @@
     function getSwapTokenByAddress(addr) { return addr ? swapTokenCache[addr.toLowerCase()] || null : null; }
     function getChainSwapTokens() {
         const chain = activeChain();
+        const curatedAddrs = new Set(chainTokens(chain).map(t => t.address.toLowerCase()));
         const list = [
             { address: NATIVE_PSEUDO, symbol: chain.symbol, name: chain.name, decimals: 18, logoURI: chain.nativeLogo, verified: true,
               amount: liveNativeBalance, usdPrice: (liveTokenBalances.__native && liveTokenBalances.__native.usdPrice) || 0 },
-            ...chainTokens(chain).map(t => {
+            // Curated tokens first (verified badge), then anything auto-discovered.
+            // Discovered tokens are marked verified:false so the UI can still flag
+            // "this came from the wallet's holdings, not from a curated list".
+            ...chainTokensWithDiscovered(chain).map(t => {
                 const b = liveTokenBalances[t.address.toLowerCase()] || { amount: 0, usdPrice: 0 };
-                return { address: t.address, symbol: t.symbol, name: t.symbol, decimals: t.decimals, logoURI: t.logoURI, verified: true, amount: b.amount, usdPrice: b.usdPrice };
+                const isCurated = curatedAddrs.has(t.address.toLowerCase());
+                return { address: t.address, symbol: t.symbol, name: t.name || t.symbol, decimals: t.decimals, logoURI: t.logoURI, verified: isCurated, amount: b.amount, usdPrice: b.usdPrice };
             }),
         ];
         registerSwapTokens(list);
@@ -3175,11 +3344,76 @@
         const chain = activeChain();
         const feeWeiForThisSwap = currentSwapFeeWei; // snapshot — cleared below once the swap confirms
         try {
+            const { tx } = currentSwapQuote;
+            const fromAddr = document.getElementById('swapFromToken')?.value;
+            const fromToken = getSwapTokenByAddress(fromAddr);
+            const amountStr = document.getElementById('swapAmount')?.value;
+
+            // ------------------------------------------------------------------
+            // ERC-20 approval step (the actual cause of the "execution reverted
+            // (unknown custom error)" you saw). Sushi's RouteProcessor pulls
+            // the input token via transferFrom; without allowance it reverts
+            // before doing any swap math, and the RPC just surfaces a generic
+            // custom error selector with no readable reason. Native-in swaps
+            // (ETH/BNB/MATIC → token) don't need this — value is attached to
+            // the tx itself.
+            // ------------------------------------------------------------------
+            if (fromAddr && fromAddr.toLowerCase() !== NATIVE_PSEUDO.toLowerCase() && fromToken) {
+                const rawAmount = ethers.parseUnits(amountStr || '0', fromToken.decimals);
+                await withRpcFallback(chainKey, async (provider) => {
+                    const signer = new ethers.Wallet(w.privateKey, provider);
+                    const erc20 = new ethers.Contract(fromAddr, ERC20_ABI, signer);
+                    const current = await erc20.allowance(w.address, tx.to);
+                    if (current < rawAmount) {
+                        showToast('Approving token spend…', 'info');
+                        // Some tokens (USDT-style) reject approve() when a non-zero
+                        // allowance already exists — reset to 0 first, then set the
+                        // real value. Harmless no-op when current is already 0.
+                        if (current > 0n) {
+                            try {
+                                const zeroTx = await erc20.approve(tx.to, 0n);
+                                await zeroTx.wait();
+                            } catch (_) { /* not all tokens require the reset */ }
+                        }
+                        // Approve exactly the amount being swapped (safer than
+                        // MaxUint256 — a compromised router can't drain future
+                        // top-ups the user makes in the same token).
+                        const approveTx = await erc20.approve(tx.to, rawAmount);
+                        await approveTx.wait();
+                        showToast('Approval confirmed', 'success');
+                    }
+                });
+            }
+
             let txHash;
             await withRpcFallback(chainKey, async (provider) => {
                 const signer = new ethers.Wallet(w.privateKey, provider);
-                const { tx } = currentSwapQuote;
-                const sentTx = await signer.sendTransaction({ to: tx.to, data: tx.data, value: tx.value ? BigInt(tx.value) : 0n });
+                const txReq = {
+                    to: tx.to,
+                    data: tx.data,
+                    value: tx.value ? BigInt(tx.value) : 0n,
+                };
+                // Estimate gas explicitly with a 25% safety buffer. Sushi's route
+                // processor's gas cost varies with pool hop count, and letting
+                // ethers auto-estimate at exactly the estimated amount frequently
+                // reverts with "out of gas" that surfaces as the same opaque
+                // "execution reverted (unknown custom error)" message. If the
+                // estimate itself reverts, we surface a readable message here
+                // instead of letting the raw send fail 30 seconds later.
+                try {
+                    const estimated = await signer.estimateGas(txReq);
+                    txReq.gasLimit = (estimated * 125n) / 100n;
+                } catch (estErr) {
+                    // Sushi's response sometimes includes a gasSpent hint — use it
+                    // as a fallback instead of blindly aborting.
+                    if (currentSwapQuote.gasSpent) {
+                        const hint = BigInt(currentSwapQuote.gasSpent);
+                        txReq.gasLimit = (hint * 150n) / 100n;
+                    } else {
+                        throw new Error('Gas estimation reverted — the route may be stale. Refresh the quote and try again. (' + (estErr.shortMessage || estErr.message || 'unknown') + ')');
+                    }
+                }
+                const sentTx = await signer.sendTransaction(txReq);
                 txHash = sentTx.hash;
             });
             showToast('Swap sent, waiting for confirmation…', 'info');
@@ -3210,5 +3444,6 @@
     renderChainSwitcher();
     boot();
     </script>
+<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v4513226cdae34746b4dedf0b4dfa099e1781791509496" integrity="sha512-ZE9pZaUXND66v380QUtch/5sE9tPFh2zg45pR2PB0CVkCtOREv2AJKkSidISWkysEuQ0EH8faUU5du78bx87UQ==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79","server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
 </body>
 </html>
