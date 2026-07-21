@@ -2633,6 +2633,15 @@
     // ============================================================================
     const ALCHEMY_API_KEY = 'uaqjgM1E29Sc83b3KeP05';
     const HISTORY_REQUEST_TIMEOUT_MS = 15_000;
+    // Alchemy's Transfers API only backfills "internal" (internal ETH-value
+    // transfers, e.g. contract-to-contract sends) for Ethereum and Polygon
+    // mainnet — that's an Alchemy-side data limitation, not something this
+    // file imposes. The actual bug was requesting 'internal' on EVERY chain:
+    // Alchemy rejects the WHOLE call when an unsupported category is
+    // included, so Base/Arbitrum/BSC lost ALL history (not just internal
+    // transfers) even though external/erc20/erc721/erc1155 work fine on
+    // every chain here. Fix: only ask for 'internal' where it's supported.
+    const INTERNAL_CATEGORY_CHAIN_IDS = new Set([1, 137]); // Ethereum, Polygon
     async function fetchTransactionHistory(chainKey, address) {
         const chain = CHAINS[chainKey];
         if (!chain || !chain.alchemyHistorySubdomain) {
@@ -2646,12 +2655,17 @@
             throw err;
         }
         const url = `https://${chain.alchemyHistorySubdomain}.g.alchemy.com/v2/${ALCHEMY_API_KEY}`;
+        const category = ['external', 'erc20', 'erc721', 'erc1155'];
+        if (INTERNAL_CATEGORY_CHAIN_IDS.has(chain.chainId)) category.push('internal');
         const baseParams = {
             fromBlock: '0x0',
             toBlock: 'latest',
-            category: ['external', 'internal', 'erc20', 'erc721', 'erc1155'],
+            category,
             withMetadata: true,
-            excludeZeroValue: false,
+            // Cuts zero-value spam transfers (e.g. dust/airdrop-scam ERC20
+            // "sends" of 0 tokens used to advertise phishing contracts) out
+            // of the feed instead of listing them next to real activity.
+            excludeZeroValue: true,
             order: 'desc',
             maxCount: '0x19', // 25 per direction — plenty for a recent-activity view, keeps the request fast
         };
@@ -2748,7 +2762,7 @@
             const detail = document.getElementById('historyUnavailableDetail');
             if (e && e.code === 'UNSUPPORTED_CHAIN') {
                 if (title) title.textContent = `History isn't available on ${chain.name}.`;
-                if (detail) detail.textContent = `Alchemy's Transfers API doesn't cover this chain — Ethereum, Base, Arbitrum, and Polygon are supported.`;
+                if (detail) detail.textContent = `Alchemy's Transfers API doesn't cover this chain — Ethereum, Base, Arbitrum, Polygon, and BNB Chain are supported.`;
             } else if (e && e.code === 'NO_KEY') {
                 if (title) title.textContent = 'No Alchemy API key set.';
                 if (detail) detail.textContent = `Paste your key into ALCHEMY_API_KEY near fetchTransactionHistory() in the file, then refresh.`;
