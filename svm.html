@@ -122,6 +122,205 @@
         .asset-item:hover {
             background: rgba(255, 255, 255, 0.08);
         }
+        .asset-item.clickable { cursor: pointer; }
+
+        /* ================= Price History Panel ================= */
+        .price-panel {
+            position: fixed;
+            inset: 0;
+            background: #0f0c29;
+            z-index: 60;
+            display: flex;
+            flex-direction: column;
+            transform: translateY(100%);
+            transition: transform 0.28s cubic-bezier(0.32, 0.72, 0, 1);
+            overflow: hidden;
+        }
+        .price-panel.open { transform: translateY(0); }
+        .price-panel-scroll {
+            flex: 1;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            padding: 16px 20px 32px;
+            max-width: 720px;
+            width: 100%;
+            margin: 0 auto;
+        }
+        .price-panel-topbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 8px 10px;
+            position: sticky;
+            top: 0;
+            background: linear-gradient(180deg, #0f0c29 60%, rgba(15,12,41,0));
+            z-index: 2;
+        }
+        .price-panel-close {
+            width: 40px; height: 40px;
+            border-radius: 12px;
+            background: rgba(255,255,255,0.06);
+            border: none;
+            color: #fff;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background 0.2s ease;
+        }
+        .price-panel-close:hover { background: rgba(255,255,255,0.12); }
+        .price-panel-title {
+            display: flex; align-items: center; gap: 10px;
+            font-weight: 600;
+        }
+        .price-header { padding: 4px 4px 8px; }
+        .price-header-label {
+            font-size: 13px;
+            color: rgba(255,255,255,0.55);
+            margin-bottom: 6px;
+        }
+        .price-header-row {
+            display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap;
+        }
+        .price-header-value {
+            font-size: 30px;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            color: #fff;
+        }
+        .price-header-change { font-size: 15px; font-weight: 600; }
+        .price-change-up { color: #22c55e; }
+        .price-change-down { color: #ef4444; }
+        .price-change-flat { color: rgba(255,255,255,0.5); }
+
+        .chart-wrap {
+            position: relative;
+            width: 100%;
+            height: 240px;
+            margin: 8px 0 4px;
+            touch-action: pan-y;
+        }
+        .chart-svg { width: 100%; height: 100%; display: block; overflow: visible; }
+        .chart-loading, .chart-empty {
+            position: absolute; inset: 0;
+            display: flex; align-items: center; justify-content: center;
+            color: rgba(255,255,255,0.5);
+            font-size: 14px;
+            pointer-events: none;
+        }
+        .chart-crosshair-line { stroke: rgba(255,255,255,0.25); stroke-width: 1; stroke-dasharray: 3 3; }
+        .chart-crosshair-dot { fill: #f5af19; stroke: #0f0c29; stroke-width: 2; }
+        .chart-tooltip {
+            position: absolute;
+            top: 0;
+            transform: translateX(-50%);
+            background: rgba(48, 43, 99, 0.95);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 8px;
+            padding: 6px 10px;
+            font-size: 12px;
+            color: #fff;
+            white-space: nowrap;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.15s ease;
+        }
+        .chart-tooltip.visible { opacity: 1; }
+        .chart-tooltip-price { font-weight: 600; }
+        .chart-tooltip-time { color: rgba(255,255,255,0.55); font-size: 11px; margin-top: 2px; }
+
+        .tf-tabs {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 4px;
+            background: rgba(255,255,255,0.04);
+            border-radius: 999px;
+            padding: 6px;
+            margin: 14px auto 20px;
+            max-width: 420px;
+        }
+        .tf-tab {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: rgba(255,255,255,0.55);
+            font-size: 13px;
+            font-weight: 600;
+            padding: 8px 4px;
+            border-radius: 999px;
+            cursor: pointer;
+            transition: color 0.2s ease, background 0.2s ease;
+        }
+        .tf-tab:hover { color: #fff; }
+        .tf-tab.active { background: rgba(255,255,255,0.1); color: #fff; }
+        .tf-divider { width: 1px; height: 14px; background: rgba(255,255,255,0.1); }
+
+        .price-holdings {
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 16px;
+            padding: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+        .price-holdings-label {
+            font-size: 12px;
+            color: rgba(255,255,255,0.5);
+            margin-bottom: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+        }
+        .price-actions {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+        .price-action {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.06);
+            color: #fff;
+            border-radius: 14px;
+            padding: 12px 6px;
+            font-size: 12px;
+            font-weight: 600;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+            transition: background 0.2s ease, transform 0.1s ease;
+        }
+        .price-action i { font-size: 15px; color: #f5af19; }
+        .price-action:hover { background: rgba(255,255,255,0.1); }
+        .price-action:active { transform: scale(0.97); }
+
+        .price-meta {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+        .price-meta-cell {
+            background: rgba(255,255,255,0.03);
+            border-radius: 12px;
+            padding: 12px 14px;
+        }
+        .price-meta-key {
+            font-size: 11px;
+            color: rgba(255,255,255,0.45);
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            margin-bottom: 4px;
+        }
+        .price-meta-val {
+            font-size: 14px;
+            font-weight: 600;
+            color: #fff;
+            word-break: break-all;
+        }
+
         
         .input-field {
             background: rgba(255, 255, 255, 0.05);
@@ -690,6 +889,87 @@ buffer/index.js:
                         </div>
                     </div>
                     <div id="swapQuoteMeta" class="text-xs text-slate-400 mt-3"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= Price History Panel ================= -->
+        <div id="pricePanel" class="price-panel" aria-hidden="true">
+            <div class="price-panel-scroll">
+                <div class="price-panel-topbar">
+                    <button class="price-panel-close" onclick="closePricePanel()" aria-label="Close">
+                        <i class="fas fa-chevron-down"></i>
+                    </button>
+                    <div class="price-panel-title">
+                        <span id="pricePanelIcon"></span>
+                        <span id="pricePanelSymbol"></span>
+                    </div>
+                    <button class="price-panel-close" id="pricePanelExplorer" title="View on explorer" aria-label="View on explorer">
+                        <i class="fas fa-arrow-up-right-from-square"></i>
+                    </button>
+                </div>
+
+                <div class="price-header">
+                    <div class="price-header-label">Price</div>
+                    <div class="price-header-row">
+                        <div class="price-header-value" id="priceHeaderValue">$0.00</div>
+                        <div class="price-header-change" id="priceHeaderChange">—</div>
+                    </div>
+                </div>
+
+                <div class="chart-wrap" id="chartWrap">
+                    <svg class="chart-svg" id="chartSvg" viewBox="0 0 600 240" preserveAspectRatio="none"></svg>
+                    <div class="chart-tooltip" id="chartTooltip">
+                        <div class="chart-tooltip-price" id="chartTooltipPrice"></div>
+                        <div class="chart-tooltip-time" id="chartTooltipTime"></div>
+                    </div>
+                    <div class="chart-loading" id="chartLoading">Loading chart…</div>
+                    <div class="chart-empty hidden" id="chartEmpty">Price history unavailable</div>
+                </div>
+
+                <div class="tf-tabs" role="tablist">
+                    <button class="tf-tab" data-tf="all" onclick="setTimeframe('all')">All</button>
+                    <span class="tf-divider"></span>
+                    <button class="tf-tab" data-tf="y" onclick="setTimeframe('y')">Y</button>
+                    <span class="tf-divider"></span>
+                    <button class="tf-tab" data-tf="3m" onclick="setTimeframe('3m')">3M</button>
+                    <button class="tf-tab active" data-tf="m" onclick="setTimeframe('m')">M</button>
+                    <button class="tf-tab" data-tf="w" onclick="setTimeframe('w')">W</button>
+                    <span class="tf-divider"></span>
+                    <button class="tf-tab" data-tf="d" onclick="setTimeframe('d')">D</button>
+                </div>
+
+                <div class="price-holdings">
+                    <div>
+                        <div class="price-holdings-label">Your balance</div>
+                        <div style="font-size:18px;font-weight:700;" id="priceHoldingAmount">0</div>
+                    </div>
+                    <div style="text-align:right">
+                        <div class="price-holdings-label">Value</div>
+                        <div style="font-size:18px;font-weight:700;" id="priceHoldingValue">$0.00</div>
+                    </div>
+                </div>
+
+                <div class="price-actions">
+                    <button class="price-action" onclick="pricePanelAction('send')"><i class="fas fa-arrow-up"></i>Send</button>
+                    <button class="price-action" onclick="pricePanelAction('receive')"><i class="fas fa-arrow-down"></i>Receive</button>
+                    <button class="price-action" onclick="pricePanelAction('swap')"><i class="fas fa-arrows-rotate"></i>Swap</button>
+                    <button class="price-action" onclick="pricePanelAction('explorer')"><i class="fas fa-link"></i>Explorer</button>
+                </div>
+
+                <div class="price-meta">
+                    <div class="price-meta-cell">
+                        <div class="price-meta-key">Network</div>
+                        <div class="price-meta-val" id="priceMetaNetwork">—</div>
+                    </div>
+                    <div class="price-meta-cell">
+                        <div class="price-meta-key">Token</div>
+                        <div class="price-meta-val" id="priceMetaSymbol">—</div>
+                    </div>
+                    <div class="price-meta-cell" style="grid-column: 1 / -1">
+                        <div class="price-meta-key">Contract</div>
+                        <div class="price-meta-val" id="priceMetaContract">Native asset</div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -2574,6 +2854,68 @@ buffer/index.js:
     function base64ToBytes(base64) {
         return Uint8Array.from(atob(base64), c => c.charCodeAt(0));
     }
+    function bytesToBase64(bytes) {
+        let bin = '';
+        for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+        return btoa(bin);
+    }
+
+    // ----------------------------------------------------------------------------
+    // Jito MEV protection for swaps.
+    // ----------------------------------------------------------------------------
+    // A swap sent to a normal RPC sits in the public mempool where searcher bots
+    // can see it and sandwich it (buy ahead of it, let it push the price, sell
+    // right after). Jito's Block Engine forwards a transaction straight to a
+    // Jito-running validator instead of the public mempool, and Jupiter can bake
+    // a tip instruction (jitoTipLamports) into the swap tx itself so the
+    // validator has an incentive to include it. Together that's what actually
+    // stops sandwiching — dynamicSlippage alone only limits the damage if it
+    // happens, it doesn't prevent it.
+    const JITO_BLOCK_ENGINE_URL = 'https://mainnet.block-engine.jito.wtf/api/v1/transactions';
+    const JITO_TIP_FLOOR_URL = 'https://bundles.jito.wtf/api/v1/bundles/tip_floor';
+    const JITO_MIN_TIP_LAMPORTS = 1000;        // Jito's protocol-level minimum
+    const JITO_DEFAULT_TIP_LAMPORTS = 100000;  // ~0.0001 SOL — used only if the live tip-floor lookup fails
+
+    // Pulls the current landed-tip floor so we pay enough to actually get
+    // included without overpaying. Never throws — falls back to a fixed
+    // default, since a flaky tip-floor endpoint must never block a swap.
+    async function fetchJitoTipLamports() {
+        try {
+            const res = await withTimeout(fetch(JITO_TIP_FLOOR_URL), 4_000, 'jito tip floor');
+            if (!res.ok) throw new Error('tip floor http ' + res.status);
+            const data = await res.json();
+            const row = Array.isArray(data) ? data[0] : data;
+            const solTip = row?.landed_tips_75th_percentile ?? row?.landed_tips_50th_percentile;
+            if (typeof solTip === 'number' && solTip > 0) {
+                return Math.max(JITO_MIN_TIP_LAMPORTS, Math.round(solTip * 1e9));
+            }
+        } catch (e) {
+            console.warn('Jito tip floor lookup failed, using default tip', e);
+        }
+        return JITO_DEFAULT_TIP_LAMPORTS;
+    }
+
+    // Submits a fully-signed, base64-encoded transaction directly to Jito's
+    // Block Engine. Returns the transaction signature on success (same
+    // signature format a normal sendRawTransaction would return), so the
+    // existing waitForSignatureConfirmation() polling works unchanged.
+    async function sendViaJito(base64Tx) {
+        const res = await withTimeout(fetch(JITO_BLOCK_ENGINE_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                id: 1,
+                jsonrpc: '2.0',
+                method: 'sendTransaction',
+                params: [base64Tx, { encoding: 'base64' }],
+            }),
+        }), 10_000, 'jito send');
+        const data = await res.json();
+        if (data.error) throw new Error(data.error.message || 'Jito rejected the transaction');
+        if (!data.result) throw new Error('Jito returned no signature');
+        return data.result;
+    }
+
     function toRawAmount(amount, decimals) {
         const [whole, frac = ''] = String(amount).trim().split('.');
         const normalizedWhole = whole && whole !== 'NaN' ? whole : '0';
@@ -2961,6 +3303,7 @@ buffer/index.js:
         let secretKeyBytes = null;
         const feeLamportsForThisSwap = currentSwapFeeLamports; // snapshot — cleared below once the swap confirms
         try {
+            const jitoTipLamports = await fetchJitoTipLamports();
             const swapResponse = await jupiterFetch('/swap', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -2971,11 +3314,12 @@ buffer/index.js:
                     dynamicComputeUnitLimit: true,
                     dynamicSlippage: true,
                     trackingAccount: PLATFORM_FEE_ADDRESS,
+                    // jitoTipLamports (rather than priorityLevelWithMaxLamports) makes
+                    // Jupiter bake a tip instruction to a Jito tip account directly into
+                    // this transaction, which is what lets sendViaJito() below route it
+                    // through the Block Engine instead of the public mempool.
                     prioritizationFeeLamports: {
-                        priorityLevelWithMaxLamports: {
-                            maxLamports: 1000000,
-                            priorityLevel: 'high',
-                        }
+                        jitoTipLamports,
                     }
                 })
             });
@@ -2989,12 +3333,23 @@ buffer/index.js:
             secretKeyBytes = new Uint8Array(w.secretKey);
             const signer = window.solanaWeb3.Keypair.fromSecretKey(secretKeyBytes);
             versioned.sign([signer]);
+            const signedBytes = versioned.serialize();
 
-            setLoadingOverlay('Broadcasting swap…');
-            const signature = await withRpcFallback('send swap', conn => conn.sendRawTransaction(versioned.serialize(), {
-                skipPreflight: false,
-                maxRetries: 2,
-            }), 30_000);
+            setLoadingOverlay('Broadcasting swap (MEV-protected)…');
+            let signature;
+            try {
+                signature = await sendViaJito(bytesToBase64(signedBytes));
+            } catch (jitoErr) {
+                // Jito being unreachable/rate-limited must never block the swap —
+                // fall back to the normal RPC broadcast path (no MEV protection on
+                // this attempt, but the swap still goes through).
+                console.warn('Jito submission failed, falling back to normal RPC broadcast:', jitoErr);
+                setLoadingOverlay('Broadcasting swap…');
+                signature = await withRpcFallback('send swap', conn => conn.sendRawTransaction(signedBytes, {
+                    skipPreflight: false,
+                    maxRetries: 2,
+                }), 30_000);
+            }
 
             setLoadingOverlay('Confirming swap…');
             await waitForSignatureConfirmation(signature, swapResponse.lastValidBlockHeight, { commitment: 'confirmed', timeoutMs: 45_000 });
@@ -3459,8 +3814,9 @@ buffer/index.js:
         }
         if (items.length === 0) { empty.classList.remove('hidden'); list.innerHTML = ''; return; }
         empty.classList.add('hidden');
-        list.innerHTML = items.map(a => `
-            <div class="asset-item flex items-center justify-between">
+        lastRenderedAssets = items;
+        list.innerHTML = items.map((a, i) => `
+            <div class="asset-item clickable flex items-center justify-between" onclick="openPricePanelForAsset(${i})" role="button" tabindex="0">
                 <div class="flex items-center gap-3 min-w-0 flex-1">
                     ${tokenIconHTML({ symbol: a.symbol, logoURI: a.icon }, 32)}
                     <div class="min-w-0">
@@ -3475,6 +3831,268 @@ buffer/index.js:
                 </div>
             </div>`).join('');
     }
+    let lastRenderedAssets = [];
+
+    // ============================================================================
+    // Price History Panel — tap a token row to open a full-screen chart.
+    // Solana only has one CoinGecko platform ('solana'), so unlike the EVM
+    // wallet's per-chainId asset_platforms lookup, the platform + native coin
+    // id are both just the fixed string 'solana' — no dynamic resolution needed.
+    // Data source: /coins/solana/market_chart (native SOL) and
+    // /coins/solana/contract/{mint}/market_chart (SPL tokens).
+    // ============================================================================
+    const COINGECKO_DEMO_API_KEY = 'CG-vBxP9mmJwbyYfEH5Fcqxx4Yj';
+    function cgUrl(url) {
+        if (!COINGECKO_DEMO_API_KEY) return url;
+        return url + (url.includes('?') ? '&' : '?') + `x_cg_demo_api_key=${COINGECKO_DEMO_API_KEY}`;
+    }
+    const priceHistoryCache = {}; // key -> { ts, series: [[msTs, price], ...] }
+    const PRICE_HISTORY_TTL_MS = 60_000;
+    const TF_CONFIG = {
+        d:   { days: 1,    label: '24h' },
+        w:   { days: 7,    label: '7d'  },
+        m:   { days: 30,   label: '30d' },
+        '3m':{ days: 90,   label: '90d' },
+        y:   { days: 365,  label: '1y'  },
+        all: { days: 'max',label: 'All' },
+    };
+    let currentPricePanel = { asset: null, tf: 'm', series: null };
+
+    async function fetchPriceHistory(mint, days) {
+        const cacheKey = `${mint || 'native'}:${days}`;
+        const cached = priceHistoryCache[cacheKey];
+        if (cached && Date.now() - cached.ts < PRICE_HISTORY_TTL_MS) return cached.series;
+        // Solana mints are case-sensitive base58 — unlike the EVM wallet's hex
+        // addresses, this must NOT be lowercased.
+        const url = (mint && mint !== SOL_MINT)
+            ? `https://api.coingecko.com/api/v3/coins/solana/contract/${mint}/market_chart?vs_currency=usd&days=${days}`
+            : `https://api.coingecko.com/api/v3/coins/solana/market_chart?vs_currency=usd&days=${days}`;
+        try {
+            const resp = await fetch(cgUrl(url));
+            if (!resp.ok) return null;
+            const data = await resp.json();
+            const series = (data && Array.isArray(data.prices)) ? data.prices : null;
+            if (!series || series.length < 2) return null;
+            priceHistoryCache[cacheKey] = { ts: Date.now(), series };
+            return series;
+        } catch (e) {
+            console.warn('Price history fetch failed', e);
+            return null;
+        }
+    }
+
+    function openPricePanelForAsset(index) {
+        const a = lastRenderedAssets[index];
+        if (!a) return;
+        openPricePanel(a);
+    }
+
+    function openPricePanel(asset) {
+        currentPricePanel = { asset, tf: 'm', series: null };
+        const panel = document.getElementById('pricePanel');
+        document.getElementById('pricePanelSymbol').textContent = asset.symbol;
+        document.getElementById('pricePanelIcon').innerHTML = tokenIconHTML({ symbol: asset.symbol, logoURI: asset.icon }, 24);
+        document.getElementById('priceMetaNetwork').textContent = state.network === 'mainnet' ? 'Solana' : `Solana (${state.network})`;
+        document.getElementById('priceMetaSymbol').textContent = asset.symbol;
+        document.getElementById('priceMetaContract').textContent = asset.mint ? asset.mint : 'Native asset';
+        document.getElementById('priceHoldingAmount').textContent = `${Number(asset.amount).toLocaleString(undefined, { maximumFractionDigits: 6 })} ${asset.symbol}`;
+        document.getElementById('priceHoldingValue').textContent = asset.usdPrice > 0
+            ? `$${(asset.amount * asset.usdPrice).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+            : '$0.00';
+        const expBtn = document.getElementById('pricePanelExplorer');
+        expBtn.onclick = () => {
+            const w = getActiveWallet();
+            const cluster = state.network !== 'mainnet' ? `?cluster=${state.network}` : '';
+            const url = asset.mint
+                ? `https://explorer.solana.com/address/${asset.mint}${cluster}`
+                : `https://explorer.solana.com/address/${w ? w.address : ''}${cluster}`;
+            window.open(url, '_blank', 'noopener');
+        };
+        // Reset timeframe tabs to M
+        document.querySelectorAll('.tf-tab').forEach(el => el.classList.toggle('active', el.dataset.tf === 'm'));
+        panel.classList.add('open');
+        panel.setAttribute('aria-hidden', 'false');
+        document.body.style.overflow = 'hidden';
+        loadAndRenderPriceHistory();
+    }
+
+    function closePricePanel() {
+        const panel = document.getElementById('pricePanel');
+        panel.classList.remove('open');
+        panel.setAttribute('aria-hidden', 'true');
+        document.body.style.overflow = '';
+        currentPricePanel.series = null;
+        hideCrosshair();
+    }
+
+    function setTimeframe(tf) {
+        if (!TF_CONFIG[tf]) return;
+        currentPricePanel.tf = tf;
+        document.querySelectorAll('.tf-tab').forEach(el => el.classList.toggle('active', el.dataset.tf === tf));
+        loadAndRenderPriceHistory();
+    }
+
+    async function loadAndRenderPriceHistory() {
+        const { asset, tf } = currentPricePanel;
+        if (!asset) return;
+        const loading = document.getElementById('chartLoading');
+        const empty = document.getElementById('chartEmpty');
+        const svg = document.getElementById('chartSvg');
+        loading.classList.remove('hidden');
+        empty.classList.add('hidden');
+        svg.innerHTML = '';
+        const days = TF_CONFIG[tf].days;
+        const series = await fetchPriceHistory(asset.mint, days);
+        // Bail out if the panel was closed or the user switched timeframe mid-flight
+        if (currentPricePanel.asset !== asset || currentPricePanel.tf !== tf) return;
+        loading.classList.add('hidden');
+        if (!series || series.length < 2) {
+            empty.classList.remove('hidden');
+            document.getElementById('priceHeaderValue').textContent = asset.usdPrice > 0 ? formatPrice(asset.usdPrice) : '—';
+            document.getElementById('priceHeaderChange').textContent = '—';
+            document.getElementById('priceHeaderChange').className = 'price-header-change price-change-flat';
+            return;
+        }
+        currentPricePanel.series = series;
+        const first = series[0][1];
+        const last = series[series.length - 1][1];
+        const pct = first > 0 ? ((last - first) / first) * 100 : 0;
+        document.getElementById('priceHeaderValue').textContent = formatPrice(last);
+        const changeEl = document.getElementById('priceHeaderChange');
+        const sign = pct > 0 ? '+' : '';
+        changeEl.textContent = `${sign}${pct.toFixed(2)}%`;
+        changeEl.className = 'price-header-change ' + (pct > 0.01 ? 'price-change-up' : pct < -0.01 ? 'price-change-down' : 'price-change-flat');
+        drawChart(series, pct >= 0);
+    }
+
+    function formatPrice(p) {
+        if (!isFinite(p) || p <= 0) return '—';
+        if (p >= 1) return `$${p.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 })}`;
+        if (p >= 0.01) return `$${p.toFixed(4)}`;
+        return `$${p.toPrecision(5)}`;
+    }
+
+    function drawChart(series, isUp) {
+        const svg = document.getElementById('chartSvg');
+        const W = 600, H = 240, PAD_T = 12, PAD_B = 28, PAD_X = 4;
+        const values = series.map(p => p[1]);
+        const times = series.map(p => p[0]);
+        const min = Math.min(...values), max = Math.max(...values);
+        const range = max - min || 1;
+        const n = series.length;
+        const xFor = i => PAD_X + (i / (n - 1)) * (W - 2 * PAD_X);
+        const yFor = v => PAD_T + (1 - (v - min) / range) * (H - PAD_T - PAD_B);
+        let d = '';
+        for (let i = 0; i < n; i++) {
+            const x = xFor(i), y = yFor(values[i]);
+            d += (i === 0 ? 'M' : 'L') + x.toFixed(2) + ',' + y.toFixed(2);
+        }
+        const areaBase = H - PAD_B;
+        const areaD = d + `L${xFor(n - 1).toFixed(2)},${areaBase} L${xFor(0).toFixed(2)},${areaBase} Z`;
+        const stroke = '#f5af19'; // matches this wallet's gold accent
+        const gradId = 'chartGrad_' + Math.floor(Math.random() * 1e6);
+        const labelIdxs = [0, Math.floor(n / 3), Math.floor((2 * n) / 3), n - 1];
+        const labels = labelIdxs.map(i => ({ x: xFor(i), text: shortDateLabel(times[i], currentPricePanel.tf) }));
+        svg.innerHTML = `
+            <defs>
+                <linearGradient id="${gradId}" x1="0" x2="0" y1="0" y2="1">
+                    <stop offset="0%" stop-color="${stroke}" stop-opacity="0.35"/>
+                    <stop offset="100%" stop-color="${stroke}" stop-opacity="0"/>
+                </linearGradient>
+            </defs>
+            <path d="${areaD}" fill="url(#${gradId})"></path>
+            <path d="${d}" fill="none" stroke="${stroke}" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"></path>
+            ${labels.map(l => `<text x="${l.x.toFixed(1)}" y="${H - 6}" text-anchor="middle" fill="rgba(255,255,255,0.5)" font-size="11" font-family="Inter, sans-serif">${l.text}</text>`).join('')}
+            <line id="chartCrosshairLine" class="chart-crosshair-line" x1="0" y1="${PAD_T}" x2="0" y2="${H - PAD_B}" style="display:none"></line>
+            <circle id="chartCrosshairDot" class="chart-crosshair-dot" cx="0" cy="0" r="4" style="display:none"></circle>
+        `;
+        attachChartInteractions(series, W, H);
+    }
+
+    function shortDateLabel(ts, tf) {
+        const d = new Date(ts);
+        if (tf === 'd') return d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+        if (tf === 'w' || tf === 'm' || tf === '3m') return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+        return d.toLocaleDateString(undefined, { month: 'short', year: '2-digit' });
+    }
+
+    function attachChartInteractions(series, W, H) {
+        const wrap = document.getElementById('chartWrap');
+        const svg = document.getElementById('chartSvg');
+        const line = document.getElementById('chartCrosshairLine');
+        const dot = document.getElementById('chartCrosshairDot');
+        const tip = document.getElementById('chartTooltip');
+        const priceEl = document.getElementById('chartTooltipPrice');
+        const timeEl = document.getElementById('chartTooltipTime');
+        const PAD_T = 12, PAD_B = 28, PAD_X = 4;
+        const values = series.map(p => p[1]);
+        const min = Math.min(...values), max = Math.max(...values);
+        const range = max - min || 1;
+        const n = series.length;
+
+        function move(clientX) {
+            const rect = svg.getBoundingClientRect();
+            const rel = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+            const i = Math.round(rel * (n - 1));
+            const [ts, v] = series[i];
+            const svgX = PAD_X + (i / (n - 1)) * (W - 2 * PAD_X);
+            const svgY = PAD_T + (1 - (v - min) / range) * (H - PAD_T - PAD_B);
+            line.setAttribute('x1', svgX); line.setAttribute('x2', svgX); line.style.display = '';
+            dot.setAttribute('cx', svgX); dot.setAttribute('cy', svgY); dot.style.display = '';
+            const pxX = (svgX / W) * rect.width;
+            tip.style.left = Math.max(40, Math.min(rect.width - 40, pxX)) + 'px';
+            tip.style.top = '4px';
+            tip.classList.add('visible');
+            priceEl.textContent = formatPrice(v);
+            timeEl.textContent = new Date(ts).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+        }
+
+        wrap.onmousemove = e => move(e.clientX);
+        wrap.onmouseleave = () => hideCrosshair();
+        wrap.ontouchstart = e => { if (e.touches[0]) move(e.touches[0].clientX); };
+        wrap.ontouchmove = e => { if (e.touches[0]) { move(e.touches[0].clientX); e.preventDefault(); } };
+        wrap.ontouchend = () => hideCrosshair();
+    }
+
+    function hideCrosshair() {
+        const line = document.getElementById('chartCrosshairLine');
+        const dot = document.getElementById('chartCrosshairDot');
+        const tip = document.getElementById('chartTooltip');
+        if (line) line.style.display = 'none';
+        if (dot) dot.style.display = 'none';
+        if (tip) tip.classList.remove('visible');
+    }
+
+    function pricePanelAction(kind) {
+        const { asset } = currentPricePanel;
+        if (!asset) return;
+        if (kind === 'explorer') {
+            document.getElementById('pricePanelExplorer')?.click();
+            return;
+        }
+        // Close first so the underlying tab is visible when it activates
+        closePricePanel();
+        if (kind === 'send') {
+            switchTab('send');
+            setTimeout(() => {
+                const sel = document.getElementById('sendToken');
+                if (sel) { sel.value = asset.mint || ''; sel.dispatchEvent(new Event('change')); }
+            }, 50);
+        } else if (kind === 'receive') {
+            switchTab('receive');
+        } else if (kind === 'swap') {
+            switchTab('swap');
+        }
+    }
+
+    // Close on Escape for keyboard users
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            const p = document.getElementById('pricePanel');
+            if (p && p.classList.contains('open')) closePricePanel();
+        }
+    });
+
 
     // Render assets, respecting the "hide zero balances" toggle.
     // (renderAssets is defined earlier; this comment placed next to renderReceive for grouping.)
