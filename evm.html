@@ -119,10 +119,221 @@
             padding: 16px;
             margin-bottom: 12px;
             transition: all 0.3s ease;
+            cursor: pointer;
+            user-select: none;
         }
         
         .asset-item:hover {
             background: rgba(255, 255, 255, 0.08);
+        }
+        .asset-item:active { transform: scale(0.99); }
+
+        /* ================== Price History Panel ================== */
+        .price-panel {
+            position: fixed;
+            inset: 0;
+            background: #050b1a;
+            z-index: 60;
+            display: flex;
+            flex-direction: column;
+            transform: translateY(100%);
+            transition: transform 0.28s cubic-bezier(0.32, 0.72, 0, 1);
+            overflow: hidden;
+        }
+        .price-panel.open { transform: translateY(0); }
+        .price-panel-scroll {
+            flex: 1;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            padding: 16px 20px 32px;
+            max-width: 720px;
+            width: 100%;
+            margin: 0 auto;
+        }
+        .price-panel-topbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 8px 10px;
+            position: sticky;
+            top: 0;
+            background: linear-gradient(180deg, #050b1a 60%, rgba(5,11,26,0));
+            z-index: 2;
+        }
+        .price-panel-close {
+            width: 40px; height: 40px;
+            border-radius: 12px;
+            background: rgba(255,255,255,0.06);
+            border: none;
+            color: #fff;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background 0.2s ease;
+        }
+        .price-panel-close:hover { background: rgba(255,255,255,0.12); }
+        .price-panel-title {
+            display: flex; align-items: center; gap: 10px;
+            font-weight: 600;
+        }
+        .price-header {
+            padding: 4px 4px 8px;
+        }
+        .price-header-label {
+            font-size: 13px;
+            color: rgba(255,255,255,0.55);
+            margin-bottom: 6px;
+        }
+        .price-header-row {
+            display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap;
+        }
+        .price-header-value {
+            font-size: 30px;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            color: #fff;
+        }
+        .price-header-change {
+            font-size: 15px;
+            font-weight: 600;
+        }
+        .price-change-up { color: #22c55e; }
+        .price-change-down { color: #ef4444; }
+        .price-change-flat { color: rgba(255,255,255,0.5); }
+
+        .chart-wrap {
+            position: relative;
+            width: 100%;
+            height: 240px;
+            margin: 8px 0 4px;
+            touch-action: pan-y;
+        }
+        .chart-svg { width: 100%; height: 100%; display: block; overflow: visible; }
+        .chart-loading, .chart-empty {
+            position: absolute; inset: 0;
+            display: flex; align-items: center; justify-content: center;
+            color: rgba(255,255,255,0.5);
+            font-size: 14px;
+            pointer-events: none;
+        }
+        .chart-crosshair-line { stroke: rgba(255,255,255,0.25); stroke-width: 1; stroke-dasharray: 3 3; }
+        .chart-crosshair-dot { fill: #60a5fa; stroke: #050b1a; stroke-width: 2; }
+        .chart-tooltip {
+            position: absolute;
+            top: 0;
+            transform: translateX(-50%);
+            background: rgba(13, 24, 48, 0.95);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 8px;
+            padding: 6px 10px;
+            font-size: 12px;
+            color: #fff;
+            white-space: nowrap;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.15s ease;
+        }
+        .chart-tooltip.visible { opacity: 1; }
+        .chart-tooltip-price { font-weight: 600; }
+        .chart-tooltip-time { color: rgba(255,255,255,0.55); font-size: 11px; margin-top: 2px; }
+
+        .tf-tabs {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 4px;
+            background: rgba(255,255,255,0.04);
+            border-radius: 999px;
+            padding: 6px;
+            margin: 14px auto 20px;
+            max-width: 420px;
+        }
+        .tf-tab {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: rgba(255,255,255,0.55);
+            font-size: 13px;
+            font-weight: 600;
+            padding: 8px 4px;
+            border-radius: 999px;
+            cursor: pointer;
+            transition: color 0.2s ease, background 0.2s ease;
+        }
+        .tf-tab:hover { color: #fff; }
+        .tf-tab.active {
+            background: rgba(255,255,255,0.1);
+            color: #fff;
+        }
+        .tf-divider {
+            width: 1px; height: 14px;
+            background: rgba(255,255,255,0.1);
+        }
+
+        .price-holdings {
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 16px;
+            padding: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+        .price-holdings-label {
+            font-size: 12px;
+            color: rgba(255,255,255,0.5);
+            margin-bottom: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+        }
+        .price-actions {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+        .price-action {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.06);
+            color: #fff;
+            border-radius: 14px;
+            padding: 12px 6px;
+            font-size: 12px;
+            font-weight: 600;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+            transition: background 0.2s ease, transform 0.1s ease;
+        }
+        .price-action i { font-size: 15px; color: #FFD700; }
+        .price-action:hover { background: rgba(255,255,255,0.1); }
+        .price-action:active { transform: scale(0.97); }
+
+        .price-meta {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+        .price-meta-cell {
+            background: rgba(255,255,255,0.03);
+            border-radius: 12px;
+            padding: 12px 14px;
+        }
+        .price-meta-key {
+            font-size: 11px;
+            color: rgba(255,255,255,0.45);
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            margin-bottom: 4px;
+        }
+        .price-meta-val {
+            font-size: 14px;
+            font-weight: 600;
+            color: #fff;
+            word-break: break-all;
         }
         
         .input-field {
@@ -634,11 +845,9 @@
                     </button>
                 </div>
 
-                <div id="swapNetworkNotice" class="glass-card p-3 rounded-xl text-sm text-yellow-300 mb-4 hidden"></div>
-
                 <div id="swapFeeNotice" class="text-xs text-slate-400 mb-4 flex items-start gap-2">
                     <i class="fas fa-circle-info mt-0.5"></i>
-                    <span>Every swap includes a 0.85% referral fee, shown below once you get a quote.</span>
+                    <span>Every swap includes a 0.85% referral fee, shown in the quote below.</span>
                 </div>
 
                 <div id="swapSettingsPanel" class="glass-card p-4 rounded-xl mb-4 hidden">
@@ -902,13 +1111,95 @@
             </div>
         </div>
 
+        <!-- ================= Price History Panel ================= -->
+        <div id="pricePanel" class="price-panel" aria-hidden="true">
+            <div class="price-panel-scroll">
+                <div class="price-panel-topbar">
+                    <button class="price-panel-close" onclick="closePricePanel()" aria-label="Close">
+                        <i class="fas fa-chevron-down"></i>
+                    </button>
+                    <div class="price-panel-title">
+                        <span id="pricePanelIcon"></span>
+                        <span id="pricePanelSymbol"></span>
+                    </div>
+                    <button class="price-panel-close" id="pricePanelExplorer" title="View on explorer" aria-label="View on explorer">
+                        <i class="fas fa-arrow-up-right-from-square"></i>
+                    </button>
+                </div>
+
+                <div class="price-header">
+                    <div class="price-header-label">Price</div>
+                    <div class="price-header-row">
+                        <div class="price-header-value" id="priceHeaderValue">$0.00</div>
+                        <div class="price-header-change" id="priceHeaderChange">—</div>
+                    </div>
+                </div>
+
+                <div class="chart-wrap" id="chartWrap">
+                    <svg class="chart-svg" id="chartSvg" viewBox="0 0 600 240" preserveAspectRatio="none"></svg>
+                    <div class="chart-tooltip" id="chartTooltip">
+                        <div class="chart-tooltip-price" id="chartTooltipPrice"></div>
+                        <div class="chart-tooltip-time" id="chartTooltipTime"></div>
+                    </div>
+                    <div class="chart-loading" id="chartLoading">Loading chart…</div>
+                    <div class="chart-empty hidden" id="chartEmpty">Price history unavailable</div>
+                </div>
+
+                <div class="tf-tabs" role="tablist">
+                    <button class="tf-tab" data-tf="all" onclick="setTimeframe('all')">All</button>
+                    <span class="tf-divider"></span>
+                    <button class="tf-tab" data-tf="y" onclick="setTimeframe('y')">Y</button>
+                    <span class="tf-divider"></span>
+                    <button class="tf-tab" data-tf="3m" onclick="setTimeframe('3m')">3M</button>
+                    <button class="tf-tab active" data-tf="m" onclick="setTimeframe('m')">M</button>
+                    <button class="tf-tab" data-tf="w" onclick="setTimeframe('w')">W</button>
+                    <span class="tf-divider"></span>
+                    <button class="tf-tab" data-tf="d" onclick="setTimeframe('d')">D</button>
+                </div>
+
+                <div class="price-holdings">
+                    <div>
+                        <div class="price-holdings-label">Your balance</div>
+                        <div style="font-size:18px;font-weight:700;" id="priceHoldingAmount">0</div>
+                    </div>
+                    <div style="text-align:right">
+                        <div class="price-holdings-label">Value</div>
+                        <div style="font-size:18px;font-weight:700;" id="priceHoldingValue">$0.00</div>
+                    </div>
+                </div>
+
+                <div class="price-actions">
+                    <button class="price-action" onclick="pricePanelAction('send')"><i class="fas fa-arrow-up"></i>Send</button>
+                    <button class="price-action" onclick="pricePanelAction('receive')"><i class="fas fa-arrow-down"></i>Receive</button>
+                    <button class="price-action" onclick="pricePanelAction('swap')"><i class="fas fa-arrows-rotate"></i>Swap</button>
+                    <button class="price-action" onclick="pricePanelAction('explorer')"><i class="fas fa-link"></i>Explorer</button>
+                </div>
+
+                <div class="price-meta">
+                    <div class="price-meta-cell">
+                        <div class="price-meta-key">Network</div>
+                        <div class="price-meta-val" id="priceMetaNetwork">—</div>
+                    </div>
+                    <div class="price-meta-cell">
+                        <div class="price-meta-key">Token</div>
+                        <div class="price-meta-val" id="priceMetaSymbol">—</div>
+                    </div>
+                    <div class="price-meta-cell" style="grid-column: 1 / -1">
+                        <div class="price-meta-key">Contract</div>
+                        <div class="price-meta-val" id="priceMetaContract">Native asset</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div id="tokenPickerModal" class="token-picker-overlay hidden" onclick="closeTokenPickerOnOverlay(event)">
             <div class="token-picker-modal" onclick="event.stopPropagation()">
                 <div class="flex items-center justify-between mb-4">
                     <h3 class="font-bold">Select token</h3>
                     <button onclick="closeTokenPicker()" class="text-slate-400 hover:text-white"><i class="fas fa-xmark"></i></button>
                 </div>
-                <input type="text" id="tokenPickerSearch" class="input-field mb-3" placeholder="Search name or symbol" oninput="renderTokenPickerList()">
+                <input type="text" id="tokenPickerSearch" class="input-field mb-3" placeholder="Search name, symbol or paste 0x address…" oninput="renderTokenPickerList()">
+                <div id="tokenPickerAddressResult" class="hidden mb-2"></div>
                 <div id="tokenPickerList" class="token-picker-list"></div>
             </div>
         </div>
@@ -1927,7 +2218,6 @@
         renderChainSwitcher();
         clearSwapQuote();
         saveState();
-        populateSwapTokenSelects();
         populateSendTokenSelect();
         renderCustomTokensList();
         renderManualRpcList();
@@ -1987,8 +2277,6 @@
         if (state.activeNetwork === key) {
             state.activeNetwork = 'ethereum';
             renderChainSwitcher();
-            populateSwapTokenSelects();
-            populateSendTokenSelect();
             refreshWallet();
         }
         saveState();
@@ -2430,7 +2718,11 @@
                 const info = platforms[chainId];
                 if (!info) return result; // CoinGecko doesn't know this chain — same as no price before
                 const chain = Object.values(CHAINS).find(c => c.chainId === chainId);
-                const addrs = chain ? chainTokens(chain).map(t => t.address.toLowerCase()) : [];
+                // Include auto-discovered holdings here too — otherwise any token
+                // Alchemy found (but that isn't on the curated/custom list) always
+                // prices at $0 in the assets list and portfolio total, even when
+                // CoinGecko actually has a price for that contract.
+                const addrs = chain ? chainTokensWithDiscovered(chain).map(t => t.address.toLowerCase()) : [];
 
                 const [tokenPrices, nativePrice] = await Promise.all([
                     addrs.length
@@ -2624,8 +2916,8 @@
         const shown = items.filter(a => a.address === null || !state.hideZeroBalances || a.amount > 0);
         if (!getActiveWallet()) { empty.classList.remove('hidden'); list.innerHTML = ''; return; }
         empty.classList.add('hidden');
-        list.innerHTML = shown.map(a => `
-            <div class="asset-item flex items-center justify-between">
+        list.innerHTML = shown.map((a, i) => `
+            <div class="asset-item flex items-center justify-between" onclick="openPricePanelForAsset(${i})" role="button" tabindex="0">
                 <div class="flex items-center gap-3 min-w-0 flex-1">
                     ${tokenIconHTML({ symbol: a.symbol, logoURI: a.icon }, 32)}
                     <div class="min-w-0">
@@ -2638,7 +2930,292 @@
                     ${a.usdPrice > 0 ? `<p class="text-xs text-slate-400">$${(a.amount * a.usdPrice).toFixed(2)}</p>` : ''}
                 </div>
             </div>`).join('');
+        // Cache assets so the price panel can look them up by index without re-scanning state
+        lastRenderedAssets = shown;
     }
+    let lastRenderedAssets = [];
+
+    // ============================================================================
+    // Price History Panel — tap a token row to open a full-screen chart.
+    // Data source: CoinGecko /market_chart (native coin id) and
+    // /coins/{platform}/contract/{address}/market_chart (ERC-20). Uses the same
+    // demo key + asset-platform map that fetchSushiPriceMap already relies on,
+    // so no extra config is needed. Results are cached per (chain, token, tf).
+    // ============================================================================
+    const priceHistoryCache = {}; // key -> { ts, series: [[msTs, price], ...] }
+    const PRICE_HISTORY_TTL_MS = 60_000;
+    const TF_CONFIG = {
+        d:   { days: 1,    label: '24h' },
+        w:   { days: 7,    label: '7d'  },
+        m:   { days: 30,   label: '30d' },
+        '3m':{ days: 90,   label: '90d' },
+        y:   { days: 365,  label: '1y'  },
+        all: { days: 'max',label: 'All' },
+    };
+    let currentPricePanel = { asset: null, chain: null, tf: 'm', series: null };
+
+    async function fetchPriceHistory(chain, address, days) {
+        const cacheKey = `${chain.chainId}:${(address || 'native').toLowerCase()}:${days}`;
+        const cached = priceHistoryCache[cacheKey];
+        if (cached && Date.now() - cached.ts < PRICE_HISTORY_TTL_MS) return cached.series;
+        const platforms = await getAssetPlatforms();
+        const info = platforms[chain.chainId];
+        if (!info) return null;
+        let url;
+        if (address) {
+            url = `https://api.coingecko.com/api/v3/coins/${info.platform}/contract/${address.toLowerCase()}/market_chart?vs_currency=usd&days=${days}`;
+        } else {
+            if (!info.nativeCoinId) return null;
+            url = `https://api.coingecko.com/api/v3/coins/${info.nativeCoinId}/market_chart?vs_currency=usd&days=${days}`;
+        }
+        try {
+            const resp = await fetch(cgUrl(url));
+            if (!resp.ok) return null;
+            const data = await resp.json();
+            const series = (data && Array.isArray(data.prices)) ? data.prices : null;
+            if (!series || series.length < 2) return null;
+            priceHistoryCache[cacheKey] = { ts: Date.now(), series };
+            return series;
+        } catch (e) {
+            console.warn('Price history fetch failed', e);
+            return null;
+        }
+    }
+
+    function openPricePanelForAsset(index) {
+        const a = lastRenderedAssets[index];
+        if (!a) return;
+        openPricePanel(a);
+    }
+
+    function openPricePanel(asset) {
+        const chain = activeChain();
+        currentPricePanel = { asset, chain, tf: 'm', series: null };
+        const panel = document.getElementById('pricePanel');
+        // Header
+        document.getElementById('pricePanelSymbol').textContent = asset.symbol;
+        document.getElementById('pricePanelIcon').innerHTML = tokenIconHTML({ symbol: asset.symbol, logoURI: asset.icon }, 24);
+        // Meta grid
+        document.getElementById('priceMetaNetwork').textContent = chain.name;
+        document.getElementById('priceMetaSymbol').textContent = asset.symbol;
+        document.getElementById('priceMetaContract').textContent = asset.address ? asset.address : 'Native asset';
+        // Holdings
+        document.getElementById('priceHoldingAmount').textContent = `${asset.amount.toLocaleString(undefined, { maximumFractionDigits: 6 })} ${asset.symbol}`;
+        document.getElementById('priceHoldingValue').textContent = asset.usdPrice > 0
+            ? `$${(asset.amount * asset.usdPrice).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+            : '$0.00';
+        // Explorer icon → open contract or address on the active chain
+        const expBtn = document.getElementById('pricePanelExplorer');
+        expBtn.onclick = () => {
+            const base = chain.explorer;
+            if (!base) return;
+            const url = asset.address
+                ? `${base.replace(/\/$/, '')}/token/${asset.address}`
+                : `${base.replace(/\/$/, '')}`;
+            window.open(url, '_blank', 'noopener');
+        };
+        // Reset timeframe tabs to M (matches the default in your screenshot)
+        document.querySelectorAll('.tf-tab').forEach(el => el.classList.toggle('active', el.dataset.tf === 'm'));
+        panel.classList.add('open');
+        panel.setAttribute('aria-hidden', 'false');
+        document.body.style.overflow = 'hidden';
+        loadAndRenderPriceHistory();
+    }
+
+    function closePricePanel() {
+        const panel = document.getElementById('pricePanel');
+        panel.classList.remove('open');
+        panel.setAttribute('aria-hidden', 'true');
+        document.body.style.overflow = '';
+        // Reset transient chart state
+        currentPricePanel.series = null;
+        hideCrosshair();
+    }
+
+    function setTimeframe(tf) {
+        if (!TF_CONFIG[tf]) return;
+        currentPricePanel.tf = tf;
+        document.querySelectorAll('.tf-tab').forEach(el => el.classList.toggle('active', el.dataset.tf === tf));
+        loadAndRenderPriceHistory();
+    }
+
+    async function loadAndRenderPriceHistory() {
+        const { asset, chain, tf } = currentPricePanel;
+        if (!asset || !chain) return;
+        const loading = document.getElementById('chartLoading');
+        const empty = document.getElementById('chartEmpty');
+        const svg = document.getElementById('chartSvg');
+        loading.classList.remove('hidden');
+        empty.classList.add('hidden');
+        svg.innerHTML = '';
+        const days = TF_CONFIG[tf].days;
+        const series = await fetchPriceHistory(chain, asset.address, days);
+        // Bail out if the panel was closed or the user switched timeframe mid-flight
+        if (currentPricePanel.asset !== asset || currentPricePanel.tf !== tf) return;
+        loading.classList.add('hidden');
+        if (!series || series.length < 2) {
+            empty.classList.remove('hidden');
+            // Fall back to current spot price in header when we have no history
+            document.getElementById('priceHeaderValue').textContent = asset.usdPrice > 0 ? formatPrice(asset.usdPrice) : '—';
+            document.getElementById('priceHeaderChange').textContent = '—';
+            document.getElementById('priceHeaderChange').className = 'price-header-change price-change-flat';
+            return;
+        }
+        currentPricePanel.series = series;
+        const first = series[0][1];
+        const last = series[series.length - 1][1];
+        const pct = first > 0 ? ((last - first) / first) * 100 : 0;
+        document.getElementById('priceHeaderValue').textContent = formatPrice(last);
+        const changeEl = document.getElementById('priceHeaderChange');
+        const sign = pct > 0 ? '+' : '';
+        changeEl.textContent = `${sign}${pct.toFixed(2)}%`;
+        changeEl.className = 'price-header-change ' + (pct > 0.01 ? 'price-change-up' : pct < -0.01 ? 'price-change-down' : 'price-change-flat');
+        drawChart(series, pct >= 0);
+    }
+
+    function formatPrice(p) {
+        if (!isFinite(p) || p <= 0) return '—';
+        if (p >= 1) return `$${p.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 })}`;
+        if (p >= 0.01) return `$${p.toFixed(4)}`;
+        // For sub-cent prices, keep 5 significant figures — matches the $0.00015 look in the reference
+        return `$${p.toPrecision(5)}`;
+    }
+
+    function drawChart(series, isUp) {
+        const svg = document.getElementById('chartSvg');
+        const W = 600, H = 240, PAD_T = 12, PAD_B = 28, PAD_X = 4;
+        const values = series.map(p => p[1]);
+        const times = series.map(p => p[0]);
+        const min = Math.min(...values), max = Math.max(...values);
+        const range = max - min || 1;
+        const n = series.length;
+        const xFor = i => PAD_X + (i / (n - 1)) * (W - 2 * PAD_X);
+        const yFor = v => PAD_T + (1 - (v - min) / range) * (H - PAD_T - PAD_B);
+        // Line path
+        let d = '';
+        for (let i = 0; i < n; i++) {
+            const x = xFor(i), y = yFor(values[i]);
+            d += (i === 0 ? 'M' : 'L') + x.toFixed(2) + ',' + y.toFixed(2);
+        }
+        // Area path (line + drop to baseline)
+        const areaBase = H - PAD_B;
+        const areaD = d + `L${xFor(n - 1).toFixed(2)},${areaBase} L${xFor(0).toFixed(2)},${areaBase} Z`;
+        const stroke = isUp ? '#60a5fa' : '#60a5fa'; // keep blue like the reference; sign is already colored in the header
+        const gradId = 'chartGrad_' + Math.floor(Math.random() * 1e6);
+        // X-axis labels — pick 4 evenly-spaced timestamps
+        const labelIdxs = [0, Math.floor(n / 3), Math.floor((2 * n) / 3), n - 1];
+        const labels = labelIdxs.map(i => ({ x: xFor(i), text: shortDateLabel(times[i], currentPricePanel.tf) }));
+        svg.innerHTML = `
+            <defs>
+                <linearGradient id="${gradId}" x1="0" x2="0" y1="0" y2="1">
+                    <stop offset="0%" stop-color="${stroke}" stop-opacity="0.35"/>
+                    <stop offset="100%" stop-color="${stroke}" stop-opacity="0"/>
+                </linearGradient>
+            </defs>
+            <path d="${areaD}" fill="url(#${gradId})"></path>
+            <path d="${d}" fill="none" stroke="${stroke}" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"></path>
+            ${labels.map(l => `<text x="${l.x.toFixed(1)}" y="${H - 6}" text-anchor="middle" fill="rgba(255,255,255,0.5)" font-size="11" font-family="Inter, sans-serif">${l.text}</text>`).join('')}
+            <line id="chartCrosshairLine" class="chart-crosshair-line" x1="0" y1="${PAD_T}" x2="0" y2="${H - PAD_B}" style="display:none"></line>
+            <circle id="chartCrosshairDot" class="chart-crosshair-dot" cx="0" cy="0" r="4" style="display:none"></circle>
+        `;
+        attachChartInteractions(series, W, H);
+    }
+
+    function shortDateLabel(ts, tf) {
+        const d = new Date(ts);
+        if (tf === 'd') {
+            return d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+        }
+        if (tf === 'w' || tf === 'm' || tf === '3m') {
+            return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+        }
+        // y / all
+        return d.toLocaleDateString(undefined, { month: 'short', year: '2-digit' });
+    }
+
+    function attachChartInteractions(series, W, H) {
+        const wrap = document.getElementById('chartWrap');
+        const svg = document.getElementById('chartSvg');
+        const line = document.getElementById('chartCrosshairLine');
+        const dot = document.getElementById('chartCrosshairDot');
+        const tip = document.getElementById('chartTooltip');
+        const priceEl = document.getElementById('chartTooltipPrice');
+        const timeEl = document.getElementById('chartTooltipTime');
+        const PAD_T = 12, PAD_B = 28, PAD_X = 4;
+        const values = series.map(p => p[1]);
+        const min = Math.min(...values), max = Math.max(...values);
+        const range = max - min || 1;
+        const n = series.length;
+
+        function move(clientX) {
+            const rect = svg.getBoundingClientRect();
+            const rel = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+            const i = Math.round(rel * (n - 1));
+            const [ts, v] = series[i];
+            const svgX = PAD_X + (i / (n - 1)) * (W - 2 * PAD_X);
+            const svgY = PAD_T + (1 - (v - min) / range) * (H - PAD_T - PAD_B);
+            line.setAttribute('x1', svgX); line.setAttribute('x2', svgX); line.style.display = '';
+            dot.setAttribute('cx', svgX); dot.setAttribute('cy', svgY); dot.style.display = '';
+            // Position the HTML tooltip in pixel space (svg is stretched via viewBox)
+            const pxX = (svgX / W) * rect.width;
+            tip.style.left = Math.max(40, Math.min(rect.width - 40, pxX)) + 'px';
+            tip.style.top = '4px';
+            tip.classList.add('visible');
+            priceEl.textContent = formatPrice(v);
+            timeEl.textContent = new Date(ts).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+        }
+
+        wrap.onmousemove = e => move(e.clientX);
+        wrap.onmouseleave = () => hideCrosshair();
+        wrap.ontouchstart = e => { if (e.touches[0]) move(e.touches[0].clientX); };
+        wrap.ontouchmove = e => { if (e.touches[0]) { move(e.touches[0].clientX); e.preventDefault(); } };
+        wrap.ontouchend = () => hideCrosshair();
+    }
+
+    function hideCrosshair() {
+        const line = document.getElementById('chartCrosshairLine');
+        const dot = document.getElementById('chartCrosshairDot');
+        const tip = document.getElementById('chartTooltip');
+        if (line) line.style.display = 'none';
+        if (dot) dot.style.display = 'none';
+        if (tip) tip.classList.remove('visible');
+    }
+
+    function pricePanelAction(kind) {
+        const { asset, chain } = currentPricePanel;
+        if (!asset) return;
+        if (kind === 'explorer') {
+            const base = chain.explorer;
+            if (!base) return;
+            const url = asset.address
+                ? `${base.replace(/\/$/, '')}/token/${asset.address}`
+                : `${base.replace(/\/$/, '')}`;
+            window.open(url, '_blank', 'noopener');
+            return;
+        }
+        // Close first so the underlying tab is visible when it activates
+        closePricePanel();
+        if (kind === 'send') {
+            switchTab('send');
+            // Best-effort: preselect this token in the send form if the select exists
+            setTimeout(() => {
+                const sel = document.getElementById('sendTokenSelect');
+                if (sel && asset.address) { sel.value = asset.address; sel.dispatchEvent(new Event('change')); }
+            }, 50);
+        } else if (kind === 'receive') {
+            switchTab('receive');
+        } else if (kind === 'swap') {
+            switchTab('swap');
+        }
+    }
+
+    // Close on Escape for keyboard users
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            const p = document.getElementById('pricePanel');
+            if (p && p.classList.contains('open')) closePricePanel();
+        }
+    });
     function renderAll() {
         const w = getActiveWallet();
         renderWalletSwitcher();
@@ -3009,8 +3586,11 @@
         const sel = document.getElementById('sendToken');
         if (!sel) return;
         const chain = activeChain();
+        // Union of curated + auto-discovered so a real held asset that only
+        // Alchemy knows about (not on the curated/custom list) can still be sent,
+        // not just viewed in the assets list / swap picker.
         const options = [`<option value="native">${chain.symbol} (native)</option>`]
-            .concat(chainTokens(chain).map(t => `<option value="${t.address}">${t.symbol}</option>`));
+            .concat(chainTokensWithDiscovered(chain).map(t => `<option value="${t.address}">${t.symbol}</option>`));
         sel.innerHTML = options.join('');
         onSendTokenChange();
     }
@@ -3022,7 +3602,7 @@
         if (sel.value === 'native') {
             hint.textContent = `Balance: ${liveNativeBalance.toLocaleString(undefined, { maximumFractionDigits: 6 })} ${chain.symbol}`;
         } else {
-            const t = chainTokens(chain).find(t => t.address === sel.value);
+            const t = chainTokensWithDiscovered(chain).find(t => t.address.toLowerCase() === sel.value.toLowerCase());
             const b = liveTokenBalances[sel.value.toLowerCase()];
             hint.textContent = `Balance: ${(b ? b.amount : 0).toLocaleString(undefined, { maximumFractionDigits: 6 })} ${t ? t.symbol : ''}`;
         }
@@ -3065,7 +3645,8 @@
                     }
                     tx = await signer.sendTransaction({ to, value: valueWei });
                 } else {
-                    const t = chainTokens(chain).find(t => t.address === tokenSel);
+                    const t = chainTokensWithDiscovered(chain).find(t => t.address.toLowerCase() === tokenSel.toLowerCase());
+                    if (!t) throw new Error('Unknown token — refresh your wallet and try again');
                     const c = new ethers.Contract(tokenSel, ERC20_ABI, signer);
                     tx = await c.transfer(to, ethers.parseUnits(amount, t.decimals));
                 }
@@ -3200,12 +3781,142 @@
             </button>
         `).join('');
     }
+    // Debounce handle for address-lookup so we don't spam the RPC on every keystroke
+    let _pickerAddrTimer = null;
+    let _pickerAddrLoading = false;
+
     function renderTokenPickerList() {
         const list = document.getElementById('tokenPickerList');
+        const addrResult = document.getElementById('tokenPickerAddressResult');
         if (!list) return;
-        const q = (document.getElementById('tokenPickerSearch')?.value || '').trim().toLowerCase();
-        const tokens = getChainSwapTokens().filter(t => !q || t.symbol.toLowerCase().includes(q) || t.name.toLowerCase().includes(q));
-        list.innerHTML = renderPickerItems(tokens) || `<p class="text-sm text-slate-400 text-center py-4">No tokens match "${escapeHtml(q)}"</p>`;
+        const raw = (document.getElementById('tokenPickerSearch')?.value || '').trim();
+        const q = raw.toLowerCase();
+
+        // ── Contract-address search ──────────────────────────────────────────
+        // If the query looks like a 0x hex address, attempt to resolve it from
+        // the chain instead of filtering the curated list (which may not contain it).
+        const isAddress = /^0x[0-9a-fA-F]{40}$/.test(raw);
+        if (addrResult) addrResult.classList.add('hidden');
+        clearTimeout(_pickerAddrTimer);
+
+        if (isAddress) {
+            // Check if we already know this token (curated / custom / discovered)
+            const known = getSwapTokenByAddress(raw);
+            if (known) {
+                list.innerHTML = renderPickerItems([known]);
+                return;
+            }
+            // Show a loading placeholder while we resolve
+            if (addrResult) {
+                addrResult.classList.remove('hidden');
+                addrResult.innerHTML = `<div class="token-picker-item opacity-60"><i class="fas fa-spinner fa-spin mr-2"></i>Looking up contract…</div>`;
+            }
+            list.innerHTML = '';
+            _pickerAddrTimer = setTimeout(() => resolvePickerAddress(raw), 400);
+            return;
+        }
+
+        // ── Normal name/symbol search ────────────────────────────────────────
+        const tokens = getChainSwapTokens().filter(t =>
+            !q ||
+            t.symbol.toLowerCase().includes(q) ||
+            t.name.toLowerCase().includes(q) ||
+            t.address.toLowerCase().startsWith(q)
+        );
+        list.innerHTML = renderPickerItems(tokens) ||
+            `<p class="text-sm text-slate-400 text-center py-4">No tokens match.<br><span class="text-xs opacity-60">Paste a contract address (0x…) to import any token.</span></p>`;
+        if (addrResult) addrResult.classList.add('hidden');
+    }
+
+    async function resolvePickerAddress(address) {
+        const addrResult = document.getElementById('tokenPickerAddressResult');
+        const list = document.getElementById('tokenPickerList');
+        if (_pickerAddrLoading) return;
+        _pickerAddrLoading = true;
+        try {
+            // Try Alchemy metadata first (fast, one call); fall back to on-chain
+            // ERC-20 calls if the Alchemy route isn't available.
+            let meta = await fetchTokenMetadata(state.activeNetwork, address.toLowerCase());
+            if (!meta || !meta.symbol) {
+                // Alchemy metadata unavailable — read from the contract directly
+                meta = await withRpcFallback(state.activeNetwork, async (provider) => {
+                    const c = new ethers.Contract(address, ERC20_ABI, provider);
+                    const [sym, dec, name] = await Promise.all([c.symbol(), c.decimals(), c.name().catch(() => null)]);
+                    return { address: address.toLowerCase(), symbol: sym, decimals: Number(dec), name: name || sym, logoURI: '' };
+                });
+            }
+            if (!meta || !meta.symbol) throw new Error('Not a valid ERC-20 contract on this network');
+
+            const token = {
+                address: address.toLowerCase(),
+                symbol: meta.symbol,
+                name: meta.name || meta.symbol,
+                decimals: meta.decimals,
+                logoURI: meta.logoURI || meta.logo || '',
+                verified: false,
+                amount: 0,
+                usdPrice: 0,
+            };
+
+            // Cache it so it survives a re-render
+            registerSwapToken(token);
+            if (addrResult) {
+                addrResult.classList.remove('hidden');
+                addrResult.innerHTML = `
+                    <div class="glass-card p-3 rounded-xl flex items-center gap-3">
+                        ${tokenIconHTML(token, 28)}
+                        <div class="flex-1 min-w-0">
+                            <p class="text-sm font-semibold">${escapeHtml(token.symbol)}</p>
+                            <p class="text-xs text-slate-400 truncate">${escapeHtml(token.name)}</p>
+                            <p class="wallet-address text-xs text-slate-500 truncate">${escapeHtml(address)}</p>
+                        </div>
+                        <button class="btn-gold text-xs px-3 py-2 flex-shrink-0" onclick="importAndSelectPickerToken('${address}')">
+                            <i class="fas fa-plus mr-1"></i>Import &amp; Select
+                        </button>
+                    </div>`;
+            }
+            if (list) list.innerHTML = '';
+        } catch (e) {
+            console.warn('resolvePickerAddress failed', e);
+            if (addrResult) {
+                addrResult.classList.remove('hidden');
+                addrResult.innerHTML = `<div class="token-picker-item text-red-400 text-sm"><i class="fas fa-xmark-circle mr-2"></i>Not a valid ERC-20 on ${escapeHtml(activeChain().name)}: ${escapeHtml(e.message || 'unknown error')}</div>`;
+            }
+            if (list) list.innerHTML = '';
+        } finally {
+            _pickerAddrLoading = false;
+        }
+    }
+
+    // Import the resolved token into customTokens + discoveredTokensCache, then select it.
+    async function importAndSelectPickerToken(address) {
+        const addrL = address.toLowerCase();
+        const chain = activeChain();
+        const token = getSwapTokenByAddress(addrL);
+        if (!token) { showToast('Token not resolved yet — wait a moment', 'error'); return; }
+
+        // Add to customTokens so it persists and appears in Send + Settings
+        state.customTokens = state.customTokens || {};
+        state.customTokens[chain.key] = state.customTokens[chain.key] || [];
+        const alreadyCustom = state.customTokens[chain.key].some(t => t.address.toLowerCase() === addrL);
+        if (!alreadyCustom) {
+            state.customTokens[chain.key].push({ address: addrL, symbol: token.symbol, decimals: token.decimals, logoURI: token.logoURI || '', name: token.name || token.symbol });
+            saveState();
+        }
+
+        // Ensure the discovered cache knows about it so chainTokensWithDiscovered picks it up
+        discoveredTokensCache[chain.key] = discoveredTokensCache[chain.key] || {};
+        discoveredTokensCache[chain.key][addrL] = { symbol: token.symbol, name: token.name || token.symbol, decimals: token.decimals, logoURI: token.logoURI || '', address: addrL };
+
+        // Re-register with live balance info (may be 0 — updated on next refresh)
+        registerSwapToken({ ...token, amount: 0, usdPrice: 0 });
+
+        populateSendTokenSelect();
+        renderCustomTokensList();
+        showToast(`${token.symbol} imported`, 'success');
+
+        // Now select it in the picker
+        selectSwapToken(addrL);
     }
     function selectSwapToken(address) {
         const side = swapPickerSide;
@@ -3419,6 +4130,44 @@
             showToast('Swap sent, waiting for confirmation…', 'info');
             await confirmAcrossRpcs(chainKey, txHash);
             showToast('Swap confirmed', 'success');
+
+            // ── Auto-register the received token so it appears in the wallet immediately ──
+            // After the swap settles on-chain, the received token is now held by the
+            // wallet. Register it into customTokens + discoveredTokensCache right away
+            // so refreshWallet() below picks it up and renders it without the user
+            // needing to manually import it in Settings.
+            try {
+                const toAddrSwap = document.getElementById('swapToToken')?.value;
+                if (toAddrSwap && toAddrSwap.toLowerCase() !== NATIVE_PSEUDO.toLowerCase()) {
+                    const toAddrL = toAddrSwap.toLowerCase();
+                    const toTokSwap = getSwapTokenByAddress(toAddrSwap);
+                    if (toTokSwap) {
+                        // Add to discovered cache for the active chain
+                        discoveredTokensCache[chainKey] = discoveredTokensCache[chainKey] || {};
+                        if (!discoveredTokensCache[chainKey][toAddrL]) {
+                            discoveredTokensCache[chainKey][toAddrL] = {
+                                symbol: toTokSwap.symbol, name: toTokSwap.name || toTokSwap.symbol,
+                                decimals: toTokSwap.decimals, logoURI: toTokSwap.logoURI || '', address: toAddrL,
+                            };
+                        }
+                        // Also persist in customTokens so it survives page reload
+                        state.customTokens = state.customTokens || {};
+                        state.customTokens[chainKey] = state.customTokens[chainKey] || [];
+                        const alreadySaved = chainTokens(chain).some(t => t.address.toLowerCase() === toAddrL);
+                        if (!alreadySaved) {
+                            state.customTokens[chainKey].push({
+                                address: toAddrL, symbol: toTokSwap.symbol,
+                                decimals: toTokSwap.decimals, logoURI: toTokSwap.logoURI || '',
+                                name: toTokSwap.name || toTokSwap.symbol,
+                            });
+                            saveState();
+                            renderCustomTokensList();
+                            populateSendTokenSelect();
+                        }
+                    }
+                }
+            } catch (_autoRegErr) { /* non-fatal */ }
+
             // Referral fee — its own transfer, sent only after the swap above has
             // succeeded, so a fee-transfer hiccup never undoes or blocks the swap.
             if (feeWeiForThisSwap > 0n) {
@@ -3445,5 +4194,7 @@
     boot();
     </script>
 <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v4513226cdae34746b4dedf0b4dfa099e1781791509496" integrity="sha512-ZE9pZaUXND66v380QUtch/5sE9tPFh2zg45pR2PB0CVkCtOREv2AJKkSidISWkysEuQ0EH8faUU5du78bx87UQ==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79","server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
+<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v4513226cdae34746b4dedf0b4dfa099e1781791509496" integrity="sha512-ZE9pZaUXND66v380QUtch/5sE9tPFh2zg45pR2PB0CVkCtOREv2AJKkSidISWkysEuQ0EH8faUU5du78bx87UQ==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79"}' crossorigin="anonymous"></script>
+<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v4513226cdae34746b4dedf0b4dfa099e1781791509496" integrity="sha512-ZE9pZaUXND66v380QUtch/5sE9tPFh2zg45pR2PB0CVkCtOREv2AJKkSidISWkysEuQ0EH8faUU5du78bx87UQ==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79"}' crossorigin="anonymous"></script>
 </body>
 </html>
