@@ -2308,11 +2308,22 @@
         }
         showToast('Reading token contract…', 'info');
         try {
-            const token = await withRpcFallback(state.activeNetwork, async (provider) => {
-                const c = new ethers.Contract(address, ERC20_ABI, provider);
-                const [symbol, decimals] = await Promise.all([c.symbol(), c.decimals()]);
-                return { address, symbol, decimals: Number(decimals), logoURI: '' };
-            });
+            // Alchemy's metadata endpoint first — it's the only source that has a
+            // logo at all (a plain eth_call to symbol()/decimals() has no concept
+            // of one; ERC-20 doesn't define a logo field). Falls back to raw
+            // on-chain reads if Alchemy's unreachable for this chain — same
+            // fallback shape as the token picker's paste-address flow already uses.
+            let token = null;
+            const meta = await fetchTokenMetadata(state.activeNetwork, address.toLowerCase());
+            if (meta && meta.symbol) {
+                token = { address, symbol: meta.symbol, name: meta.name, decimals: meta.decimals, logoURI: meta.logoURI || '' };
+            } else {
+                token = await withRpcFallback(state.activeNetwork, async (provider) => {
+                    const c = new ethers.Contract(address, ERC20_ABI, provider);
+                    const [symbol, decimals] = await Promise.all([c.symbol(), c.decimals()]);
+                    return { address, symbol, decimals: Number(decimals), logoURI: '' };
+                });
+            }
             state.customTokens = state.customTokens || {};
             state.customTokens[chain.key] = state.customTokens[chain.key] || [];
             state.customTokens[chain.key].push(token);
@@ -3265,6 +3276,7 @@
     // either. See Settings → RPC on <chain> for a live connection test.
     // ============================================================================
     let nftCache = [];
+    let nftLoadToken = 0; // guards against a slow, stale fetch overwriting a newer one
     async function loadNfts() {
     const w = getActiveWallet();
     const chain = activeChain();
@@ -3275,6 +3287,7 @@
     const unavailable = document.getElementById('nftUnavailable');
     const loading = document.getElementById('nftLoading');
     if (!w || !grid) return;
+    const myToken = ++nftLoadToken;
 
     // Reset UI
     grid.innerHTML = '';
@@ -3296,42 +3309,88 @@
     }
 
     // Build Alchemy NFT API URL (v3 getNFTsForOwner)
-    const url = `https://${subdomain}.g.alchemy.com/nft/v3/${ALCHEMY_API_KEY}/getNFTsForOwner`
+    const baseUrl = `https://${subdomain}.g.alchemy.com/nft/v3/${ALCHEMY_API_KEY}/getNFTsForOwner`
         + `?owner=${w.address}&withMetadata=true&pageSize=100`;
 
-    try {
+    // Fetches one page with a couple of retries on 429/5xx. withMetadata=true makes each
+    // page a heavier, slower call, and large collections (many pages back-to-back) can
+    // trip Alchemy's per-second rate limit on lower tiers — without this, one rate-limited
+    // page used to throw away every page already fetched, which is exactly what "still
+    // missing NFTs, only on the chains with big collections" looks like.
+    async function fetchNftPage(url, attempt = 0) {
         const res = await fetch(url, { cache: 'no-store' });
-        if (!res.ok) throw new Error(`Alchemy responded ${res.status}`);
-        const data = await res.json();
-        const items = data.ownedNfts || data.nfts || [];
-        nftCache = items;
-
-        loading.classList.add('hidden');
-        if (items.length === 0) {
-            empty.classList.remove('hidden');
-            return;
+        if (res.status === 429 && attempt < 3) {
+            await new Promise(r => setTimeout(r, 500 * (attempt + 1)));
+            return fetchNftPage(url, attempt + 1);
         }
+        if (!res.ok) throw new Error(`Alchemy responded ${res.status}`);
+        return res.json();
+    }
 
-        grid.innerHTML = items.map((nft, i) => {
-            const img = nft.image?.cachedUrl || nft.image?.thumbnailUrl || nft.image?.originalUrl || '';
-            const name = nft.name || nft.contract?.name || `#${nft.tokenId}`;
-            return `
-                <div class="glass-card rounded-xl overflow-hidden cursor-pointer hover:opacity-80 transition" onclick="openNftDetail(${i})">
-                    <img src="${img}" alt="${escapeHtml(name)}" class="w-full aspect-square object-cover bg-slate-800" loading="lazy"
-                         onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22200%22 height=%22200%22%3E%3Crect width=%22200%22 height=%22200%22 fill=%22%231e293b%22/%3E%3C/svg%3E'">
-                    <p class="text-xs font-medium p-2 truncate">${escapeHtml(name)}</p>
-                </div>`;
-        }).join('');
+    let items = [];
+    let totalCount = null;
+    let partial = false;
+    try {
+        let pageKey = null;
+        let pages = 0;
+        do {
+            const url = baseUrl + (pageKey ? `&pageKey=${encodeURIComponent(pageKey)}` : '');
+            let data;
+            try {
+                data = await fetchNftPage(url);
+            } catch (pageErr) {
+                // Keep whatever pages already succeeded instead of discarding them —
+                // a partial list beats an empty one, and we tell the user it's partial.
+                console.warn(`NFT page ${pages + 1} failed, showing ${items.length} loaded so far`, pageErr);
+                partial = true;
+                break;
+            }
+            if (myToken !== nftLoadToken) return; // a newer loadNfts() call has taken over
+            items = items.concat(data.ownedNfts || data.nfts || []);
+            if (typeof data.totalCount === 'number') totalCount = data.totalCount;
+            pageKey = data.pageKey || null;
+            pages++;
+            if (pageKey && loading) {
+                const p = loading.querySelector('p:last-child');
+                if (p) p.textContent = `Loading NFTs… (${items.length}${totalCount ? ' of ' + totalCount : ''} so far)`;
+            }
+            // Small gap between pages so a big collection doesn't burst-fire requests
+            // fast enough to trip Alchemy's per-second rate limit.
+            if (pageKey) await new Promise(r => setTimeout(r, 200));
+        } while (pageKey && pages < 20);
     } catch (e) {
+        if (myToken !== nftLoadToken) return;
         console.warn('NFT load failed (Alchemy direct call)', e);
         loading.classList.add('hidden');
         unavailable.classList.remove('hidden');
-        // Update the text inside unavailable to show the error
         const titleEl = unavailable.querySelector('p.mb-1');
         if (titleEl) titleEl.textContent = "Couldn't load NFTs.";
         const detailEl = unavailable.querySelector('p.text-xs');
         if (detailEl) detailEl.textContent = (e && e.message) ? e.message : 'Alchemy request failed – see console for details.';
+        return;
     }
+
+    if (myToken !== nftLoadToken) return;
+    nftCache = items;
+    loading.classList.add('hidden');
+    if (items.length === 0) {
+        empty.classList.remove('hidden');
+        return;
+    }
+
+    const shortfallNote = (partial || (totalCount != null && totalCount > items.length))
+        ? `<p class="text-xs text-amber-400 col-span-full mb-1">Showing ${items.length}${totalCount ? ' of ' + totalCount : ''} — Alchemy rate-limited a later page. Tap Refresh to retry.</p>`
+        : '';
+    grid.innerHTML = shortfallNote + items.map((nft, i) => {
+        const img = nft.image?.cachedUrl || nft.image?.thumbnailUrl || nft.image?.originalUrl || '';
+        const name = nft.name || nft.contract?.name || `#${nft.tokenId}`;
+        return `
+            <div class="glass-card rounded-xl overflow-hidden cursor-pointer hover:opacity-80 transition" onclick="openNftDetail(${i})">
+                <img src="${img}" alt="${escapeHtml(name)}" class="w-full aspect-square object-cover bg-slate-800" loading="lazy"
+                     onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22200%22 height=%22200%22%3E%3Crect width=%22200%22 height=%22200%22 fill=%22%231e293b%22/%3E%3C/svg%3E'">
+                <p class="text-xs font-medium p-2 truncate">${escapeHtml(name)}</p>
+            </div>`;
+    }).join('');
 }
     function openNftDetail(i) {
         const nft = nftCache[i];
