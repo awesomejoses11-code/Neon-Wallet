@@ -816,78 +816,103 @@
                         <div class="glass-card p-3 rounded-xl text-xs text-slate-300 flex items-start gap-2">
                             <i class="fas fa-circle-info text-yellow-400 mt-0.5"></i>
                             <div>Swaps are routed through <strong class="gold-text">Omniston</strong> — STON.fi's cross-DEX aggregator (STON.fi, DeDust, Tonco). Quotes from all resolvers are compared and the one with the best price is used automatically. A <strong>0.75% platform fee</strong> is included in the quoted rate. </div>
+                        </div>
                     </div>
 
                     <!-- ===================== SETTINGS TAB ===================== -->
+                    <!-- Card-per-section layout mirroring the EVM reference wallet:
+                         Display / Security / Wallet Management / Address Book /
+                         Custom Jettons / TON API Endpoints. TON has one network,
+                         so "Custom Networks" from the EVM version is repurposed
+                         as swappable toncenter+tonapi endpoints. -->
                     <div id="settings" class="tab-content space-y-4">
                         <button class="btn-outline px-3 py-2" onclick="switchTab('wallet', event)"><i class="fas fa-arrow-left mr-1"></i>Back</button>
 
-                        <!-- Preferences -->
                         <div class="glass-card p-5 rounded-xl">
+                            <h2 class="text-xl font-bold mb-4"><i class="fas fa-sliders mr-2" style="color:#FFD700"></i>Display</h2>
                             <div class="pref-row">
-                                <div class="pref-label">
-                                    <div class="title">Auto-refresh</div>
-                                    <div class="desc">Refresh balance every 30s</div>
-                                </div>
-                                <label class="switch pref-control">
-                                    <input type="checkbox" id="pref-auto-refresh" onchange="onPrefChange('autoRefresh', this.checked)" />
-                                    <span class="slider"></span>
-                                </label>
+                                <div class="pref-label"><div class="title">Auto-refresh</div><div class="desc">Refresh balance every 30s</div></div>
+                                <label class="switch pref-control"><input type="checkbox" id="pref-auto-refresh" onchange="onPrefChange('autoRefresh', this.checked)" /><span class="slider"></span></label>
                             </div>
                             <div class="pref-row">
-                                <div class="pref-label">
-                                    <div class="title">Show USD Values</div>
-                                    <div class="desc">Display balances in USD</div>
-                                </div>
-                                <label class="switch pref-control">
-                                    <input type="checkbox" id="pref-show-usd" onchange="onPrefChange('showUsd', this.checked)" />
-                                    <span class="slider"></span>
-                                </label>
+                                <div class="pref-label"><div class="title">Show USD Values</div><div class="desc">Display balances in USD</div></div>
+                                <label class="switch pref-control"><input type="checkbox" id="pref-show-usd" onchange="onPrefChange('showUsd', this.checked)" /><span class="slider"></span></label>
                             </div>
                             <div class="pref-row">
-                                <div class="pref-label">
-                                    <div class="title">Hide Zero Balances</div>
-                                    <div class="desc">Hide zero-value tokens in asset lists</div>
-                                </div>
-                                <label class="switch pref-control">
-                                    <input type="checkbox" id="pref-hide-zero" onchange="onToggleHideZeroAssets(this.checked)" />
-                                    <span class="slider"></span>
-                                </label>
-                            </div>
-                            <div class="pref-row" id="biometric-pref-row">
-                                <div class="pref-label">
-                                    <div class="title"><i class="fas fa-fingerprint"></i>Biometric Unlock</div>
-                                    <div class="desc">Use device biometrics (WebAuthn PRF)</div>
-                                </div>
-                                <label class="switch pref-control">
-                                    <input type="checkbox" id="pref-biometric" onchange="onBiometricSwitchChange(this)" />
-                                    <span class="slider"></span>
-                                </label>
-                            </div>
-                            <div class="pref-row">
-                                <div class="pref-label">
-                                    <div class="title"><i class="fas fa-clock"></i>Auto-Lock</div>
-                                    <div class="desc">Lock wallet after inactivity</div>
-                                </div>
-                                <select id="pref-auto-lock" class="pref-select pref-control" onchange="onPrefChange('autoLockMinutes', parseInt(this.value, 10))">
-                                    <option value="0">Never</option>
-                                    <option value="1">1 minute</option>
-                                    <option value="5">5 minutes</option>
-                                    <option value="15">15 minutes</option>
-                                    <option value="30">30 minutes</option>
-                                </select>
+                                <div class="pref-label"><div class="title">Hide Zero Balances</div><div class="desc">Hide zero-value tokens in asset lists</div></div>
+                                <label class="switch pref-control"><input type="checkbox" id="pref-hide-zero" onchange="onToggleHideZeroAssets(this.checked)" /><span class="slider"></span></label>
                             </div>
                         </div>
 
-                        <!-- Wallet actions -->
                         <div class="glass-card p-5 rounded-xl">
-                            <div class="settings-action-list">
+                            <h2 class="text-xl font-bold mb-4"><i class="fas fa-shield-halved mr-2" style="color:#FFD700"></i>Security</h2>
+                            <div class="pref-row" id="biometric-pref-row">
+                                <div class="pref-label"><div class="title"><i class="fas fa-fingerprint"></i>Biometric Unlock</div><div class="desc">Use device biometrics (WebAuthn PRF)</div></div>
+                                <label class="switch pref-control"><input type="checkbox" id="pref-biometric" onchange="onBiometricSwitchChange(this)" /><span class="slider"></span></label>
+                            </div>
+                            <div class="pref-row">
+                                <div class="pref-label"><div class="title"><i class="fas fa-clock"></i>Auto-Lock</div><div class="desc">Lock wallet after inactivity</div></div>
+                                <select id="pref-auto-lock" class="pref-select pref-control" onchange="onPrefChange('autoLockMinutes', parseInt(this.value, 10))">
+                                    <option value="0">Never</option><option value="1">1 minute</option><option value="5">5 minutes</option><option value="15">15 minutes</option><option value="30">30 minutes</option>
+                                </select>
+                            </div>
+                            <div class="settings-action-list mt-3">
                                 <button class="settings-action primary" onclick="lockWallet()"><i class="fas fa-lock"></i>Lock Wallet Now</button>
                                 <button class="settings-action ghost" onclick="openChangePasswordModal()"><i class="fas fa-key"></i>Change Password</button>
+                            </div>
+                        </div>
+
+                        <div class="glass-card p-5 rounded-xl">
+                            <h2 class="text-xl font-bold mb-4"><i class="fas fa-wallet mr-2" style="color:#FFD700"></i>Wallet Management</h2>
+                            <div class="settings-action-list">
                                 <button class="settings-action ghost" onclick="openExportBackupModal()"><i class="fas fa-download"></i>Export Wallet</button>
                                 <button class="settings-action ghost" onclick="goImportFromSettings()"><i class="fas fa-upload"></i>Import Wallet</button>
                                 <button class="settings-action ghost" onclick="showSeedModal()"><i class="fas fa-eye"></i>Reveal Seed</button>
                                 <button class="settings-action danger" onclick="confirmDeleteWallet()"><i class="fas fa-trash"></i>Delete Wallet</button>
+                            </div>
+                        </div>
+
+                        <div class="glass-card p-5 rounded-xl">
+                            <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
+                                <h2 class="text-xl font-bold"><i class="fas fa-address-book mr-2" style="color:#FFD700"></i>Address Book</h2>
+                                <button class="btn-outline text-sm px-3 py-2" onclick="addToAddressBook()"><i class="fas fa-plus mr-2"></i>Add</button>
+                            </div>
+                            <p class="text-xs text-slate-500 mb-3">Saved recipients — tap the paper-plane icon on any entry to prefill it in the Send tab.</p>
+                            <div id="addressBookList" class="space-y-2"></div>
+                        </div>
+
+                        <div class="glass-card p-5 rounded-xl">
+                            <div class="flex items-center justify-between mb-2 flex-wrap gap-2">
+                                <h2 class="text-xl font-bold"><i class="fas fa-coins mr-2" style="color:#FFD700"></i>Custom Jettons</h2>
+                                <button class="btn-outline text-sm px-3 py-2" onclick="importCustomJetton()"><i class="fas fa-plus mr-2"></i>Import Jetton</button>
+                            </div>
+                            <p class="text-xs text-slate-500 mb-3">Paste a jetton master contract address — symbol, decimals and image are read from TonAPI. Held jettons already appear automatically; use this for jettons you plan to receive.</p>
+                            <div id="customJettonsList" class="space-y-2"></div>
+                        </div>
+
+                        <div class="glass-card p-5 rounded-xl">
+                            <div class="flex items-center justify-between mb-2 flex-wrap gap-2">
+                                <h2 class="text-xl font-bold"><i class="fas fa-server mr-2" style="color:#FFD700"></i>TON API Endpoints</h2>
+                                <button class="btn-outline text-sm px-3 py-2" onclick="testTonEndpoints()"><i class="fas fa-satellite-dish mr-2"></i>Test Connection</button>
+                            </div>
+                            <p class="text-xs text-slate-500 mb-3">Toncenter is used for on-chain reads/broadcasts; TonAPI for jettons, NFTs and history. Override either with your own endpoint (e.g. a paid tier or self-hosted instance) to jump ahead of the public defaults.</p>
+                            <div id="endpointTestResults" class="space-y-1 mb-3"></div>
+                            <div class="space-y-2">
+                                <div>
+                                    <label class="text-xs text-slate-400">Toncenter base URL</label>
+                                    <div class="flex gap-2 mt-1">
+                                        <input type="text" id="toncenterOverrideInput" class="input-field flex-1" placeholder="https://toncenter.com" />
+                                        <button class="btn-outline px-4 py-2 text-sm" onclick="saveEndpointOverride('toncenter')">Save</button>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="text-xs text-slate-400">TonAPI base URL</label>
+                                    <div class="flex gap-2 mt-1">
+                                        <input type="text" id="tonapiOverrideInput" class="input-field flex-1" placeholder="https://tonapi.io" />
+                                        <button class="btn-outline px-4 py-2 text-sm" onclick="saveEndpointOverride('tonapi')">Save</button>
+                                    </div>
+                                </div>
+                                <button class="btn-outline w-full py-2 text-sm text-slate-400" onclick="resetEndpointOverrides()"><i class="fas fa-rotate-left mr-2"></i>Reset to defaults</button>
                             </div>
                         </div>
                     </div>
@@ -1217,7 +1242,18 @@
         /* ==============================================================
            USER PREFERENCES (auto-refresh, USD display, auto-lock)
            ============================================================== */
-        const DEFAULT_PREFS = { autoRefresh: true, showUsd: true, autoLockMinutes: 5, hideZeroAssets: false, swapSlippageBps: 100, swapMaxHops: 2 };
+        // Preferences model — same shape as the EVM reference's `state` slice for
+        // user config, but here we keep it in a dedicated `prefs` object because
+        // the TON wallet already scoped settings that way. Extended to cover the
+        // imported settings surface: address book, custom jettons, and API
+        // endpoint overrides.
+        const DEFAULT_PREFS = {
+            autoRefresh: true, showUsd: true, autoLockMinutes: 5, hideZeroAssets: false,
+            swapSlippageBps: 100, swapMaxHops: 2,
+            addressBook: [],           // [{ label, address }]
+            customJettons: [],         // [{ address, symbol, name, decimals, image }]
+            endpointOverrides: {},     // { toncenter?: string, tonapi?: string }
+        };
         function loadPrefs() {
             try {
                 const raw = localStorage.getItem(CONFIG.storage.preferences);
@@ -2718,9 +2754,163 @@
             if (event && event.target) event.target.classList.add("active");
             if (tabName === "history") loadTransactionHistory();
             if (tabName === "nfts") loadNfts();
-            if (tabName === "swap") {
-                initSwapTab();
+            if (tabName === "swap") initSwapTab();
+            if (tabName === "settings") { renderAddressBook(); renderCustomJettonsList(); syncEndpointOverrideInputs(); }
+        }
+
+        /* ==============================================================
+           SETTINGS — Address Book / Custom Jettons / TON API Endpoints
+           (imported from the EVM reference wallet, adapted for TON)
+           ============================================================== */
+
+        // ---- Address book -----------------------------------------------------
+        function addToAddressBook() {
+            const label = (prompt('Label (e.g. "Exchange deposit"):') || "").trim();
+            if (!label) return;
+            const address = (prompt("TON address (raw or user-friendly):") || "").trim();
+            if (!address) return;
+            if (!isValidTonAddress(address)) { showToast("Invalid TON address", "exclamation"); return; }
+            prefs.addressBook = prefs.addressBook || [];
+            if (prefs.addressBook.some(e => e.address === address)) { showToast("Address already saved", "circle-info"); return; }
+            prefs.addressBook.push({ label, address });
+            savePrefs(prefs);
+            renderAddressBook();
+            showToast("Saved to address book", "circle-check");
+        }
+        function removeFromAddressBook(address) {
+            prefs.addressBook = (prefs.addressBook || []).filter(e => e.address !== address);
+            savePrefs(prefs);
+            renderAddressBook();
+        }
+        function pickFromAddressBook(address) {
+            const el = document.getElementById("send-address") || document.getElementById("sendAddress") || document.querySelector('#send input[type="text"]');
+            if (el) { el.value = address; showToast("Recipient set", "circle-check"); }
+            switchTab("send");
+        }
+        function renderAddressBook() {
+            const list = document.getElementById("addressBookList");
+            if (!list) return;
+            const book = prefs.addressBook || [];
+            if (book.length === 0) { list.innerHTML = '<p class="text-sm text-slate-500">No saved addresses yet.</p>'; return; }
+            list.innerHTML = book.map(e => `
+                <div class="flex items-center justify-between glass-card p-3 rounded-xl">
+                    <div class="flex-1 min-w-0 mr-3">
+                        <p class="text-sm font-medium">${escapeHtml(e.label)}</p>
+                        <p class="font-mono text-xs text-slate-400 truncate">${escapeHtml(e.address)}</p>
+                    </div>
+                    <div class="flex gap-2">
+                        <button class="btn-outline text-xs px-2 py-1" onclick="pickFromAddressBook('${escapeHtml(e.address)}')" title="Use"><i class="fas fa-paper-plane"></i></button>
+                        <button class="btn-outline text-xs px-2 py-1 text-red-400" onclick="removeFromAddressBook('${escapeHtml(e.address)}')" title="Remove"><i class="fas fa-trash"></i></button>
+                    </div>
+                </div>`).join("");
+        }
+
+        // ---- Custom jettons ---------------------------------------------------
+        // Held jettons already surface via fetchJettonBalances(); this adds any
+        // jetton the user wants pinned before they hold a balance (e.g. for a
+        // planned receive). Metadata comes from TonAPI's /v2/jettons/{address}.
+        async function importCustomJetton() {
+            const address = (prompt("Jetton master contract address:") || "").trim();
+            if (!address) return;
+            if (!isValidTonAddress(address)) { showToast("Invalid jetton address", "exclamation"); return; }
+            prefs.customJettons = prefs.customJettons || [];
+            if (prefs.customJettons.some(j => j.address === address)) { showToast("Jetton already imported", "circle-info"); return; }
+            showToast("Reading jetton metadata…", "circle-info");
+            try {
+                const res = await fetch(`${getTonApiBase()}/v2/jettons/${encodeURIComponent(address)}`);
+                if (!res.ok) throw new Error("HTTP " + res.status);
+                const data = await res.json();
+                const meta = data.metadata || {};
+                const jetton = {
+                    address,
+                    symbol: meta.symbol || "JETTON",
+                    name: meta.name || meta.symbol || "Unknown Jetton",
+                    decimals: Number.isFinite(+meta.decimals) ? +meta.decimals : 9,
+                    image: meta.image || "",
+                };
+                prefs.customJettons.push(jetton);
+                savePrefs(prefs);
+                renderCustomJettonsList();
+                if (typeof refreshBalances === "function") refreshBalances().catch(() => {});
+                showToast(`${jetton.symbol} added`, "circle-check");
+            } catch (e) {
+                console.error("jetton metadata fetch failed", e);
+                showToast("Couldn't read jetton metadata: " + (e.message || e), "exclamation");
             }
+        }
+        function removeCustomJetton(address) {
+            prefs.customJettons = (prefs.customJettons || []).filter(j => j.address !== address);
+            savePrefs(prefs);
+            renderCustomJettonsList();
+            if (typeof refreshBalances === "function") refreshBalances().catch(() => {});
+        }
+        function renderCustomJettonsList() {
+            const list = document.getElementById("customJettonsList");
+            if (!list) return;
+            const jettons = prefs.customJettons || [];
+            if (jettons.length === 0) { list.innerHTML = '<p class="text-sm text-slate-500">No custom jettons imported yet.</p>'; return; }
+            list.innerHTML = jettons.map(j => `
+                <div class="flex items-center justify-between glass-card p-3 rounded-xl">
+                    <div class="flex-1 min-w-0 mr-3">
+                        <p class="text-sm font-medium">${escapeHtml(j.symbol)} <span class="text-slate-500 text-xs">(${escapeHtml(j.name)})</span></p>
+                        <p class="font-mono text-xs text-slate-400 truncate">${escapeHtml(j.address)}</p>
+                    </div>
+                    <button class="btn-outline text-xs px-2 py-1 text-red-400" onclick="removeCustomJetton('${escapeHtml(j.address)}')" title="Remove"><i class="fas fa-trash"></i></button>
+                </div>`).join("");
+        }
+
+        // ---- TON API endpoint overrides --------------------------------------
+        function syncEndpointOverrideInputs() {
+            const tc = document.getElementById("toncenterOverrideInput");
+            const ta = document.getElementById("tonapiOverrideInput");
+            const o = prefs.endpointOverrides || {};
+            if (tc) tc.value = o.toncenter || "";
+            if (ta) ta.value = o.tonapi    || "";
+        }
+        function saveEndpointOverride(key) {
+            const input = document.getElementById(key === "toncenter" ? "toncenterOverrideInput" : "tonapiOverrideInput");
+            const url = (input?.value || "").trim();
+            if (url && !/^https?:\/\//i.test(url)) { showToast("Enter a valid https:// URL", "exclamation"); return; }
+            prefs.endpointOverrides = prefs.endpointOverrides || {};
+            if (url) prefs.endpointOverrides[key] = url.replace(/\/$/, "");
+            else delete prefs.endpointOverrides[key];
+            savePrefs(prefs);
+            showToast(url ? `${key} endpoint updated` : `${key} reset to default`, "circle-check");
+            if (typeof refreshBalances === "function") refreshBalances().catch(() => {});
+        }
+        function resetEndpointOverrides() {
+            prefs.endpointOverrides = {};
+            savePrefs(prefs);
+            syncEndpointOverrideInputs();
+            const results = document.getElementById("endpointTestResults"); if (results) results.innerHTML = "";
+            showToast("Endpoints reset to defaults", "circle-check");
+            if (typeof refreshBalances === "function") refreshBalances().catch(() => {});
+        }
+        async function testTonEndpoints() {
+            const results = document.getElementById("endpointTestResults");
+            if (!results) return;
+            const targets = [
+                { key: "toncenter", url: `${getApiBase()}/api/v2/getMasterchainInfo`, label: "Toncenter" },
+                { key: "tonapi",    url: `${getTonApiBase()}/v2/status`,               label: "TonAPI"   },
+            ];
+            results.innerHTML = targets.map((t, i) => `
+                <div class="flex items-center justify-between text-xs py-1" id="epTestRow${i}">
+                    <span class="font-mono truncate flex-1 mr-2">${escapeHtml(t.label)} — ${escapeHtml(t.url)}</span>
+                    <span class="text-slate-500"><i class="fas fa-spinner fa-spin"></i></span>
+                </div>`).join("");
+            await Promise.all(targets.map(async (t, i) => {
+                const row = document.getElementById(`epTestRow${i}`);
+                const started = performance.now();
+                try {
+                    const res = await fetch(t.url, { cache: "no-store" });
+                    const ms = Math.round(performance.now() - started);
+                    if (row) row.querySelector("span:last-child").innerHTML = res.ok
+                        ? `<span class="text-green-400"><i class="fas fa-check"></i> ${ms}ms</span>`
+                        : `<span class="text-red-400"><i class="fas fa-xmark"></i> HTTP ${res.status}</span>`;
+                } catch (e) {
+                    if (row) row.querySelector("span:last-child").innerHTML = `<span class="text-red-400"><i class="fas fa-xmark"></i> ${escapeHtml((e && e.message) || "failed")}</span>`;
+                }
+            }));
         }
 
         /* ==============================================================
@@ -3675,8 +3865,16 @@
         /* ==============================================================
            API & BALANCES
            ============================================================== */
-        function getApiBase() { return "https://toncenter.com"; }
-        function getTonApiBase() { return "https://tonapi.io"; }
+        // Single resolver — endpoint overrides from Settings take precedence over
+        // the built-in defaults. Callers keep using getApiBase / getTonApiBase
+        // with no changes.
+        const DEFAULT_ENDPOINTS = { toncenter: "https://toncenter.com", tonapi: "https://tonapi.io" };
+        function resolveEndpoint(key) {
+            const override = prefs.endpointOverrides && prefs.endpointOverrides[key];
+            return (override && /^https?:\/\//i.test(override) ? override.replace(/\/$/, "") : DEFAULT_ENDPOINTS[key]);
+        }
+        function getApiBase()    { return resolveEndpoint("toncenter"); }
+        function getTonApiBase() { return resolveEndpoint("tonapi"); }
         async function fetchPrices() {
             const now = Date.now();
             if (state.tonPrice > 0 && (now - _pricesFetchedAt < PRICE_CACHE_MS)) return;
@@ -5239,8 +5437,7 @@
             }
         });
     </script>
-<script defer src="https://static.cloudflareinsights.com/beacon.min.js/v4513226cdae34746b4dedf0b4dfa099e1781791509496" integrity="sha512-ZE9pZaUXND66v380QUtch/5sE9tPFh2zg45pR2PB0CVkCtOREv2AJKkSidISWkysEuQ0EH8faUU5du78bx87UQ==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79","server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
-<script defer src="https://static.cloudflareinsights.com/beacon.min.js/v4513226cdae34746b4dedf0b4dfa099e1781791509496" integrity="sha512-ZE9pZaUXND66v380QUtch/5sE9tPFh2zg45pR2PB0CVkCtOREv2AJKkSidISWkysEuQ0EH8faUU5du78bx87UQ==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79","server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js/v4513226cdae34746b4dedf0b4dfa099e1781791509496" integrity="sha512-ZE9pZaUXND66v380QUtch/5sE9tPFh2zg45pR2PB0CVkCtOREv2AJKkSidISWkysEuQ0EH8faUU5du78bx87UQ==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79"}' crossorigin="anonymous"></script>
 <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v4513226cdae34746b4dedf0b4dfa099e1781791509496" integrity="sha512-ZE9pZaUXND66v380QUtch/5sE9tPFh2zg45pR2PB0CVkCtOREv2AJKkSidISWkysEuQ0EH8faUU5du78bx87UQ==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79"}' crossorigin="anonymous"></script>
 </body>
 </html>
