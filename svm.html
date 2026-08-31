@@ -888,6 +888,7 @@ buffer/index.js:
                             <p id="swapTimeTaken" class="font-semibold">—</p>
                         </div>
                     </div>
+                    <div id="swapPriceDiff" class="text-xs mt-3 hidden"></div>
                     <div id="swapQuoteMeta" class="text-xs text-slate-400 mt-3"></div>
                 </div>
             </div>
@@ -1681,6 +1682,13 @@ buffer/index.js:
     let currentSwapFeeLamports = 0;
     let refreshInFlight = false;
     let rpcConnections = new Map();
+    // Which wallets have had a LIVE (this-session) balance/history fetch succeed.
+    // Deliberately not persisted to state/localStorage — resetting on every page
+    // load is the whole point, so last session's cached numbers never get shown
+    // as if they were current. Populated in refreshWallet()/loadHistory(); read
+    // by renderBalance()/renderAssets()/renderHistory() to gate what's on screen.
+    let freshBalanceWalletIds = new Set();
+    let freshHistoryWalletIds = new Set();
 
     // ============================================================================
     // Security layer — password-based encryption + WebAuthn biometrics
@@ -2657,6 +2665,7 @@ buffer/index.js:
             w.transactions = transactions;
             w.activityScore = activityScore;
             w.lastActivityAt = lastActivityAt || w.lastActivityAt || 0;
+            freshHistoryWalletIds.add(w.id);
             renderHistory();
         } catch (e) {
             console.warn('History load failed', e);
@@ -2704,6 +2713,7 @@ buffer/index.js:
 
             if (balanceResult.status === 'fulfilled') {
                 w.balance = balanceResult.value / LAMPORTS_PER_SOL;
+                freshBalanceWalletIds.add(w.id);
             } else {
                 failures.push('balance');
                 console.warn('balance fetch failed', balanceResult.reason);
@@ -2785,6 +2795,7 @@ buffer/index.js:
                 w.transactions = historyResult.value.transactions;
                 w.activityScore = historyResult.value.activityScore;
                 w.lastActivityAt = historyResult.value.lastActivityAt || w.lastActivityAt || 0;
+                freshHistoryWalletIds.add(w.id);
             } else {
                 failures.push('transaction history');
                 console.warn('history fetch failed', historyResult.reason);
@@ -3273,6 +3284,16 @@ buffer/index.js:
             return json.result;
         }, 10000);
     }
+    // Classifies a price-impact/difference percentage into a severity tier.
+    // Thresholds match what Jupiter's own frontend and most DEX UIs use, so the
+    // coloring means what users already expect from other swap interfaces.
+    function priceImpactTier(pct) {
+        const abs = Math.abs(Number(pct) || 0);
+        if (abs < 0.5) return { cls: 'text-emerald-400', label: 'Good' };
+        if (abs < 2)   return { cls: 'text-amber-400',   label: 'Moderate' };
+        if (abs < 5)   return { cls: 'text-orange-400',  label: 'High' };
+        return              { cls: 'text-red-400',      label: 'Severe' };
+    }
     // Values the swap in USD (preferring the input side, falling back to the
     // output side) and converts 0.75% of that + the flat $0.005 into lamports
     // at the current SOL price. Returns 0 (fee skipped, never guessed) if we
@@ -3327,7 +3348,12 @@ buffer/index.js:
             const card = document.getElementById('swapQuoteCard');
             if (card) card.classList.remove('hidden');
             const route = (quote.routePlan || []).map(r => r.swapInfo?.label).filter(Boolean);
-            document.getElementById('swapRouteLabel').textContent = route.length ? route.join(' → ') : 'Best route';
+            const routeEl = document.getElementById('swapRouteLabel');
+            if (routeEl) {
+                routeEl.innerHTML = route.length
+                    ? `<i class="fas fa-bolt text-amber-400 mr-1"></i>Auto-routed via ${route.join(' → ')}`
+                    : `<i class="fas fa-bolt text-amber-400 mr-1"></i>Best route`;
+            }
             document.getElementById('swapQuoteOut').textContent = formatTokenAmount(quote.outAmount, toToken.decimals, toToken.symbol);
             document.getElementById('swapMinReceive').textContent = formatTokenAmount(quote.otherAmountThreshold, toToken.decimals, toToken.symbol);
             document.getElementById('swapTimeTaken').textContent = `${Math.round(Number(quote.timeTaken || 0) * 1000)} ms`;
@@ -3335,8 +3361,34 @@ buffer/index.js:
             document.getElementById('swapQuoteMeta').textContent = `Input ${amount} ${fromToken.symbol} • ${quote.routePlan?.length || 0} hop(s) • Slippage ${(slippageBps / 100).toFixed(2)}%`;
             const receiveBig = document.getElementById('swapQuoteOutBig');
             if (receiveBig) receiveBig.textContent = (Number(quote.outAmount) / Math.pow(10, toToken.decimals)).toLocaleString(undefined, { maximumFractionDigits: Math.min(toToken.decimals, 6) });
+            const impactPct = Number(quote.priceImpactPct || 0);
             const impactEl = document.getElementById('swapPriceImpact');
-            if (impactEl) impactEl.textContent = `Impact ${Number(quote.priceImpactPct || 0).toFixed(2)}%`;
+            if (impactEl) {
+                const tier = priceImpactTier(impactPct);
+                impactEl.innerHTML = `<span class="${tier.cls}"><i class="fas fa-circle text-[6px] mr-1"></i>${tier.label} · ${impactPct.toFixed(2)}% impact</span>`;
+            }
+            // Market-value comparison: what you're putting in vs. what you're
+            // getting out, both priced at current spot — a more concrete read
+            // than the raw impact percentage alone (which is Jupiter's own
+            // internal slippage/depth estimate, not tied to an external price).
+            const diffEl = document.getElementById('swapPriceDiff');
+            if (diffEl) {
+                const inUi  = Number(quote.inAmount)  / Math.pow(10, fromToken.decimals);
+                const outUi = Number(quote.outAmount) / Math.pow(10, toToken.decimals);
+                const inUsd  = fromToken.usdPrice > 0 ? inUi  * fromToken.usdPrice : 0;
+                const outUsd = toToken.usdPrice   > 0 ? outUi * toToken.usdPrice  : 0;
+                if (inUsd > 0 && outUsd > 0) {
+                    const diffPct = ((outUsd - inUsd) / inUsd) * 100;
+                    const tier = priceImpactTier(diffPct);
+                    diffEl.classList.remove('hidden');
+                    diffEl.innerHTML = `<span class="text-slate-400">Market value:</span> ` +
+                        `$${inUsd.toFixed(2)} in → $${outUsd.toFixed(2)} out ` +
+                        `<span class="${tier.cls} font-semibold">(${diffPct >= 0 ? '+' : ''}${diffPct.toFixed(2)}%)</span>`;
+                } else {
+                    diffEl.classList.add('hidden');
+                    diffEl.innerHTML = '';
+                }
+            }
             showToast('Quote updated', 'success');
         } catch (e) {
             console.error(e);
@@ -3845,6 +3897,12 @@ buffer/index.js:
         const w = getActiveWallet();
         const totalEl = document.getElementById('totalBalance');
         if (!w || !totalEl) return;
+        if (!freshBalanceWalletIds.has(w.id)) {
+            // Last session's number would be indistinguishable from a current one —
+            // show a spinner instead of a dollar figure that might be stale.
+            totalEl.innerHTML = '<i class="fas fa-spinner fa-spin text-2xl opacity-60"></i>';
+            return;
+        }
         let totalUsd = Number(w.balance || 0) * solPriceUsd;
         for (const t of (w.tokens || [])) {
             totalUsd += Number(t.amount || 0) * Number(t.usdPrice || 0);
@@ -3866,6 +3924,12 @@ buffer/index.js:
         const loading = document.getElementById('assetsLoading');
         const empty = document.getElementById('assetsEmpty');
         if (!w || !list) return;
+        if (!freshBalanceWalletIds.has(w.id)) {
+            loading.classList.remove('hidden');
+            empty.classList.add('hidden');
+            list.innerHTML = '';
+            return;
+        }
         loading.classList.add('hidden');
         let items = [{ symbol: 'SOL', name: 'Solana', amount: w.balance || 0, decimals: 9, mint: null, icon: JUPITER_MAINNET_TOKENS[0].logoURI, usdPrice: solPriceUsd }];
         for (const t of (w.tokens || [])) {
@@ -4324,7 +4388,17 @@ buffer/index.js:
         const w = getActiveWallet();
         const list = document.getElementById('historyList');
         const empty = document.getElementById('historyEmpty');
+        const loading = document.getElementById('historyLoading');
+        const unavailable = document.getElementById('historyUnavailable');
         if (!w || !list) return;
+        if (!freshHistoryWalletIds.has(w.id)) {
+            if (loading) loading.classList.remove('hidden');
+            if (empty) empty.classList.add('hidden');
+            if (unavailable) unavailable.classList.add('hidden');
+            list.innerHTML = '';
+            return;
+        }
+        if (loading) loading.classList.add('hidden');
         const txs = w.transactions || [];
         if (txs.length === 0) {
             list.innerHTML = '';
