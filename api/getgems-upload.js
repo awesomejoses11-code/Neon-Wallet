@@ -91,10 +91,8 @@ export default async function handler(req, res) {
         form.append(field.name, field.value);
       }
     }
-    // The signed S3 POST requires the object key as well as the returned fields.
-    if (!cfg.formFields.some((field) => field?.name === 'key')) {
-      form.append('key', cfg.keyPrefix + filename);
-    }
+    // Follow Getgems' published cNFT upload example: submit only the
+    // returned formFields plus the file. Do not synthesize an S3 key.
     form.append('file', new Blob([image], { type: contentType }), filename);
 
     const storageResponse = await fetch(cfg.uploadUrl, { method: 'POST', body: form });
@@ -104,7 +102,7 @@ export default async function handler(req, res) {
     }
 
     // Getgems' cNFT example uses urlPrefix as the complete image URL.
-    return res.status(200).json({ success: true, response: { imageUrl: cfg.urlPrefix + filename } });
+    return res.status(200).json({ success: true, response: { imageUrl: cfg.urlPrefix } });
   } catch (error) {
     console.error('[Getgems image upload proxy]', error.message);
     return sendError(res, error.status || 502, error.message || 'Image upload failed');
