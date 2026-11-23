@@ -56,6 +56,9 @@ A minimal set of Vercel Node serverless functions exist purely to keep provider 
 |---|---|
 | `api/rpc.js` | Generic JSON-RPC proxy. No `chain` query param → Solana path (Alchemy → Helius → public RPC). `?chain=ethereum\|base\|arbitrum\|polygon\|bsc` → forwards to the matching Alchemy subdomain, falling back to a public RPC per chain. Enforces a method allowlist on both paths (e.g. blocks `eth_sendRawTransaction`-adjacent abuse vectors, disallows unbounded `getProgramAccounts`-style calls). |
 | `api/nft.js` | Forwards `GET /api/nft?chain=<key>&owner=<address>` to Alchemy's NFT API v3 for the matching chain. |
+| `api/getgems.js` | Authenticated, allowlisted proxy for Getgems image-upload credentials, batch minting, wallet balance, and batch status. The API token and dashboard access key stay server-side. |
+
+The separate mobile dashboard is available at `/getgems-minter.html`. It selects up to 100 local images, uploads them directly to Getgems storage, and submits a V2 batch mint.
 | `lib/proxy-utils.js` | Shared CORS headers + a lightweight in-memory per-IP rate limiter, imported by both functions above. |
 
 **Required environment variables** (Vercel → Settings → Environment Variables):
@@ -65,7 +68,10 @@ A minimal set of Vercel Node serverless functions exist purely to keep provider 
 | `ALCHEMY_API_KEY` | `api/rpc.js`, `api/nft.js` | One key, works across all 5 EVM chains |
 | `ALCHEMY_SOLANA_KEY` | `api/rpc.js` | Solana RPC via Alchemy |
 | `HELIUS_API_KEY` | `api/rpc.js` | Solana RPC fallback |
-| `ALLOWED_ORIGIN` | `lib/proxy-utils.js` | Optional; defaults to `*` |
+| `ALLOWED_ORIGIN` | `lib/proxy-utils.js`, `api/getgems.js` | Optional; defaults to `*`. Set to your deployed site origin for the minting tool |
+| `GETGEMS_API_TOKEN` | `api/getgems.js` | Your regenerated Getgems API authorization token; never put this in frontend code |
+| `GETGEMS_DASHBOARD_KEY` | `api/getgems.js` | A separate strong password you create to protect the minting dashboard |
+| `GETGEMS_COLLECTION_ADDRESS` | `api/getgems.js` | Optional; defaults to the collection configured for this tool |
 
 None of the frontend files need an env var — `evm.html`'s proxy calls are same-origin (`RPC_PROXY_BASE = ''`), so whatever domain this repo deploys to is automatically correct with no hardcoded URL to keep in sync.
 
@@ -100,7 +106,7 @@ Then open `http://localhost:8000/evm.html` (or `wallet.html` / `svm.html`). The 
 ## Security notes
 
 - Private keys and seed phrases never leave the browser — all signing is client-side
-- The `/api` proxy only ever relays *reads* (RPC queries, price lookups, NFT metadata) using server-held API keys; it has no ability to sign or move funds
+- The wallet proxies relay reads and RPC calls. The separate Getgems endpoint can request paid NFT mints from the configured Getgems minting wallet; it never receives a wallet seed phrase or private key. Protect it with a strong `GETGEMS_DASHBOARD_KEY` and restrict `ALLOWED_ORIGIN`
 - Rate limiting is per-IP and in-memory (resets on cold start) — a basic abuse deterrent, not a hard global cap
 - No analytics, no third-party trackers
 
