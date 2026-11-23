@@ -56,9 +56,9 @@ A minimal set of Vercel Node serverless functions exist purely to keep provider 
 |---|---|
 | `api/rpc.js` | Generic JSON-RPC proxy. No `chain` query param → Solana path (Alchemy → Helius → public RPC). `?chain=ethereum\|base\|arbitrum\|polygon\|bsc` → forwards to the matching Alchemy subdomain, falling back to a public RPC per chain. Enforces a method allowlist on both paths (e.g. blocks `eth_sendRawTransaction`-adjacent abuse vectors, disallows unbounded `getProgramAccounts`-style calls). |
 | `api/nft.js` | Forwards `GET /api/nft?chain=<key>&owner=<address>` to Alchemy's NFT API v3 for the matching chain. |
-| `api/getgems.js` | Authenticated, allowlisted proxy for Getgems image-upload credentials, batch minting, wallet balance, and batch status. The API token and dashboard access key stay server-side. |
+| `api/getgems.js` | Authenticated, allowlisted proxy for Getgems cNFT image-upload credentials, opening cNFT minting, adding cNFT items, and wallet balance. The API token and dashboard access key stay server-side. |
 
-The separate mobile dashboard is available at `/getgems-minter.html`. It selects up to 100 local images, uploads them directly to Getgems storage, and submits a V2 batch mint.
+The separate mobile dashboard is available at `/getgems-minter.html`. It selects up to 100 local images, uploads them directly to Getgems storage, and submits them to the existing cNFT collection through the documented cNFT API. cNFT indexes must be unique; the dashboard asks for the next unused index.
 | `lib/proxy-utils.js` | Shared CORS headers + a lightweight in-memory per-IP rate limiter, imported by both functions above. |
 
 **Required environment variables** (Vercel → Settings → Environment Variables):
@@ -69,7 +69,7 @@ The separate mobile dashboard is available at `/getgems-minter.html`. It selects
 | `ALCHEMY_SOLANA_KEY` | `api/rpc.js` | Solana RPC via Alchemy |
 | `HELIUS_API_KEY` | `api/rpc.js` | Solana RPC fallback |
 | `ALLOWED_ORIGIN` | `lib/proxy-utils.js`, `api/getgems.js` | Optional; defaults to `*`. Set to your deployed site origin for the minting tool |
-| `GETGEMS_API_TOKEN` | `api/getgems.js` | Your regenerated Getgems API authorization token; never put this in frontend code |
+| `GETGEMS_API_TOKEN` | `api/getgems.js` | Your Getgems cNFT API authorization token for the configured collection; never put this in frontend code |
 | `GETGEMS_DASHBOARD_KEY` | `api/getgems.js` | A separate strong password you create to protect the minting dashboard |
 | `GETGEMS_COLLECTION_ADDRESS` | `api/getgems.js` | Optional; defaults to the collection configured for this tool |
 

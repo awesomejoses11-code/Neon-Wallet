@@ -4,213 +4,72 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#080d19">
-<title>Getgems Bulk Minter · Neon Wallet</title>
+<title>Getgems cNFT Bulk Minter · Neon Wallet</title>
 <style>
 :root{color-scheme:dark;--bg:#080d19;--panel:#111a2b;--line:#263650;--muted:#94a7c3;--text:#edf4ff;--cyan:#4de4f0;--gold:#f4c96b;--red:#ff7777;--green:#66e2a2}
-*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 80% -10%,#17304b 0,transparent 42%),var(--bg);color:var(--text);font:15px/1.5 system-ui,-apple-system,Segoe UI,sans-serif;padding:22px 14px 48px}
-main{max-width:900px;margin:auto}.top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:22px}.brand{font-weight:800;letter-spacing:.04em}.brand span{color:var(--cyan)}a{color:var(--cyan)}.tag{font-size:12px;color:var(--gold);border:1px solid #66532d;padding:5px 9px;border-radius:99px}
-h1{font-size:clamp(27px,6vw,40px);line-height:1.1;margin:12px 0 8px}p{color:var(--muted);margin:5px 0 16px}.panel{background:linear-gradient(145deg,#121e31,#0d1524);border:1px solid var(--line);border-radius:18px;padding:18px;margin:14px 0;box-shadow:0 12px 35px #0003}
-h2{font-size:17px;margin:0 0 13px}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.field{display:flex;flex-direction:column;gap:6px}.field.full{grid-column:1/-1}label{font-size:12px;color:var(--muted)}input,textarea{width:100%;background:#08111f;border:1px solid #31435f;color:var(--text);border-radius:10px;padding:12px;font:inherit;min-width:0}textarea{min-height:76px;resize:vertical}
-button,.filepick{border:0;border-radius:11px;padding:12px 15px;background:linear-gradient(110deg,#31cbdc,#68e4ed);color:#07131e;font-weight:800;font-size:14px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px}
-button.secondary{background:#1b2a41;color:var(--text);border:1px solid #3b506d}button.danger{background:#3a2028;color:#ffc0c0;border:1px solid #74404a}button:disabled{opacity:.45;cursor:not-allowed}.actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:13px}.filebox{border:1px dashed #526b8c;border-radius:13px;padding:18px;text-align:center;background:#0a1423}.filebox input{display:none}.filepick{margin:0 auto 8px}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:14px 0}.stat{background:#0a1423;border:1px solid #263750;border-radius:12px;padding:12px}.stat b{display:block;font-size:21px}.stat small{color:var(--muted)}
-.progress{height:9px;background:#26364c;border-radius:99px;overflow:hidden;margin:10px 0}.progress>i{display:block;height:100%;width:0;background:linear-gradient(90deg,#33c7d8,#8af0c1);transition:width .2s}
-.notice{border-left:3px solid var(--gold);padding:10px 12px;background:#2a2417;color:#f5dfac;border-radius:7px;font-size:13px;margin:12px 0}.status{font-size:13px;color:var(--muted);white-space:pre-wrap;overflow-wrap:anywhere}.status.good{color:var(--green)}.status.bad{color:var(--red)}.list{max-height:340px;overflow:auto;border:1px solid var(--line);border-radius:10px}.item{display:grid;grid-template-columns:44px 1fr auto;gap:10px;align-items:center;padding:9px 11px;border-bottom:1px solid #202e43;font-size:13px}.item:last-child{border:0}.thumb{width:44px;height:44px;object-fit:cover;border-radius:7px;background:#1b2a41}.pill{font-size:11px;padding:3px 7px;border-radius:99px;background:#25364d;color:#bcd1ed}.pill.ready{background:#153a30;color:#86efbd}.pill.problem{background:#46262c;color:#ffb0b0}
-small.note{color:var(--muted);display:block;margin-top:8px}.hidden{display:none!important}
-@media(max-width:560px){body{padding:14px 10px 35px}.panel{padding:14px}.grid{grid-template-columns:1fr}.stats{grid-template-columns:repeat(3,1fr)}.stat{padding:9px}.stat b{font-size:18px}.actions button{flex:1}}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 80% -10%,#17304b 0,transparent 42%),var(--bg);color:var(--text);font:15px/1.5 system-ui,-apple-system,Segoe UI,sans-serif;padding:20px 13px 44px}main{max-width:900px;margin:auto}.top{display:flex;justify-content:space-between;gap:10px;margin-bottom:20px}.brand{font-weight:800;letter-spacing:.04em}.brand span{color:var(--cyan)}.tag{font-size:12px;color:var(--gold);border:1px solid #66532d;padding:5px 9px;border-radius:99px}h1{font-size:clamp(27px,6vw,39px);line-height:1.1;margin:12px 0 8px}h2{font-size:17px;margin:0 0 13px}p{color:var(--muted);margin:5px 0 15px}.panel{background:linear-gradient(145deg,#121e31,#0d1524);border:1px solid var(--line);border-radius:17px;padding:17px;margin:14px 0}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.field{display:flex;flex-direction:column;gap:6px}.full{grid-column:1/-1}label{font-size:12px;color:var(--muted)}input,textarea{width:100%;background:#08111f;border:1px solid #31435f;color:var(--text);border-radius:10px;padding:12px;font:inherit;min-width:0}textarea{min-height:75px}button,.filepick{border:0;border-radius:10px;padding:12px 15px;background:linear-gradient(110deg,#31cbdc,#68e4ed);color:#07131e;font-weight:800;font-size:14px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center}button.secondary{background:#1b2a41;color:var(--text);border:1px solid #3b506d}button:disabled{opacity:.45;cursor:not-allowed}.actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:13px}.filebox{border:1px dashed #526b8c;border-radius:13px;padding:18px;text-align:center;background:#0a1423}.filebox input{display:none}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:14px 0}.stat{background:#0a1423;border:1px solid #263750;border-radius:11px;padding:10px}.stat b{display:block;font-size:20px}.stat small,.note{color:var(--muted)}.notice{border-left:3px solid var(--gold);padding:10px 12px;background:#2a2417;color:#f5dfac;border-radius:7px;font-size:13px;margin:12px 0}.status{font-size:13px;color:var(--muted);white-space:pre-wrap;overflow-wrap:anywhere;margin-top:8px}.good{color:var(--green)}.bad{color:var(--red)}.progress{height:8px;background:#26364c;border-radius:99px;overflow:hidden;margin:10px 0}.progress i{display:block;height:100%;width:0;background:linear-gradient(90deg,#33c7d8,#8af0c1)}.list{max-height:340px;overflow:auto;border:1px solid var(--line);border-radius:10px;margin-top:12px}.item{display:grid;grid-template-columns:42px 1fr auto;gap:10px;align-items:center;padding:9px;border-bottom:1px solid #202e43;font-size:13px}.item:last-child{border:0}.thumb{width:42px;height:42px;object-fit:cover;border-radius:7px}.pill{font-size:11px;padding:3px 7px;border-radius:99px;background:#25364d;color:#bcd1ed}.pill.ready{background:#153a30;color:#86efbd}.hidden{display:none!important}@media(max-width:560px){body{padding:13px 9px 30px}.panel{padding:13px}.grid{grid-template-columns:1fr}.stats{grid-template-columns:repeat(3,1fr)}.stat{padding:8px}.stat b{font-size:17px}.actions button{flex:1}}
 </style>
 </head>
-<body>
-<main>
-<div class="top"><div class="brand">NEON <span>WALLET</span> / NFT TOOLS</div><span class="tag">TON MAINNET</span></div>
-<h1>Getgems Bulk Minter</h1>
-<p>Upload your artwork directly from your phone, prepare metadata, and mint a batch to your chosen TON wallet.</p>
+<body><main>
+<div class="top"><div class="brand">NEON <span>WALLET</span> / NFT TOOLS</div><span class="tag">TON MAINNET · cNFT</span></div>
+<h1>Getgems cNFT Bulk Minter</h1>
+<p>Upload artwork from your phone and add compressed NFTs to your existing Getgems cNFT collection.</p>
 
 <section class="panel">
 <h2>1 · Collection and recipient</h2>
 <div class="grid">
-<div class="field full"><label>Dashboard access key (the secret you configure in Vercel)</label><input id="dashboardKey" type="password" autocomplete="current-password" placeholder="Enter your dashboard key"></div>
-<div class="field full"><label>Getgems collection address</label><input id="collection" value="EQCdaSZaJfcfeNCdalKIsnjU7t2LLM9TTQriuOZWbHmbffNN" readonly></div>
-<div class="field full"><label>NFT recipient wallet</label><input id="owner" value="UQBivI9Kba3YojkZFsQpalTeCFcCyNX1OS-Yed67920TU1pf" spellcheck="false"></div>
-<div class="field full"><label>Description (same for all 100 unless you edit individual entries later)</label><textarea id="description" maxlength="1000" placeholder="Describe this NFT collection..."></textarea></div>
+<div class="field full"><label>Dashboard access key (your separate Vercel dashboard password)</label><input id="dashboardKey" type="password" autocomplete="current-password" placeholder="Enter dashboard key"></div>
+<div class="field full"><label>Existing cNFT collection</label><input id="collection" value="EQCdaSZaJfcfeNCdalKIsnjU7t2LLM9TTQriuOZWbHmbffNN" readonly></div>
+<div class="field full"><label>Recipient wallet</label><input id="owner" value="UQBivI9Kba3YojkZFsQpalTeCFcCyNX1OS-Yed67920TU1pf" spellcheck="false"></div>
+<div class="field"><label>Starting cNFT index</label><input id="startIndex" type="number" min="0" step="1" placeholder="Enter next unused index"></div>
+<div class="field"><label>Number of images</label><input id="total" value="0 / 100" readonly></div>
+<div class="field full"><label>Description (shared across all selected cNFTs)</label><textarea id="description" maxlength="1000" placeholder="Describe this NFT collection..."></textarea></div>
 </div>
-<div class="stats">
-<div class="stat"><b id="balance">—</b><small>Mint wallet balance</small></div>
-<div class="stat"><b id="estimate">2.30 TON</b><small>Estimated mint fees for 100</small></div>
-<div class="stat"><b id="count">0 / 100</b><small>Images selected</small></div>
-</div>
-<div class="actions"><button class="secondary" id="balanceBtn">Check Getgems balance</button></div>
-<div class="status" id="balanceStatus" aria-live="polite"></div>
-<div class="notice">The minting wallet is separate from your recipient wallet. Fund the Getgems minting wallet shown in your Getgems setup before minting. This tool will not request your seed phrase or private key.</div>
+<div class="stats"><div class="stat"><b id="balance">—</b><small>Mint wallet balance</small></div><div class="stat"><b id="uploadedCount">0</b><small>Images uploaded</small></div><div class="stat"><b id="resultCount">0</b><small>cNFT results</small></div></div>
+<div class="actions"><button class="secondary" id="balanceBtn">Check wallet balance</button></div>
+<div id="topStatus" class="status">Connected to your existing cNFT collection.</div>
+<div class="notice">Important: cNFT indexes must be unique in the collection. Enter the next unused index; do not guess if the collection already contains cNFTs. Getgems' documentation says cNFT minting in parts costs about 1 TON per part. Owners should be known in advance. Conversion to a regular NFT for trading may cost about 0.085 TON per NFT.</div>
 </section>
 
 <section class="panel">
-<h2>2 · Select your NFT images</h2>
-<div class="filebox">
-<label class="filepick" for="files">Choose images from this device</label>
-<input id="files" type="file" accept="image/jpeg,image/png,image/gif,image/webp,.jpg,.jpeg,.png,.gif,.webp" multiple>
-<div id="fileHint" class="status">Select up to 100 JPG, PNG, GIF or WebP files. Files are naturally sorted by filename and paired with NFT #1, NFT #2, and so on.</div>
-</div>
+<h2>2 · Select your images</h2>
+<div class="filebox"><label class="filepick" for="files">Choose images from this device</label><input id="files" type="file" accept="image/jpeg,image/png,image/gif,image/webp,.jpg,.jpeg,.png,.gif,.webp" multiple><div id="fileHint" class="status">Choose up to 100 JPG, PNG, GIF or WebP files. They'll be sorted by filename and named NFT #1, NFT #2, etc.</div></div>
 <div class="actions"><button class="secondary" id="clearBtn" disabled>Clear selection</button></div>
 <div id="fileList" class="list hidden"></div>
 </section>
 
 <section class="panel">
 <h2>3 · Upload artwork to Getgems</h2>
-<p>Each image is uploaded directly to Getgems storage. Your browser sends the image bytes to the signed upload destination; the API token stays on the server.</p>
-<div class="progress"><i id="uploadBar"></i></div>
-<div id="uploadProgress" class="status">Waiting for images.</div>
+<p>Images are uploaded to Getgems storage. Your API authorization remains on the server.</p>
+<div class="progress"><i id="uploadBar"></i></div><div id="uploadStatus" class="status">Waiting for images.</div>
 <div class="actions"><button id="uploadBtn" disabled>Upload selected images</button></div>
 </section>
 
 <section class="panel">
-<h2>4 · Review and mint</h2>
-<div class="notice">Minting is an on-chain action paid from the Getgems minting wallet. Review the image count, recipient address, and estimated fee before pressing Mint batch. The dashboard does not automatically list NFTs for sale; marketplace listing may require a separate owner-wallet confirmation.</div>
-<div class="stats">
-<div class="stat"><b id="uploadedCount">0 / 100</b><small>Images uploaded</small></div>
-<div class="stat"><b id="mintedCount">0</b><small>Mint results ready</small></div>
-<div class="stat"><b id="mintState">Not started</b><small>Batch status</small></div>
-</div>
-<div class="actions"><button id="mintBtn" disabled>Mint batch (mainnet)</button><button class="secondary" id="statusBtn" disabled>Refresh mint status</button><button class="secondary" id="csvBtn" disabled>Export results CSV</button></div>
-<div id="mintStatus" class="status" aria-live="polite">No mint request submitted.</div>
-<div id="mintList" class="list hidden"></div>
+<h2>4 · Add cNFTs to the collection</h2>
+<div class="notice">This sends one cNFT API request containing the selected items. Review the collection, recipient, starting index and image count carefully. This action cannot simply be undone.</div>
+<div class="actions"><button id="mintBtn" disabled>Add cNFTs to collection</button><button class="secondary" id="csvBtn" disabled>Export results CSV</button></div>
+<div id="mintStatus" class="status">No cNFTs submitted.</div><div id="resultList" class="list hidden"></div>
 </section>
-<small class="note">Keep this page open while uploading. After mint submission, the batch request IDs and results are saved in this browser so you can return and check status on this device.</small>
+<small class="note">Keep this page open while uploading. Upload progress and result data are saved locally in this browser; the selected image files themselves are not.</small>
 </main>
-
 <script>
-const $ = (id) => document.getElementById(id);
-const API = '/api/getgems';
-const MAX = 100;
-let files = [];
-let uploaded = [];
-let mintItems = [];
-let mintResults = [];
-let busy = false;
-
+const $=id=>document.getElementById(id), API='/api/getgems', MAX=100;
+let files=[],uploaded=[],results=[],busy=false;
 function natural(a,b){return a.name.localeCompare(b.name,undefined,{numeric:true,sensitivity:'base'});}
-function fmtTon(raw){try{return (Number(raw)/1e9).toFixed(4)+' TON';}catch{return String(raw);}}
-function setStatus(id,msg,kind=''){const el=$(id);el.textContent=msg;el.className='status '+kind;}
-async function api(action,extra={}) {
-  const r=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json','X-Dashboard-Key':$('dashboardKey').value},body:JSON.stringify({action,...extra})});
-  const data=await r.json().catch(()=>({error:'Invalid server response'}));
-  if(!r.ok||data.success===false)throw new Error(data.error||data.message||'Request failed');
-  return data;
-}
+function status(id,msg,kind=''){const el=$(id);el.textContent=msg;el.className='status '+kind;}
 function validOwner(){return /^(EQ|UQ)[A-Za-z0-9_-]{40,50}$/.test($('owner').value.trim());}
-function updateCounts(){
-  $('count').textContent=files.length+' / 100';
-  $('uploadedCount').textContent=uploaded.length+' / '+files.length;
-  $('clearBtn').disabled=!files.length||busy;
-  $('uploadBtn').disabled=!files.length||uploaded.length===files.length||busy;
-  $('mintBtn').disabled=uploaded.length<2||uploaded.length!==files.length||busy||mintItems.length>0;
-}
-function renderFiles(){
-  const box=$('fileList');box.innerHTML='';
-  if(!files.length){box.classList.add('hidden');$('fileHint').textContent='Select up to 100 JPG, PNG, GIF or WebP files.';updateCounts();return;}
-  box.classList.remove('hidden');
-  $('fileHint').textContent=files.length+' images selected. Sorted by filename.';
-  files.forEach((f,i)=>{
-    const row=document.createElement('div');row.className='item';
-    const img=document.createElement('img');img.className='thumb';img.alt='';img.src=URL.createObjectURL(f);
-    const name=document.createElement('span');name.textContent='NFT #'+(i+1)+' · '+f.name;
-    const state=document.createElement('span');state.className='pill';state.textContent=uploaded[i]?'Uploaded':'Selected';
-    row.append(img,name,state);box.append(row);
-  });
-  updateCounts();
-}
-$('files').addEventListener('change',e=>{
-  const chosen=Array.from(e.target.files||[]).sort(natural);
-  if(chosen.length>MAX){setStatus('uploadProgress','Please select no more than 100 images.','bad');return;}
-  const valid=chosen.filter(f=>/^image\/(jpeg|png|gif|webp)$/.test(f.type));
-  if(valid.length!==chosen.length){setStatus('uploadProgress','Unsupported image type detected. Use JPG, PNG, GIF or WebP.','bad');return;}
-  files=valid;uploaded=[];mintItems=[];mintResults=[];$('mintState').textContent='Not started';$('mintList').innerHTML='';$('mintList').classList.add('hidden');
-  renderFiles();setStatus('uploadProgress','Ready to upload '+files.length+' images.');
-});
-$('clearBtn').onclick=()=>{files=[];uploaded=[];mintItems=[];mintResults=[];$('files').value='';renderFiles();setStatus('uploadProgress','Selection cleared.');};
-$('balanceBtn').onclick=async()=>{
-  $('balanceBtn').disabled=true;setStatus('balanceStatus','Checking mint wallet balance…');
-  try{const d=await api('balance');const raw=d.response?.balance??d.response; $('balance').textContent=fmtTon(raw);setStatus('balanceStatus','Getgems minting wallet balance retrieved.','good');}
-  catch(e){setStatus('balanceStatus',e.message,'bad');}
-  finally{$('balanceBtn').disabled=false;}
-};
-$('uploadBtn').onclick=async()=>{
-  if(busy||!files.length)return;
-  busy=true;updateCounts();let completed=uploaded.length;
-  try{
-    for(let i=completed;i<files.length;i++){
-      const file=files[i];const ext=(file.name.split('.').pop()||'png').toLowerCase();
-      const safeName='nft'+String(i+1).padStart(3,'0')+'.'+ext;
-      setStatus('uploadProgress','Preparing upload '+(i+1)+' of '+files.length+': '+file.name);
-      const init=await api('upload-init',{fileName:safeName});
-      const cfg=init.response;
-      if(!cfg?.uploadUrl||!Array.isArray(cfg.formFields)||!cfg.urlPrefix)throw new Error('Getgems returned incomplete upload credentials for '+file.name);
-      const form=new FormData();cfg.formFields.forEach(x=>form.append(x.name,x.value));form.append('file',file,file.name);
-      const up=await fetch(cfg.uploadUrl,{method:'POST',body:form});
-      if(!up.ok)throw new Error('Storage upload failed for '+file.name+' (HTTP '+up.status+').');
-      if(!cfg.urlPrefix)throw new Error('Getgems upload response did not include an image URL.');
-      uploaded.push({name:file.name,image:cfg.urlPrefix,index:i+1});
-      $('uploadBar').style.width=Math.round(uploaded.length/files.length*100)+'%';
-      $('uploadedCount').textContent=uploaded.length+' / '+files.length;
-      setStatus('uploadProgress','Uploaded '+uploaded.length+' of '+files.length+' images. Latest: '+file.name,'good');
-      renderFiles();
-    }
-    setStatus('uploadProgress','All '+uploaded.length+' images uploaded successfully.','good');
-    mintItems=uploaded.map((u,i)=>({requestId:'neon-'+Date.now()+'-'+(i+1),ownerAddress:$('owner').value.trim(),name:'NFT #'+(i+1),description:$('description').value.trim()||('NFT #'+(i+1)),image:u.image}));
-    updateCounts();$('mintBtn').disabled=!validOwner()||mintItems.length<2;
-    $('mintStatus').textContent='Ready to mint '+mintItems.length+' NFTs to '+$('owner').value.trim()+'.';
-  }catch(e){setStatus('uploadProgress',e.message,'bad');}
-  finally{busy=false;updateCounts();}
-};
-$('owner').addEventListener('input',()=>{if(mintItems.length)mintItems.forEach(x=>x.ownerAddress=$('owner').value.trim());$('mintBtn').disabled=!validOwner()||uploaded.length<2||uploaded.length!==files.length||mintItems.length===0||busy;});
-$('mintBtn').onclick=async()=>{
-  if(busy||mintItems.length<2||!validOwner())return;
-  if(!confirm('Submit '+mintItems.length+' NFTs to TON mainnet? Estimated fees are about '+(mintItems.length*.023).toFixed(3)+' TON. This action cannot be undone.'))return;
-  busy=true;updateCounts();$('mintBtn').disabled=true;setStatus('mintStatus','Submitting mint batch to Getgems…');
-  try{
-    const d=await api('mint-v2',{items:mintItems});
-    mintResults=d.response||[];
-    localStorage.setItem('neonGetgemsMint',JSON.stringify({collection:$('collection').value,owner:$('owner').value,items:mintItems,results:mintResults,submittedAt:new Date().toISOString()}));
-    renderMintResults();$('mintState').textContent='Submitted';$('statusBtn').disabled=false;$('csvBtn').disabled=false;
-    setStatus('mintStatus','Getgems accepted the batch request. Use Refresh mint status to retrieve the latest state.','good');
-  }catch(e){setStatus('mintStatus',e.message,'bad');}
-  finally{busy=false;updateCounts();$('mintBtn').disabled=true;}
-};
-function renderMintResults(){
-  const box=$('mintList');box.innerHTML='';box.classList.remove('hidden');
-  mintResults.forEach((r,i)=>{
-    const d=r.data||r.response||{};const row=document.createElement('div');row.className='item';
-    const num=document.createElement('span');num.textContent='#'+(i+1);
-    const name=document.createElement('span');name.textContent=mintItems[i]?.name||r.requestId||'NFT';
-    const state=document.createElement('span');state.className='pill '+(d.status==='ready'?'ready':d.status==='problem'?'problem':'');state.textContent=d.status||r.errorMessage|| (r.success?'Submitted':'Failed');
-    row.append(num,name,state);
-    if(d.url){const a=document.createElement('a');a.href=d.url;a.target='_blank';a.rel='noopener';a.textContent='Open';row.append(a);}
-    box.append(row);
-  });
-  $('mintedCount').textContent=mintResults.filter(r=>(r.data||{}).status==='ready').length;
-}
-$('statusBtn').onclick=async()=>{
-  if(busy||!mintItems.length)return;busy=true;$('statusBtn').disabled=true;setStatus('mintStatus','Refreshing batch status…');
-  try{
-    const d=await api('batch-status',{requestIds:mintItems.map(x=>x.requestId)});
-    mintResults=d.response||[];renderMintResults();
-    const ready=mintResults.filter(r=>(r.data||{}).status==='ready').length;
-    const problem=mintResults.filter(r=>(r.data||{}).status==='problem'||r.success===false).length;
-    $('mintState').textContent=ready+'/'+mintItems.length+' ready';
-    localStorage.setItem('neonGetgemsMint',JSON.stringify({collection:$('collection').value,owner:$('owner').value,items:mintItems,results:mintResults,submittedAt:new Date().toISOString()}));
-    setStatus('mintStatus',ready+' ready · '+problem+' problems · '+(mintItems.length-ready-problem)+' pending.','good');
-  }catch(e){setStatus('mintStatus',e.message,'bad');}
-  finally{busy=false;$('statusBtn').disabled=false;}
-};
-$('csvBtn').onclick=()=>{
-  const rows=[['Name','Request ID','Status','NFT Address','Getgems URL','Error']];
-  mintResults.forEach((r,i)=>{const d=r.data||{};rows.push([mintItems[i]?.name||'',mintItems[i]?.requestId||r.requestId||'',d.status||'',d.address||'',d.url||'',r.errorMessage||'']);});
-  const csv=rows.map(row=>row.map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(',')).join('\r\n');
-  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download='getgems-mint-results.csv';a.click();URL.revokeObjectURL(a.href);
-};
-try{
- const saved=JSON.parse(localStorage.getItem('neonGetgemsMint')||'null');
- if(saved?.items?.length){mintItems=saved.items;mintResults=saved.results||[];$('owner').value=saved.owner||$('owner').value;renderMintResults();$('statusBtn').disabled=false;$('csvBtn').disabled=false;$('mintState').textContent='Saved batch';setStatus('mintStatus','Restored saved batch from '+(saved.submittedAt||'this browser')+'. Refresh status to update.','good');}
-}catch{}
-</script>
-</body>
-</html>
+function validStart(){const n=Number($('startIndex').value);return $('startIndex').value!==''&&Number.isSafeInteger(n)&&n>=0&&n+files.length-1<=Number.MAX_SAFE_INTEGER;}
+async function api(action,extra={}){const r=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json','X-Dashboard-Key':$('dashboardKey').value},body:JSON.stringify({action,...extra})});const d=await r.json().catch(()=>({error:'Invalid server response'}));if(!r.ok||d.success===false)throw new Error(d.error||d.message||'Request failed');return d;}
+function update(){ $('total').value=files.length+' / 100';$('uploadedCount').textContent=uploaded.length;$('clearBtn').disabled=!files.length||busy;$('uploadBtn').disabled=!files.length||uploaded.length===files.length||busy;$('mintBtn').disabled=busy||!validOwner()||!validStart()||uploaded.length!==files.length||!files.length||results.length>0;}
+function renderFiles(){const box=$('fileList');box.innerHTML='';if(!files.length){box.classList.add('hidden');$('fileHint').textContent='Choose up to 100 JPG, PNG, GIF or WebP files.';update();return;}box.classList.remove('hidden');$('fileHint').textContent=files.length+' images selected, sorted by filename.';files.forEach((f,i)=>{const row=document.createElement('div');row.className='item';const img=document.createElement('img');img.className='thumb';img.alt='';img.src=URL.createObjectURL(f);const name=document.createElement('span');name.textContent='NFT #'+(i+1)+' · '+f.name;const pill=document.createElement('span');pill.className='pill';pill.textContent=uploaded[i]?'Uploaded':'Selected';row.append(img,name,pill);box.append(row);});update();}
+$('files').onchange=e=>{const chosen=Array.from(e.target.files||[]).sort(natural);if(chosen.length>MAX){status('uploadStatus','Select no more than 100 images.','bad');return;}if(chosen.some(f=>!/^image\/(jpeg|png|gif|webp)$/.test(f.type))){status('uploadStatus','Unsupported image type. Use JPG, PNG, GIF or WebP.','bad');return;}files=chosen;uploaded=[];results=[];$('resultList').innerHTML='';$('resultList').classList.add('hidden');$('resultCount').textContent='0';renderFiles();status('uploadStatus','Ready to upload '+files.length+' images.');};
+$('clearBtn').onclick=()=>{files=[];uploaded=[];results=[];$('files').value='';renderFiles();status('uploadStatus','Selection cleared.');};
+$('balanceBtn').onclick=async()=>{busy=true;update();status('topStatus','Checking Getgems mint wallet balance…');try{const d=await api('balance');const raw=d.response?.balance??d.response;$('balance').textContent=(Number(raw)/1e9).toFixed(4)+' TON';status('topStatus','Balance retrieved.','good');}catch(e){status('topStatus',e.message,'bad');}finally{busy=false;update();}};
+$('uploadBtn').onclick=async()=>{if(busy||!files.length)return;busy=true;update();try{for(let i=uploaded.length;i<files.length;i++){const file=files[i],ext=(file.name.split('.').pop()||'png').toLowerCase(),safe='nft'+String(i+1).padStart(3,'0')+'.'+ext;status('uploadStatus','Preparing upload '+(i+1)+' of '+files.length+'…');const init=await api('cnft-upload-init',{fileName:safe});const cfg=init.response;if(!cfg?.uploadUrl||!Array.isArray(cfg.formFields)||!cfg.urlPrefix)throw new Error('Getgems returned incomplete upload credentials for '+file.name);const form=new FormData();cfg.formFields.forEach(x=>form.append(x.name,x.value));if(!cfg.formFields.some(x=>x.name==='key'))form.append('key',cfg.keyPrefix+safe);form.append('file',file,file.name);const up=await fetch(cfg.uploadUrl,{method:'POST',body:form});if(!up.ok)throw new Error('Storage upload failed for '+file.name+' (HTTP '+up.status+').');const imageUrl=cfg.urlPrefix+safe;uploaded.push({name:file.name,image:imageUrl,index:i});$('uploadBar').style.width=Math.round(uploaded.length/files.length*100)+'%';renderFiles();status('uploadStatus','Uploaded '+uploaded.length+' of '+files.length+'. Latest: '+file.name,'good');}status('uploadStatus','All '+uploaded.length+' images uploaded.','good');}catch(e){status('uploadStatus',e.message,'bad');}finally{busy=false;update();}};
+$('owner').oninput=update;$('startIndex').oninput=update;
+$('mintBtn').onclick=async()=>{if(busy||!validOwner()||!validStart()||uploaded.length!==files.length||!files.length)return;const start=Number($('startIndex').value);const items=uploaded.map((u,i)=>({index:start+i,ownerAddress:$('owner').value.trim(),name:'NFT #'+(i+1),description:$('description').value.trim()||('NFT #'+(i+1)),image:u.image}));if(!confirm('Add '+items.length+' cNFTs to the existing collection using indexes '+start+' to '+(start+items.length-1)+'? This is a mainnet action.'))return;busy=true;update();status('mintStatus','Submitting cNFT items to Getgems…');try{const d=await api('cnft-add',{items});results=d.response?.items||[];localStorage.setItem('neonGetgemsCNFT',JSON.stringify({collection:$('collection').value,owner:$('owner').value,startIndex:start,items,results,submittedAt:new Date().toISOString()}));renderResults();$('resultCount').textContent=results.length;status('mintStatus','Getgems accepted the cNFT request. Returned '+results.length+' item records. Save the CSV for your records.','good');}catch(e){status('mintStatus',e.message,'bad');}finally{busy=false;update();}};
+function renderResults(){const box=$('resultList');box.innerHTML='';box.classList.remove('hidden');results.forEach((r,i)=>{const row=document.createElement('div');row.className='item';const num=document.createElement('span');num.textContent='#'+(i+1)+' · '+r.index;const url=document.createElement('span');url.textContent=r.contentUrl||'No content URL returned';const pill=document.createElement('span');pill.className='pill ready';pill.textContent='Added';row.append(num,url,pill);box.append(row);});$('csvBtn').disabled=!results.length;update();$('mintBtn').disabled=true;}
+$('csvBtn').onclick=()=>{const rows=[['NFT Name','Index','Owner Address','Content URL']];results.forEach((r,i)=>rows.push(['NFT #'+(i+1),r.index,$('owner').value.trim(),r.contentUrl||'']));const csv=rows.map(row=>row.map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(',')).join('\r\n');const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download='getgems-cnft-results.csv';a.click();URL.revokeObjectURL(a.href);};
+try{const saved=JSON.parse(localStorage.getItem('neonGetgemsCNFT')||'null');if(saved?.results?.length){results=saved.results;$('owner').value=saved.owner||$('owner').value;$('startIndex').value=saved.startIndex??'';renderResults();status('mintStatus','Restored '+results.length+' saved cNFT result records from this browser.','good');}}catch{}
+</script></body></html>
