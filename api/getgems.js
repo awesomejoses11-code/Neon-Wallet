@@ -3,6 +3,7 @@
  * The API token stays in Vercel environment variables and is never sent to the browser.
  * Supported actions are deliberately allowlisted; this is not a general-purpose proxy.
  */
+import { timingSafeEqual } from 'node:crypto';
 import { rateLimitMiddleware, corsMiddleware } from '../lib/proxy-utils.js';
 
 const API_BASE = 'https://api.getgems.io/public-api';
@@ -39,6 +40,7 @@ async function callGetgems(path, method = 'GET', body) {
 
 export default async function handler(req, res) {
   corsMiddleware(req, res);
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Cache-Control, X-Dashboard-Key');
   res.setHeader('Cache-Control', 'no-store');
   if (req.method === 'OPTIONS') return res.status(204).end();
 
@@ -53,6 +55,14 @@ export default async function handler(req, res) {
 
   if (req.method !== 'POST') return sendError(res, 405, 'Use POST');
   if (!process.env.GETGEMS_API_TOKEN) return sendError(res, 503, 'Getgems API is not configured on the server');
+  const dashboardKey = process.env.GETGEMS_DASHBOARD_KEY;
+  if (!dashboardKey) return sendError(res, 503, 'Server is missing GETGEMS_DASHBOARD_KEY. Configure a dashboard access key in Vercel.');
+  const suppliedKey = String(req.headers['x-dashboard-key'] || '');
+  const expected = Buffer.from(dashboardKey);
+  const supplied = Buffer.from(suppliedKey);
+  if (expected.length !== supplied.length || !timingSafeEqual(expected, supplied)) {
+    return sendError(res, 401, 'Dashboard access key is incorrect');
+  }
 
   const body = req.body || {};
   const action = body.action;
