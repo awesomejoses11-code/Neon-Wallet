@@ -94,8 +94,8 @@ export default async function handler(req, res) {
 
     if (action === 'cnft-add') {
       const items = req.body?.items;
-      if (!Array.isArray(items) || items.length < 1 || items.length > 50) {
-        return sendError(res, 400, 'Provide between 1 and 50 cNFT items per request');
+      if (!Array.isArray(items) || items.length < 1 || items.length > 100) {
+        return sendError(res, 400, 'Provide between 1 and 100 cNFT items');
       }
       const seen = new Set();
       const cleanItems = [];
