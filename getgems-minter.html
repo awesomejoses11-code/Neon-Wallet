@@ -28,6 +28,7 @@ small.note{color:var(--muted);display:block;margin-top:8px}.hidden{display:none!
 <section class="panel">
 <h2>1 · Collection and recipient</h2>
 <div class="grid">
+<div class="field full"><label>Dashboard access key (the secret you configure in Vercel)</label><input id="dashboardKey" type="password" autocomplete="current-password" placeholder="Enter your dashboard key"></div>
 <div class="field full"><label>Getgems collection address</label><input id="collection" value="EQCdaSZaJfcfeNCdalKIsnjU7t2LLM9TTQriuOZWbHmbffNN" readonly></div>
 <div class="field full"><label>NFT recipient wallet</label><input id="owner" value="UQBivI9Kba3YojkZFsQpalTeCFcCyNX1OS-Yed67920TU1pf" spellcheck="false"></div>
 <div class="field full"><label>Description (same for all 100 unless you edit individual entries later)</label><textarea id="description" maxlength="1000" placeholder="Describe this NFT collection..."></textarea></div>
@@ -90,7 +91,7 @@ function natural(a,b){return a.name.localeCompare(b.name,undefined,{numeric:true
 function fmtTon(raw){try{return (Number(raw)/1e9).toFixed(4)+' TON';}catch{return String(raw);}}
 function setStatus(id,msg,kind=''){const el=$(id);el.textContent=msg;el.className='status '+kind;}
 async function api(action,extra={}) {
-  const r=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action,...extra})});
+  const r=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json','X-Dashboard-Key':$('dashboardKey').value},body:JSON.stringify({action,...extra})});
   const data=await r.json().catch(()=>({error:'Invalid server response'}));
   if(!r.ok||data.success===false)throw new Error(data.error||data.message||'Request failed');
   return data;
@@ -146,9 +147,8 @@ $('uploadBtn').onclick=async()=>{
       const form=new FormData();cfg.formFields.forEach(x=>form.append(x.name,x.value));form.append('file',file,file.name);
       const up=await fetch(cfg.uploadUrl,{method:'POST',body:form});
       if(!up.ok)throw new Error('Storage upload failed for '+file.name+' (HTTP '+up.status+').');
-      const key=cfg.formFields.find(x=>x.name==='key')?.value;
-      if(!key)throw new Error('Getgems upload response did not include a storage key.');
-      uploaded.push({name:file.name,image:cfg.urlPrefix+key,index:i+1});
+      if(!cfg.urlPrefix)throw new Error('Getgems upload response did not include an image URL.');
+      uploaded.push({name:file.name,image:cfg.urlPrefix,index:i+1});
       $('uploadBar').style.width=Math.round(uploaded.length/files.length*100)+'%';
       $('uploadedCount').textContent=uploaded.length+' / '+files.length;
       setStatus('uploadProgress','Uploaded '+uploaded.length+' of '+files.length+' images. Latest: '+file.name,'good');
