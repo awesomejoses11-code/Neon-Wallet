@@ -91,8 +91,14 @@ export default async function handler(req, res) {
         form.append(field.name, field.value);
       }
     }
-    // Follow Getgems' published cNFT upload example: submit only the
-    // returned formFields plus the file. Do not synthesize an S3 key.
+    // Getgems provides a keyPrefix rather than the full object key.
+    // S3's signed POST requires the exact key before the file part.
+    if (!cfg.keyPrefix) {
+      return sendError(res, 502, 'Getgems upload credentials are missing keyPrefix', init);
+    }
+    if (!cfg.formFields.some((field) => field?.name === 'key')) {
+      form.append('key', cfg.keyPrefix + filename);
+    }
     form.append('file', new Blob([image], { type: contentType }), filename);
 
     const storageResponse = await fetch(cfg.uploadUrl, { method: 'POST', body: form });
@@ -102,7 +108,7 @@ export default async function handler(req, res) {
     }
 
     // Getgems' cNFT example uses urlPrefix as the complete image URL.
-    return res.status(200).json({ success: true, response: { imageUrl: cfg.urlPrefix } });
+    return res.status(200).json({ success: true, response: { imageUrl: cfg.urlPrefix + filename } });
   } catch (error) {
     console.error('[Getgems image upload proxy]', error.message);
     return sendError(res, error.status || 502, error.message || 'Image upload failed');
