@@ -155,6 +155,62 @@ export default async function handler(req, res) {
       return res.status(200).json(result);
     }
 
+    if (action === 'cnft-repair-csv') {
+      const entries = Array.isArray(req.body?.entries) ? req.body.entries.slice(0, 25) : [];
+      const skip = new Set(Array.isArray(req.body?.skipIndexes) ? req.body.skipIndexes.map(Number) : []);
+      if (!entries.length) return sendError(res, 400, 'No CSV entries supplied');
+      let addressByIndex = null;
+      const fixed = [], failed = [];
+      let okCount = 0, skippedCount = 0;
+      for (const entry of entries) {
+        const index = Number(entry?.index);
+        const label = Number.isSafeInteger(index) ? index : -1;
+        if (label >= 0 && skip.has(label)) { skippedCount++; continue; }
+        try {
+          let image = typeof entry?.image === 'string' ? entry.image : '';
+          const contentUrl = typeof entry?.contentUrl === 'string' ? entry.contentUrl : '';
+          if (!image) {
+            let host = '';
+            try { host = new URL(contentUrl).hostname; } catch { /* rejected below */ }
+            if (!/^https:\/\//i.test(contentUrl) || !(host === 's.getgems.io' || host.endsWith('.getgems.io'))) {
+              throw new Error('Content URL is not a Getgems URL');
+            }
+            const metaRes = await fetch(contentUrl);
+            if (!metaRes.ok) throw new Error('Metadata fetch returned HTTP ' + metaRes.status);
+            const meta = await metaRes.json().catch(() => ({}));
+            image = meta?.image || '';
+          }
+          const parts = String(image).split('/');
+          const doubled = parts.length > 2 && parts[parts.length - 1] !== '' && parts[parts.length - 1] === parts[parts.length - 2];
+          if (!doubled) { okCount++; continue; }
+          const corrected = parts.slice(0, -1).join('/');
+          const check = await fetch(corrected, { method: 'GET' });
+          if (!check.ok) throw new Error('Corrected image URL returned HTTP ' + check.status);
+          if (check.body) check.body.cancel().catch(() => {});
+          let address = typeof entry?.address === 'string' ? entry.address : '';
+          if (!address) {
+            if (!addressByIndex) {
+              addressByIndex = new Map();
+              let after = '';
+              for (let pg = 0; pg < 5; pg++) {
+                const data = await callGetgems('/nft/collection/items/' + encodeURIComponent(collection) + (after ? '?after=' + encodeURIComponent(after) : ''));
+                for (const it of data?.response?.items || []) addressByIndex.set(it.index, it.address);
+                after = data?.response?.cursor || '';
+                if (!after) break;
+              }
+            }
+            address = addressByIndex.get(label) || '';
+          }
+          if (!/^(EQ|UQ)[A-Za-z0-9_-]{40,50}$/.test(address)) throw new Error('NFT address not found for this index');
+          const res2 = await callGetgems('/minting/' + encodeURIComponent(collection) + '/update/' + encodeURIComponent(address), 'POST', { update: { image: corrected } });
+          fixed.push({ index: label, status: res2?.response?.status || 'submitted' });
+        } catch (e) {
+          failed.push({ index: label, error: e.message });
+        }
+      }
+      return res.status(200).json({ success: true, fixed, okCount, skippedCount, failed });
+    }
+
     return sendError(res, 400, 'Unknown action');
   } catch (error) {
     console.error('[Getgems cNFT proxy]', error.message);
