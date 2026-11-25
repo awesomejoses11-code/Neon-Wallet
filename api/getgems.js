@@ -87,6 +87,39 @@ export default async function handler(req, res) {
       return res.status(200).json(result);
     }
 
+    if (action === 'cnft-upload') {
+      const uploadUrl = String(req.body?.uploadUrl || '');
+      const fields = req.body?.fields;
+      const fileName = String(req.body?.fileName || '');
+      const fileType = String(req.body?.fileType || '');
+      const fileBase64 = String(req.body?.fileBase64 || '');
+      let host = '';
+      try { host = new URL(uploadUrl).hostname; } catch { /* rejected below */ }
+      if (!/^https:\/\//i.test(uploadUrl) ||
+          !(host.endsWith('.amazonaws.com') || host.endsWith('.getgems.io'))) {
+        return sendError(res, 400, 'Upload URL is not a Getgems storage URL');
+      }
+      if (!Array.isArray(fields) || fields.length < 1 || fields.length > 30 ||
+          fields.some((f) => !f || typeof f.name !== 'string' || typeof f.value !== 'string')) {
+        return sendError(res, 400, 'Upload form fields are invalid');
+      }
+      if (!/^[A-Za-z0-9]{1,80}\.(jpg|jpeg|png|gif|webp)$/i.test(fileName) ||
+          !/^[A-Za-z0-9.+-]+\/[A-Za-z0-9.+-]+$/.test(fileType) ||
+          !/^[A-Za-z0-9+/=]+$/.test(fileBase64) || fileBase64.length > 4200000) {
+        return sendError(res, 400, 'Upload file payload is invalid or too large');
+      }
+      const form = new FormData();
+      for (const f of fields) form.append(f.name, f.value);
+      const bytes = Buffer.from(fileBase64, 'base64');
+      form.append('file', new Blob([bytes], { type: fileType }), fileName);
+      const up = await fetch(uploadUrl, { method: 'POST', body: form });
+      const text = await up.text().catch(() => '');
+      if (!up.ok) {
+        return sendError(res, 502, 'Storage upload failed (HTTP ' + up.status + '). ' + text.slice(0, 500));
+      }
+      return res.status(200).json({ success: true });
+    }
+
     if (action === 'cnft-open') {
       const result = await callGetgems('/cnft/' + encodeURIComponent(collection) + '/open-minting', 'POST');
       return res.status(200).json(result);
